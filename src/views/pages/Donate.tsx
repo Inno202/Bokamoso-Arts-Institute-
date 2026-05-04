@@ -14,10 +14,10 @@ export default function Donate() {
   return (
     <div className="pb-24">
       {/* Header */}
-      <section className="bg-bai-black text-white py-32 px-4 text-center relative overflow-hidden">
+      <section className="bg-bai-black text-white py-16 md:py-32 px-4 text-center relative overflow-hidden">
         <div className="absolute inset-0 piano-key-pattern opacity-10" />
         <div className="max-w-4xl mx-auto relative z-10">
-          <h1 className="font-display font-extrabold text-5xl md:text-7xl tracking-tighter leading-none mb-8 italic uppercase text-white">
+          <h1 className="font-display font-extrabold text-4xl sm:text-5xl md:text-7xl tracking-tighter leading-none mb-4 md:mb-8 italic uppercase text-white">
             MAKE A <br /> <span className="text-bai-red">DONATION.</span>
           </h1>
           <p className="text-white/60 text-lg md:text-2xl font-light leading-relaxed max-w-2xl mx-auto italic font-serif">
@@ -60,7 +60,7 @@ export default function Donate() {
                <input 
                   type="number" 
                   placeholder="R 00.00"
-                  className="w-full bg-transparent border-b-2 border-bai-black font-display font-bold text-4xl focus:border-bai-red outline-none transition-colors"
+                  className="w-full bg-transparent border-b-2 border-bai-black font-display font-bold text-3xl md:text-4xl focus:border-bai-red outline-none transition-colors py-2"
                   onChange={(e) => setAmount(Number(e.target.value))}
                />
             </div>

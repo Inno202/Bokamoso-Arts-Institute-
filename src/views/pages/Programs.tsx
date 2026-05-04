@@ -19,11 +19,11 @@ export default function Programs() {
   return (
     <div className="pb-24">
       {/* Hero */}
-      <section className="bg-bai-black py-32 text-center px-4 relative overflow-hidden">
+      <section className="bg-bai-black py-16 md:py-32 text-center px-4 relative overflow-hidden">
         <div className="absolute inset-0 piano-key-pattern opacity-10" />
         <div className="max-w-4xl mx-auto relative z-10">
           <span className="font-display font-bold uppercase tracking-[0.4em] text-bai-red text-xs mb-4 block">Our Artistic Journey</span>
-          <h1 className="font-display font-extrabold text-5xl md:text-7xl text-white tracking-tighter mb-8 leading-tight italic uppercase">
+          <h1 className="font-display font-extrabold text-4xl sm:text-5xl md:text-7xl text-white tracking-tighter mb-4 md:mb-8 leading-tight italic uppercase">
             OUR <br /> <span className="text-bai-blue">WORK</span>
           </h1>
           <p className="text-white/50 text-lg md:text-2xl font-light leading-relaxed max-w-2xl mx-auto italic font-serif">
@@ -33,7 +33,7 @@ export default function Programs() {
       </section>
 
       {/* Pillars */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-32 grid grid-cols-1 md:grid-cols-2 gap-16">
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 md:py-32 grid grid-cols-1 md:grid-cols-2 gap-12 md:gap-16">
         {pillars.map((pillar, idx) => (
           <div key={idx} className="group relative">
             <div className={`mb-8 p-6 w-fit bg-bai-bone transition-all duration-300 border-b-8 ${
@@ -61,8 +61,8 @@ export default function Programs() {
               </div>
               <span className="font-display font-bold uppercase tracking-widest text-[10px]">Community Engagement</span>
             </div>
-            <h2 className="font-display font-black text-4xl md:text-6xl tracking-tighter mb-8 leading-none italic uppercase">
-              SCHOOLS & <br /><span className="text-bai-red text-6xl italic">ORPHANAGES.</span>
+            <h2 className="font-display font-black text-3xl sm:text-4xl md:text-6xl tracking-tighter mb-4 md:mb-8 leading-none italic uppercase">
+              SCHOOLS & <br /><span className="text-bai-red text-4xl sm:text-5xl md:text-6xl italic">ORPHANAGES.</span>
             </h2>
             <p className="text-bai-black/60 text-xl leading-relaxed mb-10 font-serif italic">
                We regularly visit local schools and orphanages in Mabopane to perform, share music, and inspire the youth through artistic exchange and spiritual upliftment.

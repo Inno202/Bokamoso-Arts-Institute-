@@ -14,8 +14,13 @@
 }
 
 @layer base {
+  html {
+    /* Limit base font size on small screens, scaling up to 16px on bigger screens.
+       This scales down EVERYTHING built with tailwind rem units. */
+    font-size: clamp(13px, 1.2vw + 10px, 16px);
+  }
   body {
-    @apply bg-bai-bone text-bai-black font-sans antialiased;
+    @apply bg-bai-bone text-bai-black font-sans antialiased overflow-x-hidden;
   }
 }
 

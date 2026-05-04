@@ -11,6 +11,9 @@ export const ROUTES = {
   TOUR: '/5v7p9z',
   TRADITIONS: '/4b8n1s',
   DONATE: '/9d9q2w',
+  SCANNER: '/scanner',
+  LOGIN: '/login',
+  DASHBOARD: '/dashboard',
 } as const;
 
 export type RouteKey = keyof typeof ROUTES;

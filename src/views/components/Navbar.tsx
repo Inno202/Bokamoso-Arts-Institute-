@@ -3,10 +3,14 @@ import { Menu, X, Music2 } from 'lucide-react';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ROUTES } from '../../controllers/navigation';
+import { useAuth } from './AuthProvider';
+import { signOut } from 'firebase/auth';
+import { auth } from '../../controllers/lib/firebase';
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
+  const { user, role } = useAuth();
 
   const navLinks = [
     { name: 'Home', path: ROUTES.HOME },
@@ -14,7 +18,21 @@ export default function Navbar() {
     { name: 'Our Work', path: ROUTES.PROGRAMS },
     { name: 'On Tour', path: ROUTES.TOUR },
     { name: 'Traditions', path: ROUTES.TRADITIONS },
+    { name: 'Donate', path: ROUTES.DONATE },
   ];
+
+  if (user && role) {
+    if (role === 'SUPER_ADMIN' || role === 'CEO' || role === 'FINANCE_MANAGER' || role === 'PUBLIC_RELATIONS') {
+      navLinks.push({ name: 'Dashboard', path: ROUTES.DASHBOARD });
+    }
+    if (role === 'SUPER_ADMIN' || role === 'TICKET_SCANNER' || role === 'PUBLIC_RELATIONS') {
+      navLinks.push({ name: 'Scanner', path: ROUTES.SCANNER });
+    }
+  }
+
+  const handleSignOut = () => {
+    signOut(auth);
+  };
 
   return (
     <nav className="sticky top-0 z-50 bg-bai-bone/80 backdrop-blur-md border-b border-bai-black/5">
@@ -46,9 +64,15 @@ export default function Navbar() {
                 {link.name}
               </Link>
             ))}
-            <Link to={ROUTES.DONATE} className="btn-primary py-2 px-6 text-xs bg-bai-red">
-              Donate
-            </Link>
+            {user ? (
+              <button onClick={handleSignOut} className="btn-primary py-2 px-6 text-xs bg-bai-red hover:bg-bai-red/90">
+                Sign Out
+              </button>
+            ) : (
+              <Link to="/login" className="btn-primary py-2 px-6 text-xs bg-bai-red hover:bg-bai-red/90">
+                Sign In
+              </Link>
+            )}
           </div>
 
           {/* Mobile button */}
@@ -80,13 +104,22 @@ export default function Navbar() {
                   {link.name}
                 </Link>
               ))}
-              <Link
-                to={ROUTES.DONATE}
-                onClick={() => setIsOpen(false)}
-                className="block btn-primary text-center"
-              >
-                Donate
-              </Link>
+              {user ? (
+                 <button
+                  onClick={() => { handleSignOut(); setIsOpen(false); }}
+                  className="block w-full btn-primary text-center bg-bai-red"
+                 >
+                   Sign Out
+                 </button>
+              ) : (
+                <Link
+                  to="/login"
+                  onClick={() => setIsOpen(false)}
+                  className="block btn-primary text-center bg-bai-red"
+                >
+                  Sign In
+                </Link>
+              )}
             </div>
           </motion.div>
         )}

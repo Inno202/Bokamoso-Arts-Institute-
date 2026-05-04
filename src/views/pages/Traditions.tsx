@@ -31,11 +31,11 @@ export default function Traditions() {
   return (
     <div className="pb-24">
       {/* Header */}
-      <section className="bg-bai-black text-white py-32 px-4 relative overflow-hidden">
+      <section className="bg-bai-black text-white py-16 md:py-32 px-4 relative overflow-hidden">
         <div className="absolute inset-0 piano-key-pattern opacity-10" />
         <div className="max-w-7xl mx-auto relative z-10">
           <span className="bula-pelo-text text-white text-2xl mb-4 block">The BAI Rhythm</span>
-          <h1 className="font-display font-extrabold text-5xl md:text-7xl tracking-tighter leading-[1] mb-8 italic uppercase">
+          <h1 className="font-display font-extrabold text-4xl sm:text-5xl md:text-7xl tracking-tighter leading-[1] mb-8 italic uppercase">
             OUR <br /> <span className="text-bai-red">TRADITIONS.</span>
           </h1>
           <p className="max-w-2xl text-white/60 text-lg md:text-2xl font-light leading-relaxed font-serif italic">
@@ -45,7 +45,7 @@ export default function Traditions() {
       </section>
 
       {/* Traditions List */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-32">
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 md:py-32">
         <div className="space-y-24 md:space-y-40">
           {events.map((event, idx) => (
             <div key={event.id} className={`flex flex-col ${idx % 2 === 0 ? 'lg:flex-row' : 'lg:flex-row-reverse'} gap-12 md:gap-20 items-center lg:items-start`}>
@@ -53,7 +53,7 @@ export default function Traditions() {
                   <div className="text-[6rem] md:text-[8rem] lg:text-[12rem] font-display font-black text-bai-black/5 leading-none absolute -top-8 lg:-top-16 left-1/2 lg:-left-8 -translate-x-1/2 lg:translate-x-0 -z-10 italic">{event.id}</div>
                   <div className="relative z-10">
                      <span className="font-display font-bold uppercase tracking-[0.4em] text-bai-red text-[10px] mb-6 block">{event.tag}</span>
-                     <h2 className="font-display font-black text-4xl md:text-6xl tracking-tighter mb-6 leading-none uppercase italic">
+                     <h2 className="font-display font-black text-3xl sm:text-4xl md:text-6xl tracking-tighter mb-4 md:mb-6 leading-none uppercase italic">
                        {event.title}
                      </h2>
                      <p className="text-bai-black/60 text-xl leading-relaxed mb-10">

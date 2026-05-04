@@ -2,10 +2,10 @@ export default function About() {
   return (
     <div className="pb-24">
       {/* Header */}
-      <section className="bg-bai-black text-white py-32 px-4 relative overflow-hidden">
+      <section className="bg-bai-black text-white py-16 md:py-32 px-4 relative overflow-hidden">
         <div className="max-w-7xl mx-auto relative z-10">
           <span className="bula-pelo-text text-white text-2xl mb-4 block opacity-80">Our Roots, Our Voice</span>
-          <h1 className="font-display font-extrabold text-5xl md:text-7xl tracking-tighter leading-[0.9] mb-8 uppercase italic">
+          <h1 className="font-display font-extrabold text-4xl sm:text-5xl md:text-7xl tracking-tighter leading-[0.9] mb-4 md:mb-8 uppercase italic">
             ABOUT <br /> <span className="text-bai-red">US.</span>
           </h1>
           <p className="max-w-3xl text-white/60 text-lg md:text-2xl font-light leading-relaxed">
@@ -18,8 +18,8 @@ export default function About() {
       </section>
 
       {/* Narrative Section */}
-      <section className="py-32 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-20 items-start">
+      <section className="py-16 md:py-32 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 md:gap-20 items-start">
           <div className="space-y-12">
             <div>
               <h2 className="font-display font-extrabold text-3xl mb-8 uppercase tracking-[0.2em] text-bai-blue">Our Story</h2>
@@ -35,11 +35,11 @@ export default function About() {
             
             <div className="grid grid-cols-2 gap-8 py-8 border-y-2 border-bai-black/5">
                 <div>
-                   <div className="font-display font-black text-5xl mb-2 italic">2</div>
+                   <div className="font-display font-black text-4xl md:text-5xl mb-2 italic">2</div>
                    <div className="text-[10px] font-bold uppercase tracking-widest text-bai-red">World Titles</div>
                 </div>
                 <div>
-                   <div className="font-display font-black text-5xl mb-2 italic">EST</div>
+                   <div className="font-display font-black text-4xl md:text-5xl mb-2 italic">EST</div>
                    <div className="text-[10px] font-bold uppercase tracking-widest text-bai-red">2022 Foundation</div>
                 </div>
             </div>
@@ -66,10 +66,10 @@ export default function About() {
       </section>
 
       {/* Leadership & Management */}
-      <section className="py-32 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="mb-20 text-center">
+      <section className="py-16 md:py-32 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="mb-12 md:mb-20 text-center">
             <span className="font-display font-bold uppercase tracking-[0.4em] text-bai-blue text-[10px] mb-4 block">Leadership</span>
-            <h2 className="font-display font-black text-5xl md:text-7xl tracking-tighter uppercase italic">
+            <h2 className="font-display font-black text-4xl sm:text-5xl md:text-7xl tracking-tighter uppercase italic">
               MANAGEMENT <br /> <span className="text-bai-red">TEAM.</span>
             </h2>
         </div>
@@ -105,11 +105,11 @@ export default function About() {
       </section>
 
       {/* Choir Gallery */}
-      <section className="bg-bai-black py-20">
+      <section className="bg-bai-black py-12 md:py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="mb-20 text-center">
+          <div className="mb-12 md:mb-20 text-center">
               <span className="font-display font-bold uppercase tracking-[0.4em] text-bai-blue text-[10px] mb-4 block">Visual Journey</span>
-              <h2 className="font-display font-black text-5xl md:text-7xl tracking-tighter uppercase italic text-white">
+              <h2 className="font-display font-black text-4xl sm:text-5xl md:text-7xl tracking-tighter uppercase italic text-white">
                 THE <span className="text-bai-red">CHOIR.</span>
               </h2>
           </div>
