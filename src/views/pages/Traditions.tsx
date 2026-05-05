@@ -1,4 +1,4 @@
-import { Sparkles, Users, Church, Music } from 'lucide-react';
+import { Users, Church, Music } from 'lucide-react';
 
 export default function Traditions() {
   const events = [

@@ -1,138 +1,222 @@
-import React, { useState, useEffect } from 'react';
-import { Camera, CheckCircle, XCircle } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Camera, CheckCircle, XCircle, Search, Calendar, MapPin, Ticket as TicketIcon } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../components/AuthProvider';
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
-import { db } from '../../controllers/lib/firebase';
+import { ticketController } from '../../controllers/ticketController';
 import { Html5QrcodeScanner } from 'html5-qrcode';
+import { logger } from '../../services/loggerService';
 
 export default function TicketScanner() {
   const { user, role } = useAuth();
   const [ticketId, setTicketId] = useState('');
   const [scanResult, setScanResult] = useState<'success' | 'error' | null>(null);
+  const [ticketData, setTicketData] = useState<any>(null);
   const [message, setMessage] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [showManual, setShowManual] = useState(false);
 
   useEffect(() => {
-    if (!user || user.isAnonymous) return;
+    if (!user || (role !== 'SUPER_ADMIN' && role !== 'TICKET_SCANNER' && role !== 'PUBLIC_RELATIONS')) return;
     
-    const onScanSuccess = (decodedText: string, decodedResult: any) => {
-      // Pause scanner immediately upon success to prevent multiple rapid scans
-      setTicketId(decodedText);
-      handleVerification(decodedText);
-    };
+    let scanner: Html5QrcodeScanner | null = null;
+    
+    if (!showManual) {
+      scanner = new Html5QrcodeScanner(
+        "qr-reader",
+        { fps: 10, qrbox: {width: 250, height: 250}, aspectRatio: 1.0 },
+        /* verbose= */ false
+      );
+      scanner.render(onScanSuccess, onScanError);
+    }
 
-    const scanner = new Html5QrcodeScanner(
-      "qr-reader",
-      { fps: 10, qrbox: {width: 250, height: 250} },
-      /* verbose= */ false
-    );
-    scanner.render(onScanSuccess, () => {});
+    function onScanSuccess(decodedText: string) {
+      if (loading) return;
+      handleVerification(decodedText);
+    }
+
+    function onScanError(_err: any) {
+      // Ignore normal scanning errors
+    }
 
     return () => {
-      scanner.clear().catch(error => {
-        console.error("Failed to clear html5QrcodeScanner. ", error);
-      });
+      if (scanner) {
+        scanner.clear().catch(error => logger.error("Failed to clear scanner", error));
+      }
     };
-  }, [user]);
-
-  const handleVerify = async (e: React.FormEvent) => {
-    e.preventDefault();
-    await handleVerification(ticketId);
-  };
+  }, [user, role, showManual]);
 
   const handleVerification = async (currentTicketId: string) => {
+    setLoading(true);
     setScanResult(null);
+    setTicketData(null);
     setMessage('');
 
-    if (!user) {
-       setScanResult('error');
-       setMessage('You must be signed in.');
-       return;
-    }
-    
     try {
-      // Expected: ticketId format -> ticket:uuid OR just uuid if manually typed
-      const rawId = currentTicketId.replace('ticket:', '').trim();
+      const result = await ticketController.validateTicketOnServer(currentTicketId);
+      setScanResult('success');
+      setTicketData(result.ticket);
+      setMessage('Access Granted: Valid Entry');
       
-      if (!rawId) {
-        setScanResult('error');
-        setMessage('Empty ticket ID.');
-        return;
-      }
-
-      const ticketRef = doc(db, 'tickets', rawId);
-      const ticketSnap = await getDoc(ticketRef);
-
-      if (!ticketSnap.exists()) {
-        setScanResult('error');
-        setMessage('Ticket not found.');
-        return;
-      }
-
-      const ticket = ticketSnap.data();
-
-      if (ticket.status === 'VALID') {
-        // Scanner changes status to SCANNED to prevent double entry
-        await updateDoc(ticketRef, { status: 'SCANNED' });
-        setScanResult('success');
-        setMessage('Ticket verified and scanned successfully.');
-      } else {
-        setScanResult('error');
-        setMessage(`Ticket already scanned or invalid. Status: ${ticket.status}`);
-      }
+      // Auto-clear result after delay to ready for next scan
+      setTimeout(() => {
+         // setScanResult(null);
+      }, 5000);
     } catch (err: any) {
-      console.error(err);
       setScanResult('error');
-      setMessage(err.message || 'Permission denied or network error.');
+      setMessage(err.message || 'Invalid or already scanned');
+    } finally {
+      setLoading(false);
     }
   };
 
-  return (
-    <div className="min-h-screen bg-bai-black text-white p-4 flex flex-col items-center pt-20">
-      <div className="text-center mb-10">
-        <h1 className="font-display font-black text-4xl mb-2 text-bai-red">SCANNER APP</h1>
-        <p className="text-white/50 text-sm">Authorized Personnel Only</p>
-      </div>
+  const manualVerify = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (ticketId) handleVerification(ticketId);
+  };
 
-      <div className="w-full max-w-md bg-white rounded-3xl p-6 text-bai-black shadow-2xl">
-        <div className="mb-6 relative w-full overflow-hidden rounded-2xl bg-black border-4 border-bai-black" id="qr-reader">
-            {/* The QR Reader will attach itself here */}
+  if (role !== 'SUPER_ADMIN' && role !== 'TICKET_SCANNER' && role !== 'PUBLIC_RELATIONS') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-bai-black text-white p-6">
+        <div className="text-center">
+           <XCircle size={64} className="text-bai-red mx-auto mb-6" />
+           <h2 className="font-display font-black text-3xl uppercase italic mb-2">Access Denied</h2>
+           <p className="text-white/40 italic">You do not have the required permissions to access this tool.</p>
         </div>
-        
-        {scanResult === 'success' && (
-          <div className="mb-6 p-4 bg-green-100 text-green-700 rounded flex items-start space-x-3 border-l-4 border-green-500">
-             <CheckCircle className="shrink-0 w-6 h-6" />
-             <div>
-               <p className="font-bold text-lg leading-tight mb-1">Valid Ticket!</p>
-               <p className="text-sm">{message}</p>
-             </div>
-          </div>
-        )}
+      </div>
+    );
+  }
 
-        {scanResult === 'error' && (
-          <div className="mb-6 p-4 bg-red-100 text-red-700 rounded flex items-start space-x-3 border-l-4 border-red-500">
-             <XCircle className="shrink-0 w-6 h-6" />
-             <div>
-               <p className="font-bold text-lg leading-tight mb-1">Invalid / Error</p>
-               <p className="text-sm">{message}</p>
-             </div>
-          </div>
-        )}
+  return (
+    <div className="min-h-screen bg-bai-black text-white p-4 relative overflow-hidden flex flex-col">
+      {/* Visual background overlay on scan */}
+      <AnimatePresence>
+         {scanResult === 'success' && (
+            <motion.div 
+               initial={{ opacity: 0 }}
+               animate={{ opacity: 0.15 }}
+               exit={{ opacity: 0 }}
+               className="fixed inset-0 bg-green-500 z-0"
+            />
+         )}
+         {scanResult === 'error' && (
+            <motion.div 
+               initial={{ opacity: 0 }}
+               animate={{ opacity: 0.15 }}
+               exit={{ opacity: 0 }}
+               className="fixed inset-0 bg-red-500 z-0"
+            />
+         )}
+      </AnimatePresence>
 
-        <form onSubmit={handleVerify} className="space-y-4">
-          <div>
-             <label className="block text-xs font-bold uppercase mb-2">Manual Ticket ID Entry</label>
-             <input 
-                type="text" 
-                value={ticketId}
-                onChange={(e) => setTicketId(e.target.value)}
-                placeholder="Enter Ticket UUID"
-                className="w-full bg-white border-2 border-bai-black/20 p-3 font-bold outline-none focus:border-bai-blue rounded"
-             />
-          </div>
-          <button type="submit" className="w-full py-4 bg-bai-blue hover:bg-bai-blue/90 text-white font-display font-bold uppercase tracking-widest rounded transition-colors active:scale-95">
-            Verify Manually
-          </button>
-        </form>
+      <div className="relative z-10 max-w-lg mx-auto w-full flex-grow flex flex-col">
+         {/* Header */}
+         <div className="pt-10 pb-8 text-center">
+            <div className="flex items-center justify-center space-x-3 mb-4">
+               <div className="w-8 h-8 bg-bai-red flex items-center justify-center rounded-full border-2 border-white">
+                  <TicketIcon size={16} />
+               </div>
+               <h1 className="font-display font-black text-2xl uppercase tracking-tighter italic">Scanner <span className="text-bai-red">App</span></h1>
+            </div>
+            <p className="text-white/40 text-[10px] font-bold uppercase tracking-widest bg-white/5 py-1 px-4 rounded-full inline-block">Authorized: {user?.displayName || 'Staff'}</p>
+         </div>
+
+         {/* Result Display */}
+         <div className="mb-8">
+            <AnimatePresence mode="wait">
+               {scanResult === 'success' && ticketData ? (
+                  <motion.div 
+                     initial={{ scale: 0.9, opacity: 0 }}
+                     animate={{ scale: 1, opacity: 1 }}
+                     className="bg-white text-bai-black rounded-[2rem] p-8 shadow-2xl border-l-[12px] border-green-500"
+                  >
+                     <div className="flex items-start justify-between mb-6">
+                        <div className="w-16 h-16 bg-green-100 text-green-600 rounded-2xl flex items-center justify-center">
+                           <CheckCircle size={40} />
+                        </div>
+                        <div className="text-right">
+                           <span className="text-[10px] font-black uppercase tracking-widest text-white px-3 py-1 bg-green-500 rounded-full">VALID</span>
+                        </div>
+                     </div>
+                     <h2 className="font-display font-black text-3xl uppercase tracking-tighter leading-tight mb-6 italic">{ticketData.buyerEmail.split('@')[0]}</h2>
+                     <div className="space-y-4 border-t border-bai-black/5 pt-6">
+                        <div className="flex items-center space-x-3 text-sm font-bold">
+                           <Calendar size={16} className="text-bai-red" />
+                           <span className="text-bai-black/60 uppercase text-[10px] tracking-widest">General Entry</span>
+                        </div>
+                        <div className="flex items-center space-x-3 text-sm font-bold">
+                           <MapPin size={16} className="text-bai-red" />
+                           <span className="text-bai-black/60 uppercase text-[10px] tracking-widest">Mabopane Station Event</span>
+                        </div>
+                     </div>
+                  </motion.div>
+               ) : scanResult === 'error' ? (
+                  <motion.div 
+                     initial={{ x: 0, opacity: 0 }}
+                     animate={{ 
+                       x: [0, -10, 10, -10, 10, 0],
+                       opacity: 1 
+                     }}
+                     className="bg-bai-red text-white rounded-[2rem] p-8 shadow-2xl text-center"
+                  >
+                     <XCircle size={64} className="mx-auto mb-6" />
+                     <h3 className="font-display font-black text-3xl uppercase italic mb-2">Access Denied</h3>
+                     <p className="font-bold text-sm uppercase tracking-widest opacity-80">{message}</p>
+                  </motion.div>
+               ) : (
+                  <div className="h-48 flex items-center justify-center border-2 border-dashed border-white/10 rounded-[2rem] text-white/20 italic text-sm">
+                     {loading ? "Verifying..." : "Awaiting Scan"}
+                  </div>
+               )}
+            </AnimatePresence>
+         </div>
+
+         {/* Scanner Surface */}
+         <div className="flex-grow flex flex-col items-center">
+            {!showManual ? (
+               <div className="w-full relative aspect-square bg-white/5 rounded-[2rem] overflow-hidden border-2 border-white/10" id="qr-reader">
+                  {/* Scanner attaches here */}
+               </div>
+            ) : (
+               <div className="w-full bg-white/5 rounded-[2rem] p-8 border-2 border-white/10">
+                  <form onSubmit={manualVerify} className="space-y-6">
+                     <div>
+                        <label className="block text-[10px] font-black uppercase tracking-[0.3em] text-white/40 mb-4">Manual Ticket ID</label>
+                        <input 
+                           type="text" 
+                           value={ticketId}
+                           onChange={(e) => setTicketId(e.target.value)}
+                           placeholder="Enter UUID..."
+                           className="w-full h-16 bg-white/5 border-2 border-white/10 text-white rounded-xl px-6 outline-none focus:border-bai-red font-mono text-lg transition-all"
+                        />
+                     </div>
+                     <button 
+                        type="submit"
+                        disabled={loading || !ticketId}
+                        className="w-full h-16 bg-white text-bai-black font-display font-black uppercase tracking-widest rounded-xl hover:bg-bai-red hover:text-white transition-all active:scale-95 disabled:opacity-30"
+                     >
+                        Verify Manual Code
+                     </button>
+                  </form>
+               </div>
+            )}
+
+            <div className="w-full grid grid-cols-2 gap-4 mt-8">
+               <button 
+                  onClick={() => { setShowManual(false); setScanResult(null); }}
+                  className={`h-14 rounded-xl flex items-center justify-center space-x-3 font-bold text-[10px] uppercase tracking-widest border-2 transition-all ${!showManual ? 'bg-white text-bai-black border-white' : 'border-white/10 text-white/40'}`}
+               >
+                  <Camera size={18} />
+                  <span>Camera</span>
+               </button>
+               <button 
+                  onClick={() => { setShowManual(true); setScanResult(null); }}
+                  className={`h-14 rounded-xl flex items-center justify-center space-x-3 font-bold text-[10px] uppercase tracking-widest border-2 transition-all ${showManual ? 'bg-white text-bai-black border-white' : 'border-white/10 text-white/40'}`}
+               >
+                  <Search size={18} />
+                  <span>Manual</span>
+               </button>
+            </div>
+         </div>
       </div>
     </div>
   );

@@ -1,87 +1,81 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    
+    // Default deny
     match /{document=**} {
       allow read, write: if false;
     }
 
+    // Helper functions
     function isSignedIn() {
       return request.auth != null;
     }
-
-    function isAdmin() {
-      return isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'SUPER_ADMIN';
-    }
-
-    function isScanner() {
-      return isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'TICKET_SCANNER';
-    }
-
-    function isValidId(id) {
-      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
-    }
-
-    function incoming() {
-      return request.resource.data;
-    }
     
-    function existing() {
-      return resource.data;
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
 
-    function isValidUser(data) {
-      return data.keys().hasAll(['email', 'role']) 
-             && data.keys().size() == 2
-             && data.email is string && data.email.size() <= 100
-             && data.role is string && data.role.size() <= 30;
+    function hasRole(role) {
+      return isSignedIn() && getUserData().role == role;
     }
 
-    function isValidTicket(data) {
-      return data.keys().hasAll(['tourId', 'ticketType', 'buyerEmail', 'buyerId', 'status', 'createdAt'])
-             && data.keys().size() == 6
-             && data.tourId is string && data.tourId.size() <= 100
-             && data.ticketType is string && data.ticketType.size() <= 100
-             && data.buyerEmail is string && data.buyerEmail.size() <= 100
-             && data.buyerId is string && data.buyerId.size() <= 100
-             && data.status is string && data.status.size() <= 30
-             && data.createdAt == request.time;
+    function isAnyAdmin() {
+      return hasRole('SUPER_ADMIN') || hasRole('CEO') || hasRole('FINANCE_MANAGER') || hasRole('PUBLIC_RELATIONS');
     }
 
-    match /users/{userId} {
-      allow get: if isOwner(userId) || isAdmin();
-      allow list: if isAdmin();
-      
-      // Creating User role (Self-registration allowed only for USER role without admin features initially or done via triggers)
-      // Usually users register with normal role, only Admins can set others to higher roles
-      allow create: if isSignedIn() 
-                    && request.auth.uid == userId 
-                    && isValidUser(incoming())
-                    && incoming().email == request.auth.token.email
-                    && incoming().role == 'USER';
-
-      // Demo: explicitly allowing owner to modify their own role
-      allow update: if (isAdmin() || isOwner(userId)) && isValidUser(incoming());
-      allow delete: if isAdmin();
-
-      function isOwner(uid) {
-        return isSignedIn() && request.auth.uid == uid;
-      }
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
     }
 
+    // Users collection
+    match /users/{uid} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if isOwner(uid) || hasRole('SUPER_ADMIN');
+      allow delete: if hasRole('SUPER_ADMIN');
+    }
+
+    // Tickets collection
     match /tickets/{ticketId} {
-      allow get: if isSignedIn() && (existing().buyerId == request.auth.uid || isAdmin() || isScanner());
-      allow list: if isSignedIn() && (resource.data.buyerId == request.auth.uid || isAdmin());
-      
-      // In real life created by backend (Ozow hook), but if client creates:
-      allow create: if isSignedIn() 
-                    && isValidTicket(incoming())
-                    && incoming().buyerId == request.auth.uid;
-                    
-      // Scanning the ticket
-      allow update: if isSignedIn() 
-                    && (isAdmin() || (isScanner() && incoming().diff(existing()).affectedKeys().hasOnly(['status']) && incoming().status == 'SCANNED'));
-      
-      allow delete: if isAdmin();
+      allow read: if isSignedIn(); // Allow reading tickets for demo stats
+      // Tickets only created via server API
+      allow write: if hasRole('SUPER_ADMIN');
+    }
+
+    // Ticket scans
+    match /ticket_scanned/{scanId} {
+      allow read: if isSignedIn();
+      // Only scanner or admin can write via server
+      allow write: if hasRole('SUPER_ADMIN');
+    }
+
+    // Events collection
+    match /events/{eventId} {
+      allow read: if true;
+      allow write: if hasRole('SUPER_ADMIN') || hasRole('CEO') || hasRole('PUBLIC_RELATIONS');
+    }
+
+    // Team collection
+    match /team/{memberId} {
+      allow read: if true;
+      allow write: if hasRole('SUPER_ADMIN') || hasRole('CEO') || hasRole('PUBLIC_RELATIONS');
+    }
+
+    // Content collection
+    match /content/{docId} {
+      allow read: if true;
+      allow write: if hasRole('SUPER_ADMIN') || hasRole('CEO') || hasRole('PUBLIC_RELATIONS');
+    }
+
+    // Sessions collection
+    match /sessions/{sessionId} {
+      allow read, write: if false; // Server only
+    }
+
+    // Cart collection
+    match /cart/{cartId} {
+      allow read, write: if isSignedIn() && request.auth.uid == cartId;
     }
   }
 }

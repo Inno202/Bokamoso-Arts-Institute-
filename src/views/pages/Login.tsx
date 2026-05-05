@@ -1,84 +1,150 @@
 import React, { useState } from 'react';
-import { useAuth, UserRole } from '../components/AuthProvider';
-import { signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
-import { auth } from '../../controllers/lib/firebase';
-import { Navigate } from 'react-router-dom';
-import { Music2 } from 'lucide-react';
+import { useNavigate, Link } from 'react-router-dom';
+import { Eye, EyeOff, LogIn, Mail, Lock } from 'lucide-react';
+import { motion } from 'motion/react';
 import { ROUTES } from '../../controllers/navigation';
+import { authController } from '../../controllers/authController';
+import { logger } from '../../services/loggerService';
 
 export default function Login() {
-  const { user, role, loading } = useAuth();
-  const [error, setError] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const navigate = useNavigate();
 
-  const handleGoogleLogin = async () => {
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
     try {
-      const provider = new GoogleAuthProvider();
-      await signInWithPopup(auth, provider);
+      await authController.login(email, password);
+      navigate(ROUTES.DASHBOARD);
     } catch (err: any) {
-      if (err.code === 'auth/popup-closed-by-user') {
-        setError('Sign in cancelled.');
+      if (err.message?.includes('auth/operation-not-allowed') || err.message?.includes('auth/email-password-not-enabled')) {
+        setError('Email/Password login is not enabled. Please use Google Login or enable it in the Firebase Console.');
       } else {
-        setError(err.message || 'Failed to sign in');
+        setError(err.message || 'Login failed. Please check your credentials.');
       }
-      console.error(err);
+    } finally {
+      setLoading(false);
     }
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-bai-black flex items-center justify-center">
-         <div className="w-12 h-12 border-4 border-bai-blue border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
-  }
-
-  if (user) {
-    if (role === 'TICKET_SCANNER') return <Navigate to={ROUTES.SCANNER} />;
-    return <Navigate to={ROUTES.HOME} />;
-  }
+  const handleGoogleLogin = async () => {
+    setLoading(true);
+    try {
+      await authController.loginWithGoogle();
+      navigate(ROUTES.DASHBOARD);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-bai-black text-white flex items-center justify-center p-4 py-20">
-      <div className="max-w-md w-full bg-white text-bai-black rounded-3xl p-8 shadow-2xl border-4 border-bai-red">
-         <div className="flex flex-col items-center mb-8">
-            <div className="w-16 h-16 bg-bai-red text-white flex items-center justify-center rounded-full mb-4">
-               <Music2 size={32} />
-            </div>
-            <h1 className="font-display font-black tracking-tighter text-3xl">SIGN IN</h1>
-            <p className="text-bai-black/50 text-sm mt-2 text-center">
-               Access the Bokamoso Arts Institute portal to view tickets, manage operations, and more.
-            </p>
-         </div>
+    <div className="min-h-[90vh] flex items-center justify-center p-4 bg-bai-bone">
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="w-full max-w-sm"
+      >
+        <div className="bg-white rounded-2xl shadow-xl border-t-8 border-bai-red overflow-hidden">
+          <div className="p-8 text-center border-b border-bai-bone">
+             <div className="w-12 h-12 bg-bai-black text-white flex items-center justify-center rounded-full mx-auto mb-4 border-2 border-bai-red">
+                <span className="font-display font-black text-xs">BAI</span>
+             </div>
+             <h1 className="font-display font-black text-2xl uppercase tracking-tighter italic leading-none">
+                Bokamoso <br/> <span className="text-bai-red">Login</span>
+             </h1>
+          </div>
+          
+          <div className="p-8">
+            {error && (
+              <div className="mb-6 p-4 bg-red-50 text-red-600 text-[10px] font-bold uppercase tracking-widest border-l-4 border-red-500 rounded-sm">
+                {error}
+              </div>
+            )}
 
-         {error && (
-            <div className="mb-6 p-4 bg-red-100 text-red-700 text-sm font-bold border-l-4 border-red-500">
-               {error}
-            </div>
-         )}
+            <form onSubmit={handleLogin} className="space-y-5">
+              <div className="relative">
+                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-bai-black/30" size={18} />
+                <input 
+                  type="email" 
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="Email Address"
+                  className="w-full h-12 pl-12 pr-4 bg-bai-bone/50 border-2 border-transparent focus:border-bai-red outline-none text-sm transition-all rounded-lg font-medium"
+                />
+              </div>
 
-         <div className="space-y-4">
+              <div className="relative">
+                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-bai-black/30" size={18} />
+                <input 
+                  type={showPassword ? "text" : "password"} 
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Password"
+                  className="w-full h-12 pl-12 pr-12 bg-bai-bone/50 border-2 border-transparent focus:border-bai-red outline-none text-sm transition-all rounded-lg font-medium"
+                />
+                <button 
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-bai-black/30 hover:text-bai-red"
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+
+              <div className="flex justify-end">
+                <button 
+                  type="button" 
+                  onClick={() => authController.forgotPassword(email)}
+                  className="text-[10px] font-bold uppercase tracking-widest text-bai-blue hover:text-bai-red transition-colors"
+                >
+                  Forgot Password?
+                </button>
+              </div>
+
+              <button 
+                type="submit" 
+                disabled={loading}
+                className="w-full h-14 bg-bai-black text-white font-display font-black uppercase tracking-[0.2em] hover:bg-bai-red transition-all flex items-center justify-center space-x-3 disabled:opacity-50 rounded-lg shadow-lg active:scale-95"
+              >
+                {loading ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <><span>Enter</span> <LogIn size={18} /></>}
+              </button>
+            </form>
+
+            <div className="mt-8 relative">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-bai-black/5"></div>
+              </div>
+              <div className="relative flex justify-center text-[8px] uppercase font-black bg-white px-4 tracking-[0.4em] text-bai-black/20">
+                OR
+              </div>
+            </div>
+
             <button 
-               onClick={handleGoogleLogin}
-               className="w-full py-4 bg-bai-blue hover:bg-bai-blue/90 text-white font-display font-bold uppercase tracking-widest transition-colors flex items-center justify-center space-x-3"
+              onClick={handleGoogleLogin}
+              disabled={loading}
+              className="mt-8 w-full h-12 bg-white border-2 border-bai-black/5 hover:border-bai-black transition-all flex items-center justify-center space-x-4 rounded-lg font-bold text-xs uppercase tracking-widest group"
             >
-               <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google Logo" className="w-6 h-6 bg-white p-1 rounded-full" />
-               <span>Continue with Google</span>
+              <img src="https://www.google.com/favicon.ico" alt="Google" className="w-4 h-4 grayscale group-hover:grayscale-0 transition-all" />
+              <span>Sing in with Google</span>
             </button>
-         </div>
-
-         <div className="my-8 flex items-center before:mt-0.5 before:flex-1 before:border-t before:border-gray-300 after:mt-0.5 after:flex-1 after:border-t after:border-gray-300">
-            <p className="mx-4 mb-0 text-center font-semibold text-gray-500 text-sm">Demo Instructions</p>
-         </div>
-         
-         <p className="text-sm text-center text-bai-black/80 font-medium">
-           Please sign in with Google first. <br/><br/>
-           After signing in, use the <strong>Developer Settings</strong> floating button (bottom right) to switch roles!
-         </p>
-         
-         <p className="mt-8 text-center text-xs text-bai-black/40">
-           Protected by Google Firebase. <br/> By signing in, you accept our rules.
-         </p>
-      </div>
+          </div>
+          
+          <div className="p-6 bg-bai-bone/50 text-center border-t border-bai-black/5">
+             <p className="text-[10px] font-bold uppercase tracking-widest text-bai-black/40">
+                Don't have an account? <Link to={ROUTES.REGISTER} className="text-bai-red hover:underline">Register</Link>
+             </p>
+          </div>
+        </div>
+      </motion.div>
     </div>
   );
 }

@@ -1,6 +1,5 @@
 import { useState } from 'react';
-import { Heart, Star, Users, Zap, CheckCircle2 } from 'lucide-react';
-import { motion } from 'motion/react';
+import { Star, Users, Zap } from 'lucide-react';
 
 export default function Donate() {
   const [amount, setAmount] = useState<number | null>(500);

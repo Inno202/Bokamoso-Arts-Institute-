@@ -2,60 +2,135 @@
   "entities": {
     "User": {
       "title": "User",
-      "description": "A user in the system with their role.",
+      "description": "User profile collection",
       "type": "object",
       "properties": {
-        "email": {
-          "type": "string"
-        },
-        "role": {
-          "type": "string",
-          "enum": ["SUPER_ADMIN", "CEO", "FINANCE_MANAGER", "PUBLIC_RELATIONS", "TICKET_SCANNER", "USER"]
-        }
+        "email": { "type": "string" },
+        "displayName": { "type": "string" },
+        "role": { "type": "string", "enum": ["SUPER_ADMIN", "CEO", "FINANCE_MANAGER", "PUBLIC_RELATIONS", "TICKET_SCANNER", "USER"] },
+        "passwordHash": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "lastLogin": { "type": "string", "format": "date-time" },
+        "isActive": { "type": "boolean" },
+        "photoURL": { "type": "string" }
       },
-      "required": ["email", "role"]
+      "required": ["email", "role", "createdAt", "isActive"]
     },
     "Ticket": {
       "title": "Ticket",
-      "description": "A ticket purchased by a user.",
+      "description": "Purchased ticket record",
       "type": "object",
       "properties": {
-        "tourId": {
-          "type": "string"
-        },
-        "ticketType": {
-          "type": "string"
-        },
-        "buyerEmail": {
-          "type": "string"
-        },
-        "buyerId": {
-          "type": "string"
-        },
-        "status": {
-          "type": "string",
-          "enum": ["VALID", "SCANNED", "CANCELLED"]
-        },
-        "createdAt": {
-          "type": "string",
-          "format": "date-time"
-        }
+        "eventId": { "type": "string" },
+        "ticketType": { "type": "string" },
+        "buyerEmail": { "type": "string" },
+        "buyerId": { "type": "string" },
+        "status": { "type": "string", "enum": ["VALID", "SCANNED", "CANCELLED"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "qrCode": { "type": "string" },
+        "downloadUrl": { "type": "string" },
+        "price": { "type": "number" },
+        "seatInfo": { "type": "string" },
+        "quantity": { "type": "number" },
+        "ticketImageUrl": { "type": "string" }
       },
-      "required": ["tourId", "ticketType", "buyerEmail", "buyerId", "status", "createdAt"]
+      "required": ["eventId", "ticketType", "buyerEmail", "status", "createdAt"]
+    },
+    "TicketScan": {
+      "title": "Ticket Scan",
+      "description": "Log of a ticket being scanned",
+      "type": "object",
+      "properties": {
+        "ticketId": { "type": "string" },
+        "scannedAt": { "type": "string", "format": "date-time" },
+        "scannedBy": { "type": "string" },
+        "eventId": { "type": "string" },
+        "buyerEmail": { "type": "string" },
+        "deviceInfo": { "type": "string" },
+        "location": { "type": "string" }
+      },
+      "required": ["ticketId", "scannedAt", "scannedBy", "eventId"]
+    },
+    "Event": {
+      "title": "Event",
+      "description": "Choir event or tour listing",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "venue": { "type": "string" },
+        "city": { "type": "string" },
+        "date": { "type": "string", "format": "date-time" },
+        "price": { "type": "number" },
+        "status": { "type": "string" },
+        "capacity": { "type": "number" },
+        "ticketsSold": { "type": "number" },
+        "description": { "type": "string" },
+        "ticketImageUrl": { "type": "string" },
+        "bannerImageUrl": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "createdBy": { "type": "string" }
+      },
+      "required": ["name", "venue", "date", "price"]
+    },
+    "TeamMember": {
+      "title": "Team Member",
+      "description": "Management or choir member",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "role": { "type": "string" },
+        "bio": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "order": { "type": "number" },
+        "isActive": { "type": "boolean" }
+      }
+    },
+    "Content": {
+      "title": "Content",
+      "description": "CMS content blocks",
+      "type": "object",
+      "properties": {
+        "slug": { "type": "string" },
+        "title": { "type": "string" },
+        "body": { "type": "string" },
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "updatedBy": { "type": "string" }
+      }
+    },
+    "Session": {
+      "title": "Session",
+      "description": "User session tracking",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "token": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "expiresAt": { "type": "string", "format": "date-time" },
+        "deviceInfo": { "type": "string" },
+        "isActive": { "type": "boolean" }
+      }
+    },
+    "Cart": {
+      "title": "Cart",
+      "description": "User shopping cart",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "items": { "type": "array" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "total": { "type": "number" }
+      }
     }
   },
   "firestore": {
-    "/users/{userId}": {
-      "schema": {
-        "$ref": "#/entities/User"
-      },
-      "description": "Stores user profiles including their roles for RBAC."
-    },
-    "/tickets/{ticketId}": {
-      "schema": {
-        "$ref": "#/entities/Ticket"
-      },
-      "description": "Stores tickets generated after a successful purchase."
-    }
+    "/users/{uid}": { "schema": "User", "description": "User profiles" },
+    "/tickets/{ticketId}": { "schema": "Ticket", "description": "Purchased tickets" },
+    "/ticket_scanned/{scanId}": { "schema": "TicketScan", "description": "Scan history" },
+    "/events/{eventId}": { "schema": "Event", "description": "Event listings" },
+    "/team/{memberId}": { "schema": "TeamMember", "description": "Team members" },
+    "/content/{docId}": { "schema": "Content", "description": "Site content" },
+    "/sessions/{sessionId}": { "schema": "Session", "description": "Auth sessions" },
+    "/cart/{cartId}": { "schema": "Cart", "description": "User carts" }
   }
 }

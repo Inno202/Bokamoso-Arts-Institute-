@@ -1,5 +1,5 @@
 import { motion } from 'motion/react';
-import { Trophy, Globe, Music, Heart, Church } from 'lucide-react';
+import { Trophy, Music, Heart, Church } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { ManagedImage } from '../components/ManagedImage';
 import { ROUTES } from '../../controllers/navigation';
@@ -144,7 +144,7 @@ export default function Home() {
                 <span className="text-bai-red font-bold uppercase tracking-[0.3em] text-[10px] mb-4 block">Event: May 29-30</span>
                 <h3 className="font-display font-bold text-3xl md:text-4xl mb-4 md:mb-6">BOTSWANA <br />ON TOUR</h3>
                 <p className="text-white/50 mb-6 md:mb-8 text-base md:text-lg">Maitisong Theatre, Gaborone. We are bringing the voices of Mabopane to our neighbors. Tickets out now.</p>
-                <Link to={ROUTES.TOUR} className="font-display font-black text-bai-blue uppercase tracking-widest text-xs border-b border-bai-blue pb-1">Get Tickets</Link>
+                <Link to={ROUTES.EVENTS} className="font-display font-black text-bai-blue uppercase tracking-widest text-xs border-b border-bai-blue pb-1">Get Tickets</Link>
               </div>
             </motion.div>
           </div>

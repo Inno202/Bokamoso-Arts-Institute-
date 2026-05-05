@@ -1,5 +1,4 @@
-import { Award, Users, Music, Star, HeartHandshake } from 'lucide-react';
-import { motion } from 'motion/react';
+import { Users, Music, Star } from 'lucide-react';
 import { ManagedImage } from '../components/ManagedImage';
 
 export default function Programs() {

@@ -1,38 +1,37 @@
-
 import React from 'react';
 import { cn } from '../../controllers/lib/utils';
-import { ImageManagement } from '../../models/config/imageSettings';
+import { cloudinaryService } from '../../services/cloudinaryService';
 
 interface ManagedImageProps extends React.ImgHTMLAttributes<HTMLImageElement> {
-  sectionKey: keyof typeof ImageManagement.sections;
-  grayscaleOverride?: boolean;
+  publicId?: string;
+  fallbackUrl?: string;
+  isGrayscale?: boolean;
+  sectionKey?: string;
 }
 
 export const ManagedImage: React.FC<ManagedImageProps> = ({ 
-  sectionKey, 
-  grayscaleOverride, 
+  publicId, 
+  fallbackUrl, 
+  isGrayscale = false, 
+  sectionKey, // although unused for now, it fixes the type error
   className, 
   ...props 
 }) => {
-  const settings = ImageManagement.sections[sectionKey];
-  const isGrayscale = grayscaleOverride !== undefined ? grayscaleOverride : settings.isGrayscale;
-  
+  const src = publicId 
+    ? cloudinaryService.getOptimizedUrl(publicId) 
+    : (fallbackUrl || props.src);
+
   const effectClasses = isGrayscale 
-    ? `grayscale brightness-75 hover:grayscale-0 transition-all ${ImageManagement.global.transitionDuration}`
-    : `grayscale-0 brightness-100 transition-all ${ImageManagement.global.transitionDuration}`;
+    ? "grayscale brightness-75 hover:grayscale-0 transition-all duration-700"
+    : "grayscale-0 brightness-100 transition-all duration-700";
 
   return (
     <img 
       {...props} 
+      src={src}
       className={cn("w-full h-full object-cover", effectClasses, className)}
       referrerPolicy="no-referrer"
+      loading="lazy"
     />
   );
-};
-
-// Simple utility function if you just want the class string
-export const getGreyOutClasses = (grey: boolean) => {
-  return grey 
-    ? `grayscale brightness-75 hover:grayscale-0 transition-all ${ImageManagement.global.transitionDuration}`
-    : `grayscale-0 brightness-100 transition-all ${ImageManagement.global.transitionDuration}`;
 };

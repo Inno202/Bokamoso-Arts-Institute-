@@ -17,7 +17,7 @@ const AuthContext = createContext<AuthContextType>({ user: null, role: null, loa
 export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, authLoading, error] = useAuthState(auth);
+  const [user, authLoading, _error] = useAuthState(auth);
   const [role, setRole] = useState<UserRole | null>(null);
   const [roleLoading, setRoleLoading] = useState(true);
 
