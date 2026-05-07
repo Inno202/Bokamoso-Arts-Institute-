@@ -42,7 +42,7 @@ export default function Navbar() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-20 items-center">
           <Link to={ROUTES.HOME} className="flex items-center space-x-3 group">
-            <div className="relative w-12 h-12 flex items-center justify-center">
+            <div className="relative w-16 h-16 flex items-center justify-center">
                {/* 
                  LOGO PLACEMENT:
                  To use your own logo, save it as 'logo.jpeg' in public/assets/
@@ -50,10 +50,6 @@ export default function Navbar() {
                  <img src={`${import.meta.env.BASE_URL}assets/logo.jpeg`} alt="Bokamoso Arts Institute" className="w-full h-full object-contain" />
                */}
                <img src={`${import.meta.env.BASE_URL}assets/logo.jpeg`} alt="Bokamoso Arts Institute" className="w-full h-full object-contain group-hover:scale-105 transition-transform" />
-            </div>
-            <div className="hidden sm:flex flex-col">
-              <span className="font-display font-bold text-base leading-tight tracking-tighter">BOKAMOSO</span>
-              <span className="text-[8px] uppercase tracking-[0.2em] font-medium text-bai-red">Arts Institute</span>
             </div>
           </Link>
 
