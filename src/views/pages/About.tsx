@@ -27,8 +27,19 @@ export default function About() {
     const unsubscribe = aboutController.subscribeToAbout((data) => {
       console.log('About data received:', data);
       if (data && data.story) {
-        setContent(data);
-        if (!isEditing) setDraft(data);
+        const mergedData = {
+          ...INITIAL_ABOUT_DATA,
+          ...data,
+          story: { ...INITIAL_ABOUT_DATA.story, ...(data.story || {}) },
+          values: data.values || INITIAL_ABOUT_DATA.values,
+          management: data.management || INITIAL_ABOUT_DATA.management,
+          choirPictures: data.choirPictures || INITIAL_ABOUT_DATA.choirPictures
+        };
+        if (mergedData.story) {
+           mergedData.story.stats = mergedData.story.stats || INITIAL_ABOUT_DATA.story.stats;
+        }
+        setContent(mergedData);
+        if (!isEditing) setDraft(mergedData);
       } else {
         console.log('No about data or invalid structure, falling back to initial data...');
         setContent(INITIAL_ABOUT_DATA);

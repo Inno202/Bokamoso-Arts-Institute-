@@ -25,8 +25,19 @@ export default function Programs() {
   useEffect(() => {
     const unsubscribe = workController.subscribeToWork((data) => {
       if (data && data.hero) {
-        setContent(data);
-        if (!isEditing) setDraft(data);
+        const mergedData = { 
+          ...INITIAL_WORK_DATA, 
+          ...data,
+          hero: { ...INITIAL_WORK_DATA.hero, ...(data.hero || {}) },
+          pillars: data.pillars || INITIAL_WORK_DATA.pillars,
+          projects: data.projects || INITIAL_WORK_DATA.projects,
+          outreach: { ...INITIAL_WORK_DATA.outreach, ...(data.outreach || {}) }
+        };
+        if (mergedData.outreach) {
+          mergedData.outreach.stats = mergedData.outreach.stats || INITIAL_WORK_DATA.outreach.stats;
+        }
+        setContent(mergedData);
+        if (!isEditing) setDraft(mergedData);
       } else {
         setContent(INITIAL_WORK_DATA);
         setDraft(INITIAL_WORK_DATA);
