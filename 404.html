@@ -12,9 +12,7 @@
       
       l.replace(
         l.protocol + '//' + l.hostname + (l.port ? ':' + l.port : '') +
-        repoPath + '/?/' + restPath +
-        (l.search ? '&q=' + l.search.slice(1).replace(/&/g, '~and~') : '') +
-        (l.hash ? '&h=' + l.hash.slice(1) : '')
+        repoPath + '/#/' + restPath + l.search + l.hash
       );
     </script>
   </head>
