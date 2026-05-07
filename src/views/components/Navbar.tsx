@@ -47,7 +47,7 @@ export default function Navbar() {
                  LOGO PLACEMENT:
                  To use your own logo, save it as 'logo.png' in public/assets/
                  and replace the div below with:
-                 <img src="/assets/logo.png" alt="Bokamoso Arts Institute" className="w-full h-full object-contain" />
+                 <img src="./assets/logo.png" alt="Bokamoso Arts Institute" className="w-full h-full object-contain" />
                */}
                <div className="absolute inset-0 piano-key-pattern rounded-full opacity-20 group-hover:animate-spin-slow transition-all" />
                <div className="relative z-10 w-9 h-9 bg-bai-black flex items-center justify-center rounded-full border-2 border-white group-hover:scale-110 transition-transform">

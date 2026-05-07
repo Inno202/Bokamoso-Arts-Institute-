@@ -1,5 +1,5 @@
 export const cloudinaryService = {
-  async upload(file: File, folder: string) {
+  async upload(file: File, _folder: string): Promise<{url: string, publicId: string}> {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.readAsDataURL(file);
@@ -43,7 +43,7 @@ export const cloudinaryService = {
     });
   },
 
-  async delete(publicId: string) {
+  async delete(_publicId: string) {
     // With Data URI uploads straight to Firestore, there is no remote file to delete.
     return { success: true };
   },

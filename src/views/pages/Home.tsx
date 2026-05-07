@@ -20,7 +20,7 @@ export default function Home() {
           {/* 
             HERO IMAGE PLACEMENT:
             Save your hero image as 'hero.jpg' in public/assets/
-            and change the src below to "/assets/hero.jpg"
+            and change the src below to "./assets/hero.jpg"
           */}
           <ManagedImage 
             sectionKey="hero"
@@ -85,7 +85,7 @@ export default function Home() {
                {/* 
                  PHILOSOPHY IMAGE PLACEMENT:
                  Save your image as 'philosophy.jpg' in public/assets/
-                 and change the src below to "/assets/philosophy.jpg"
+                 and change the src below to "./assets/philosophy.jpg"
                */}
               <ManagedImage 
                 src="/assets/philosophy.jpg" 
@@ -132,7 +132,7 @@ export default function Home() {
                 {/* 
                   COMMUNITY IMAGE PLACEMENT:
                   Save your images as 'community-1.jpg', 'community-2.jpg', etc. in public/assets/community/
-                  and change the src below to `/assets/community/community-${i}.jpg`
+                  and change the src below to `./assets/community/community-${i}.jpg`
                 */}
                 <img 
                   src={`/assets/community/community-${i}.jpg`} 
