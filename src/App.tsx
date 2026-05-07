@@ -1,5 +1,5 @@
 import { ReactNode, lazy, Suspense } from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { HashRouter, Routes, Route } from 'react-router-dom';
 import { ROUTES } from './controllers/navigation';
 import Navbar from './views/components/Navbar';
 import Footer from './views/components/Footer';
@@ -24,7 +24,7 @@ const MyTickets = lazy(() => import('./views/pages/MyTickets'));
 export default function App() {
   return (
     <AuthProvider>
-      <BrowserRouter>
+      <HashRouter>
         <div className="min-h-screen flex flex-col township-grid font-sans overflow-x-hidden selection:bg-bai-red selection:text-white">
           <Navbar />
           <main className="flex-grow">
@@ -50,7 +50,7 @@ export default function App() {
           </main>
           <Footer />
         </div>
-      </BrowserRouter>
+      </HashRouter>
     </AuthProvider>
   );
 }
