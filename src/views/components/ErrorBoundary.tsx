@@ -20,6 +20,10 @@ export class ErrorBoundary extends Component<Props, State> {
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error('Uncaught component error:', error, errorInfo);
+    // If it's a dynamic import error, automatically reload the page to get the latest chunks
+    if (error.name === 'ChunkLoadError' || error.message.includes('Failed to fetch dynamically imported module')) {
+      window.location.reload();
+    }
   }
 
   public render() {
