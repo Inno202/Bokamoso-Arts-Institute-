@@ -69,11 +69,11 @@ export default function Cart() {
                   exit={{ opacity: 0, scale: 0.95 }}
                   className="bg-white rounded-2xl p-4 md:p-6 shadow-sm border border-bai-black/5 flex items-center gap-6 group hover:border-bai-red transition-all"
                 >
-                  <div className="w-20 h-20 md:w-32 md:h-32 bg-bai-black rounded-xl overflow-hidden shrink-0">
+                  <div className="w-24 h-16 md:w-40 md:h-24 bg-bai-black rounded-lg overflow-hidden shrink-0 shadow-inner">
                      <img 
                         src={cloudinaryService.getOptimizedUrl(item.ticketImageUrl || 'https://images.unsplash.com/photo-1514525253344-f81bad3b3fc2?w=800')} 
                         alt={item.eventName}
-                        className="w-full h-full object-cover opacity-80"
+                        className="w-full h-full object-cover"
                      />
                   </div>
 

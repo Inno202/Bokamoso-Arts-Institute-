@@ -16,7 +16,7 @@ export default function TicketScanner() {
   const [showManual, setShowManual] = useState(false);
 
   useEffect(() => {
-    if (!user || (role !== 'SUPER_ADMIN' && role !== 'TICKET_SCANNER' && role !== 'PUBLIC_RELATIONS')) return;
+    if (!user || (role !== 'SUPER_ADMIN' && role !== 'TICKET_SCANNER' && role !== 'PRO')) return;
     
     let scanner: Html5QrcodeScanner | null = null;
     
@@ -74,7 +74,7 @@ export default function TicketScanner() {
     if (ticketId) handleVerification(ticketId);
   };
 
-  if (role !== 'SUPER_ADMIN' && role !== 'TICKET_SCANNER' && role !== 'PUBLIC_RELATIONS') {
+  if (role !== 'SUPER_ADMIN' && role !== 'TICKET_SCANNER' && role !== 'PRO') {
     return (
       <div className="min-h-screen flex items-center justify-center bg-bai-black text-white p-6">
         <div className="text-center">
@@ -137,7 +137,7 @@ export default function TicketScanner() {
                            <span className="text-[10px] font-black uppercase tracking-widest text-white px-3 py-1 bg-green-500 rounded-full">VALID</span>
                         </div>
                      </div>
-                     <h2 className="font-display font-black text-3xl uppercase tracking-tighter leading-tight mb-6 italic">{ticketData.buyerEmail.split('@')[0]}</h2>
+                     <h2 className="font-display font-black text-3xl uppercase tracking-tighter leading-tight mb-6 italic">{(ticketData.buyerEmail || 'User').split('@')[0]}</h2>
                      <div className="space-y-4 border-t border-bai-black/5 pt-6">
                         <div className="flex items-center space-x-3 text-sm font-bold">
                            <Calendar size={16} className="text-bai-red" />

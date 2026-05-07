@@ -1,5 +1,5 @@
 import { motion } from 'motion/react';
-import { Trophy, Music, Heart, Church } from 'lucide-react';
+import { Trophy, Music, Heart, Church, ChevronRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { ManagedImage } from '../components/ManagedImage';
 import { ROUTES } from '../../controllers/navigation';
@@ -17,6 +17,11 @@ export default function Home() {
       <section className="relative py-32 overflow-hidden bg-bai-black text-white">
         {/* Background Overlay */}
         <div className="absolute inset-0 z-0">
+          {/* 
+            HERO IMAGE PLACEMENT:
+            Save your hero image as 'hero.jpg' in public/assets/
+            and change the src below to "/assets/hero.jpg"
+          */}
           <ManagedImage 
             sectionKey="hero"
             src="https://images.unsplash.com/photo-1459749411177-042180ce673c?auto=format&fit=crop&q=80&w=2000" 
@@ -55,7 +60,7 @@ export default function Home() {
         <div className="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
           {stats.map((stat, idx) => (
             <motion.div
-              key={idx}
+              key={`stat-${idx}`}
               initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
@@ -71,42 +76,76 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Philosophy Section */}
-      <section className="py-16 md:py-32 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto overflow-hidden">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 md:gap-20 items-center">
-          <div className="relative order-2 lg:order-1">
-            <div className="absolute -left-10 top-10 w-full h-full border-4 border-bai-blue/20 rounded-3xl" />
-            <div className="aspect-[4/5] bg-bai-black overflow-hidden rounded-3xl relative z-10 shadow-2xl">
+      {/* Our Philosophy Section */}
+      <section className="py-24 md:py-40 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+          <div className="relative">
+            <div className="absolute -top-10 -left-10 w-40 h-40 bg-bai-blue/5 rounded-full blur-3xl -z-10" />
+            <div className="aspect-[4/5] bg-bai-black overflow-hidden rounded-3xl shadow-2xl rotate-1 group hover:rotate-0 transition-transform duration-700">
+               {/* 
+                 PHILOSOPHY IMAGE PLACEMENT:
+                 Save your image as 'philosophy.jpg' in public/assets/
+                 and change the src below to "/assets/philosophy.jpg"
+               */}
               <ManagedImage 
+                src="https://images.unsplash.com/photo-1516280440614-37939bbacd81?auto=format&fit=crop&q=80&w=800" 
                 sectionKey="philosophy"
-                src="https://images.unsplash.com/photo-1544648397-72fc8f9d87c0?auto=format&fit=crop&q=80&w=800" 
-                alt="Singing youth" 
-                className="rounded-3xl"
+                alt="Choir Singing"
+                className="w-full h-full object-cover grayscale brightness-75 transition-all group-hover:grayscale-0 group-hover:brightness-100"
               />
             </div>
-            <div className="absolute -bottom-6 -right-6 md:-bottom-10 md:-right-10 w-32 h-32 md:w-52 md:h-52 bg-bai-black rounded-full flex items-center justify-center p-4 md:p-8 text-white font-display font-bold text-center text-xs md:text-sm leading-tight border-4 md:border-8 border-bai-red z-20 shadow-xl">
-              <div className="flex flex-col items-center">
-                <span className="text-2xl md:text-5xl tracking-tighter">EST.</span>
-                <span className="text-bai-red text-sm md:text-base">2022</span>
-                <span className="text-[8px] md:text-[10px] tracking-widest opacity-50 mt-1 uppercase text-center leading-none">ACTIVE LEGACY</span>
-              </div>
+          </div>
+          <div className="space-y-8">
+            <span className="font-display font-bold uppercase tracking-[0.4em] text-bai-red text-[10px] block">Our Core Beliefs</span>
+            <h2 className="font-display font-black text-4xl md:text-7xl tracking-tighter uppercase italic leading-[0.9]">
+              MUSIC IS <br /> <span className="text-bai-blue">RESILIENCE.</span>
+            </h2>
+            <p className="text-bai-black/60 text-lg md:text-2xl leading-relaxed font-serif italic">
+              "We don't just teach notes; we nurture souls. Our philosophy is rooted in the belief that artistic excellence is the most powerful tool for township transformation."
+            </p>
+            <div className="pt-4">
+              <Link 
+                to={ROUTES.ABOUT} 
+                className="inline-flex items-center space-x-4 bg-bai-black text-white px-8 py-4 rounded-full font-display font-black uppercase text-xs tracking-widest hover:bg-bai-red transition-all group"
+              >
+                <span>Discover Our Story</span>
+                <ChevronRight size={16} className="group-hover:translate-x-1 transition-transform" />
+              </Link>
             </div>
           </div>
+        </div>
+      </section>
 
-          <div className="order-1 lg:order-2">
-            <span className="font-display font-bold uppercase tracking-[0.3em] text-bai-blue text-xs mb-4 block">The "Bula Pelo" Philosophy</span>
-            <h2 className="font-display font-extrabold text-3xl sm:text-4xl md:text-6xl leading-[1] mb-6 md:mb-8 tracking-tighter">
-              OUR <br /> <span className="text-bai-red">PHILOSOPHY.</span>
+      {/* Community Engagement Section */}
+      <section className="py-24 md:py-40 bg-bai-bone">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-20">
+            <span className="font-display font-bold uppercase tracking-[0.4em] text-bai-blue text-[10px] block mb-4">Engaging Our People</span>
+            <h2 className="font-display font-black text-4xl md:text-7xl tracking-tighter uppercase italic leading-none">
+              COMMUNITY <span className="text-bai-red">IMPACT</span>
             </h2>
-            <p className="text-bai-black/80 text-xl mb-8 leading-relaxed font-serif italic">
-              "We teach music, but we build humans. Through the Bula Pelo philosophy, we unlock the resilience of the African child."
-            </p>
-            <p className="text-bai-black/80 font-medium mb-10 leading-relaxed text-xl tracking-tight">
-              Through intensive musical and vocal training, teaching and performance, we refine the discipline required for international choral competition.
-            </p>
-            <Link to={ROUTES.ABOUT} className="btn-primary inline-block">
-              Explore Our History
-            </Link>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="group relative overflow-hidden rounded-2xl bg-bai-black h-[400px]">
+                {/* 
+                  COMMUNITY IMAGE PLACEMENT:
+                  Save your images as 'community-1.jpg', 'community-2.jpg', etc. in public/assets/community/
+                  and change the src below to `/assets/community/community-${i}.jpg`
+                */}
+                <img 
+                  src={`https://images.unsplash.com/photo-1517457373958-b7bdd458ad20?auto=format&fit=crop&q=80&w=800&sig=${i}`} 
+                  alt={`Community activity ${i}`}
+                  className="w-full h-full object-cover opacity-50 group-hover:opacity-100 group-hover:scale-110 transition-all duration-700" 
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-bai-black to-transparent opacity-60" />
+                <div className="absolute bottom-0 left-0 p-8">
+                   <h4 className="text-white font-display font-bold text-xl uppercase italic">Engagement Project {i}</h4>
+                   <p className="text-white/60 text-sm mt-2">Nurturing talent in the heart of Mabopane.</p>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </section>

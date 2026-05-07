@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { Eye, EyeOff, UserPlus, Mail, Lock, User } from 'lucide-react';
 import { motion } from 'motion/react';
 import { ROUTES } from '../../controllers/navigation';
 import { authController } from '../../controllers/authController';
-import { logger } from '../../services/loggerService';
 
 export default function Register() {
   const [displayName, setDisplayName] = useState('');
@@ -14,6 +13,7 @@ export default function Register() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
+  const location = useLocation();
 
   const getPasswordStrength = () => {
     if (!password) return { label: 'None', color: 'bg-transparent', width: '0%' };
@@ -28,8 +28,16 @@ export default function Register() {
     setError(null);
     try {
       await authController.register(email, password, displayName);
-      alert("Registration successful! Please check your email for verification.");
-      navigate(ROUTES.DASHBOARD);
+      
+      const fromPath = (location.state as any)?.from;
+      const from = typeof fromPath === 'string' ? fromPath : fromPath?.pathname || ROUTES.HOME;
+      const isPurchaseCheckpoint = from.includes(ROUTES.CART) || from.includes(ROUTES.CHECKOUT);
+
+      if (isPurchaseCheckpoint) {
+        navigate(from, { replace: true });
+      } else {
+        navigate(ROUTES.HOME, { replace: true });
+      }
     } catch (err: any) {
       if (err.message?.includes('auth/operation-not-allowed') || err.message?.includes('auth/email-password-not-enabled')) {
         setError('Email/Password registration is not enabled in Firebase Console. Please ask the administrator to enable it or use Google Login.');

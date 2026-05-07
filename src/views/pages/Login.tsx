@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { Eye, EyeOff, LogIn, Mail, Lock } from 'lucide-react';
 import { motion } from 'motion/react';
 import { ROUTES } from '../../controllers/navigation';
 import { authController } from '../../controllers/authController';
-import { logger } from '../../services/loggerService';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '../../controllers/lib/firebase';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -13,14 +14,47 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const handlePostLoginRedirect = async (uid: string) => {
+    try {
+      const userDoc = await getDoc(doc(db, 'users', uid));
+      const role = userDoc.exists() ? userDoc.data().role : 'USER';
+      
+      // Determine source path from state
+      const fromPath = (location.state as any)?.from;
+      // location.state.from might be a string (from navigate(..., {state: {from: 'path'}}))
+      // or an object (from ProtectedRoute)
+      const from = typeof fromPath === 'string' ? fromPath : fromPath?.pathname || ROUTES.HOME;
+      
+      // Define what counts as a "purchase checkpoint"
+      const isPurchaseCheckpoint = from.includes(ROUTES.CART) || from.includes(ROUTES.CHECKOUT);
+
+      if (role === 'USER') {
+        if (isPurchaseCheckpoint) {
+          navigate(from, { replace: true });
+        } else {
+          // Regular users always go to Home by default as requested
+          navigate(ROUTES.HOME, { replace: true });
+        }
+      } else {
+        // Staff/Admin go to Dashboard
+        navigate(ROUTES.DASHBOARD, { replace: true });
+      }
+    } catch (err) {
+      navigate(ROUTES.HOME, { replace: true });
+    }
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
     try {
-      await authController.login(email, password);
-      navigate(ROUTES.DASHBOARD);
+      const user = await authController.login(email, password);
+      if (user) {
+        await handlePostLoginRedirect(user.uid);
+      }
     } catch (err: any) {
       if (err.message?.includes('auth/operation-not-allowed') || err.message?.includes('auth/email-password-not-enabled')) {
         setError('Email/Password login is not enabled. Please use Google Login or enable it in the Firebase Console.');
@@ -35,8 +69,10 @@ export default function Login() {
   const handleGoogleLogin = async () => {
     setLoading(true);
     try {
-      await authController.loginWithGoogle();
-      navigate(ROUTES.DASHBOARD);
+      const user = await authController.loginWithGoogle();
+      if (user) {
+        await handlePostLoginRedirect(user.uid);
+      }
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -140,7 +176,7 @@ export default function Login() {
           
           <div className="p-6 bg-bai-bone/50 text-center border-t border-bai-black/5">
              <p className="text-[10px] font-bold uppercase tracking-widest text-bai-black/40">
-                Don't have an account? <Link to={ROUTES.REGISTER} className="text-bai-red hover:underline">Register</Link>
+                Don't have an account? <Link to={ROUTES.REGISTER} state={location.state} className="text-bai-red hover:underline">Register</Link>
              </p>
           </div>
         </div>

@@ -5,7 +5,6 @@ import Navbar from './views/components/Navbar';
 import Footer from './views/components/Footer';
 import { motion, AnimatePresence } from 'motion/react';
 import { AuthProvider } from './views/components/AuthProvider';
-import DemoRoleSwitcher from './views/components/DemoRoleSwitcher';
 
 // Pages
 const Home = lazy(() => import('./views/pages/Home'));
@@ -19,7 +18,8 @@ const Login = lazy(() => import('./views/pages/Login'));
 const Register = lazy(() => import('./views/pages/Register'));
 const Dashboard = lazy(() => import('./views/pages/Dashboard'));
 const Cart = lazy(() => import('./views/pages/Cart'));
-// const Checkout = lazy(() => import('./views/pages/Checkout'));
+const Checkout = lazy(() => import('./views/pages/Checkout'));
+const MyTickets = lazy(() => import('./views/pages/MyTickets'));
 
 export default function App() {
   return (
@@ -42,12 +42,13 @@ export default function App() {
                   <Route path={ROUTES.REGISTER} element={<PageWrapper><Register /></PageWrapper>} />
                   <Route path={ROUTES.DASHBOARD} element={<PageWrapper><Dashboard /></PageWrapper>} />
                   <Route path={ROUTES.CART} element={<PageWrapper><Cart /></PageWrapper>} />
+                  <Route path={ROUTES.CHECKOUT} element={<PageWrapper><Checkout /></PageWrapper>} />
+                  <Route path={ROUTES.MY_TICKETS} element={<PageWrapper><MyTickets /></PageWrapper>} />
                 </Routes>
               </AnimatePresence>
             </Suspense>
           </main>
           <Footer />
-          <DemoRoleSwitcher />
         </div>
       </BrowserRouter>
     </AuthProvider>

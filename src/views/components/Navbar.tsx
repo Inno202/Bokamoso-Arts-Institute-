@@ -22,11 +22,13 @@ export default function Navbar() {
     { name: 'Donate', path: ROUTES.DONATE },
   ];
 
-  if (user && role) {
-    if (role === 'SUPER_ADMIN' || role === 'CEO' || role === 'FINANCE_MANAGER' || role === 'PUBLIC_RELATIONS') {
+  if (user) {
+    navLinks.push({ name: 'My Tickets', path: ROUTES.MY_TICKETS });
+    
+    if (role === 'SUPER_ADMIN' || role === 'CEO' || role === 'FINANCE_MANAGER' || role === 'PRO') {
       navLinks.push({ name: 'Dashboard', path: ROUTES.DASHBOARD });
     }
-    if (role === 'SUPER_ADMIN' || role === 'TICKET_SCANNER' || role === 'PUBLIC_RELATIONS') {
+    if (role === 'SUPER_ADMIN' || role === 'TICKET_SCANNER' || role === 'PRO') {
       navLinks.push({ name: 'Scanner', path: ROUTES.SCANNER });
     }
   }
@@ -39,14 +41,20 @@ export default function Navbar() {
     <nav className="sticky top-0 z-50 bg-bai-bone/80 backdrop-blur-md border-b border-bai-black/5">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-20 items-center">
-          <Link to={ROUTES.HOME} className="flex items-center space-x-3">
-            <div className="relative w-10 h-10 flex items-center justify-center">
-               <div className="absolute inset-0 piano-key-pattern rounded-full opacity-20 animate-spin-slow" />
-               <div className="relative z-10 w-7 h-7 bg-bai-black flex items-center justify-center rounded-full border-2 border-white">
-                  <span className="text-white font-display font-black text-[8px]">BAI</span>
+          <Link to={ROUTES.HOME} className="flex items-center space-x-3 group">
+            <div className="relative w-12 h-12 flex items-center justify-center">
+               {/* 
+                 LOGO PLACEMENT:
+                 To use your own logo, save it as 'logo.png' in public/assets/
+                 and replace the div below with:
+                 <img src="/assets/logo.png" alt="Bokamoso Arts Institute" className="w-full h-full object-contain" />
+               */}
+               <div className="absolute inset-0 piano-key-pattern rounded-full opacity-20 group-hover:animate-spin-slow transition-all" />
+               <div className="relative z-10 w-9 h-9 bg-bai-black flex items-center justify-center rounded-full border-2 border-white group-hover:scale-110 transition-transform">
+                  <span className="text-white font-display font-black text-[10px]">BAI</span>
                </div>
             </div>
-            <div className="flex flex-col">
+            <div className="hidden sm:flex flex-col">
               <span className="font-display font-bold text-base leading-tight tracking-tighter">BOKAMOSO</span>
               <span className="text-[8px] uppercase tracking-[0.2em] font-medium text-bai-red">Arts Institute</span>
             </div>
@@ -74,14 +82,16 @@ export default function Navbar() {
           </div>
 
           <div className="flex items-center space-x-4">
-             <Link to={ROUTES.CART} className="relative p-2 text-bai-black hover:text-bai-red transition-colors">
-                <ShoppingCart size={20} strokeWidth={1.5} />
-                {totalItems > 0 && (
-                   <span className="absolute top-0 right-0 w-4 h-4 bg-bai-red text-white text-[8px] font-black flex items-center justify-center rounded-full animate-in zoom-in">
-                      {totalItems}
-                   </span>
-                )}
-             </Link>
+             {user && (
+               <Link to={ROUTES.CART} className="relative p-2 text-bai-black hover:text-bai-red transition-colors">
+                  <ShoppingCart size={20} strokeWidth={1.5} />
+                  {totalItems > 0 && (
+                     <span className="absolute top-0 right-0 w-4 h-4 bg-bai-red text-white text-[8px] font-black flex items-center justify-center rounded-full animate-in zoom-in">
+                        {totalItems}
+                     </span>
+                  )}
+               </Link>
+             )}
 
              <div className="hidden md:block">
                 {user ? (
@@ -105,12 +115,20 @@ export default function Navbar() {
       {/* Mobile Nav */}
       <AnimatePresence>
         {isOpen && (
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            className="lg:hidden bg-white border-b border-bai-black/10 overflow-hidden"
-          >
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsOpen(false)}
+              className="fixed inset-0 z-40 bg-black/20 backdrop-blur-sm lg:hidden h-[200vh]"
+            />
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="lg:hidden bg-white border-b border-bai-black/10 overflow-hidden relative z-50"
+            >
             <div className="px-6 py-8 space-y-6">
               {navLinks.map((link) => (
                 <Link
@@ -142,8 +160,9 @@ export default function Navbar() {
               </div>
             </div>
           </motion.div>
-        )}
-      </AnimatePresence>
+        </>
+      )}
+    </AnimatePresence>
     </nav>
   );
 }

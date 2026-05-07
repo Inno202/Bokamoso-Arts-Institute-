@@ -9,57 +9,55 @@ import { auth } from './lib/firebase';
 
 export const authController = {
   async login(email: string, password: string) {
-    // We login with Firebase Auth first, then the browser set a session cookie via server middleware (auto-handled if we call an API)
-    // Actually the user wants a custom session logic.
-    // So we'll login locally, then call /api/auth/session to set the HttpOnly cookie.
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
-    const idToken = await userCredential.user.getIdToken();
-    
-    const res = await fetch('/api/auth/session', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ idToken })
-    });
-    
-    if (!res.ok) throw new Error('Session creation failed');
     return userCredential.user;
   },
 
   async register(email: string, password: string, displayName: string) {
-    // Registration via server to ensure role is USER and password is saved correctly (if we decide to use custom DB auth too)
-    // User requested: "Public users self-register with email + password (USER role only)"
-    // and "Password hashed via POST /api/auth/register"
-    const res = await fetch('/api/auth/register', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password, displayName })
+    const { createUserWithEmailAndPassword } = await import('firebase/auth');
+    const { doc, setDoc, serverTimestamp } = await import('firebase/firestore');
+    const { db } = await import('./lib/firebase');
+
+    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    const user = userCredential.user;
+
+    // Create user profile in Firestore
+    await setDoc(doc(db, 'users', user.uid), {
+      email,
+      displayName: displayName || email.split('@')[0],
+      role: 'USER',
+      isActive: true,
+      createdAt: serverTimestamp()
     });
-    
-    if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.message || 'Registration failed');
-    }
-    
-    // After registration on server, we can login
-    return this.login(email, password);
+
+    return user;
   },
 
   async loginWithGoogle() {
     const provider = new GoogleAuthProvider();
     const userCredential = await signInWithPopup(auth, provider);
-    const idToken = await userCredential.user.getIdToken();
+    const user = userCredential.user;
     
-    await fetch('/api/auth/session', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ idToken })
-    });
+    // Check if user exists in Firestore, if not create it
+    const { doc, getDoc, setDoc, serverTimestamp } = await import('firebase/firestore');
+    const { db } = await import('./lib/firebase');
+    const userDocRef = doc(db, 'users', user.uid);
+    const snap = await getDoc(userDocRef);
     
-    return userCredential.user;
+    if (!snap.exists()) {
+      await setDoc(userDocRef, {
+        email: user.email,
+        displayName: user.displayName || user.email?.split('@')[0] || 'User',
+        role: 'USER',
+        isActive: true,
+        createdAt: serverTimestamp()
+      });
+    }
+    
+    return user;
   },
 
   async logout() {
-    await fetch('/api/auth/logout', { method: 'POST' });
     await signOut(auth);
   },
 

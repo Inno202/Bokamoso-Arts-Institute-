@@ -9,7 +9,8 @@ import {
   query, 
   where, 
   orderBy,
-  serverTimestamp 
+  serverTimestamp,
+  onSnapshot
 } from 'firebase/firestore';
 import { db } from './lib/firebase';
 import { BAIEvent } from '../models/types';
@@ -18,6 +19,18 @@ import { cacheService } from '../services/cacheService';
 const COLLECTION = 'events';
 
 export const eventController = {
+  subscribeToEvents(callback: (events: BAIEvent[]) => void, activeOnly = true) {
+    let q = query(collection(db, COLLECTION), orderBy('date', 'asc'));
+    if (activeOnly) {
+      q = query(q, where('status', '==', 'On Sale')); // Simple filter
+    }
+
+    return onSnapshot(q, (snapshot) => {
+      const events = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as BAIEvent[];
+      callback(events);
+    });
+  },
+
   async getAllEvents(activeOnly = true) {
     const cacheKey = `${COLLECTION}:all:${activeOnly}`;
     const cached = cacheService.get(cacheKey);
@@ -36,6 +49,7 @@ export const eventController = {
   },
 
   async getEventById(eventId: string) {
+    if (!eventId) return null;
     const cacheKey = `${COLLECTION}:${eventId}`;
     const cached = cacheService.get(cacheKey);
     if (cached) return cached;

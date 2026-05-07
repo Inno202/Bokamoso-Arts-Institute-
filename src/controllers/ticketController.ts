@@ -5,7 +5,10 @@ import {
   doc, 
   query, 
   where, 
-  orderBy
+  orderBy,
+  setDoc,
+  serverTimestamp,
+  onSnapshot
 } from 'firebase/firestore';
 import { db } from './lib/firebase';
 import { Ticket, TicketScan } from '../models/types';
@@ -15,6 +18,23 @@ const TICKETS_COLLECTION = 'tickets';
 const SCANS_COLLECTION = 'ticket_scanned';
 
 export const ticketController = {
+  async getUserTickets(userId: string) {
+    return this.getTicketsByUserId(userId);
+  },
+
+  async createTicket(ticketData: any) {
+    const id = ticketData.id;
+    const ticketRef = doc(db, TICKETS_COLLECTION, id);
+    const finalData = {
+      ...ticketData,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    };
+    await setDoc(ticketRef, finalData);
+    cacheService.clear(); // Clear cache to show new ticket
+    return { id, ...finalData };
+  },
+
   async getTicketsByUserId(userId: string) {
     const cacheKey = `${TICKETS_COLLECTION}:user:${userId}`;
     const cached = cacheService.get(cacheKey);
@@ -22,14 +42,44 @@ export const ticketController = {
 
     const q = query(
       collection(db, TICKETS_COLLECTION), 
-      where('buyerId', '==', userId),
-      orderBy('createdAt', 'desc')
+      where('buyerId', '==', userId)
     );
     const snapshot = await getDocs(q);
     const tickets = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Ticket[];
     
-    cacheService.set(cacheKey, tickets);
-    return tickets;
+    // Sort manually if needed, or just return as is
+    const sortedTickets = tickets.sort((a: any, b: any) => {
+      const dateA = a.createdAt?.seconds || 0;
+      const dateB = b.createdAt?.seconds || 0;
+      return dateB - dateA;
+    });
+
+    cacheService.set(cacheKey, sortedTickets);
+    return sortedTickets;
+  },
+
+  subscribeToUserTickets(userId: string, callback: (tickets: Ticket[]) => void) {
+    const q = query(
+      collection(db, TICKETS_COLLECTION),
+      where('buyerId', '==', userId)
+    );
+
+    return onSnapshot(q, (snapshot) => {
+      const tickets = snapshot.docs.map((doc: any) => ({
+        id: doc.id,
+        ...doc.data()
+      })) as Ticket[];
+      
+      const sortedTickets = tickets.sort((a: any, b: any) => {
+        const dateA = a.createdAt?.seconds || 0;
+        const dateB = b.createdAt?.seconds || 0;
+        return dateB - dateA;
+      });
+
+      callback(sortedTickets);
+    }, (error: any) => {
+      console.error("Subscription error:", error);
+    });
   },
 
   async getTicketById(ticketId: string) {
@@ -40,19 +90,45 @@ export const ticketController = {
   },
 
   async validateTicketOnServer(ticketId: string) {
-    // This calls the Express backend for security
-    const res = await fetch('/api/scanner/validate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ticketId })
-    });
+    const { doc, getDoc, setDoc, query, collection, where, orderBy, limit, getDocs, updateDoc, serverTimestamp } = await import('firebase/firestore');
+    const { db } = await import('./lib/firebase');
+    const { auth } = await import('./lib/firebase');
     
-    if (!res.ok) {
-       const err = await res.json();
-       throw new Error(err.message || 'Validation failed');
+    // In a real app we would use a Firestore Transaction here.
+    const ticketRef = doc(db, TICKETS_COLLECTION, ticketId);
+    const ticketSnap = await getDoc(ticketRef);
+    if (!ticketSnap.exists()) throw new Error("Ticket not found");
+    const ticket = ticketSnap.data() as Ticket;
+
+    const scanSnap = await getDocs(query(
+      collection(db, SCANS_COLLECTION),
+      where('ticketId', '==', ticketId),
+      orderBy('scannedAt', 'desc'),
+      limit(1)
+    ));
+
+    if (!scanSnap.empty) {
+      const lastScan = scanSnap.docs[0].data();
+      // Throw specific error for Already Scanned
+      throw new Error(`Already scanned at ${lastScan.scannedAt?.toDate()?.toLocaleString()}`);
     }
-    
-    return res.json();
+
+    const scannerId = auth.currentUser?.uid || 'UNKNOWN_SCANNER';
+
+    // Log the scan
+    await setDoc(doc(collection(db, SCANS_COLLECTION)), {
+      ticketId,
+      scannedAt: serverTimestamp(),
+      scannedBy: scannerId,
+      eventId: ticket.eventId,
+      buyerEmail: ticket.buyerEmail,
+      status: 'SUCCESS'
+    });
+
+    // Update ticket
+    await updateDoc(ticketRef, { status: 'SCANNED' });
+
+    return { success: true, message: "Valid Ticket", ticket };
   },
 
   async getRecentScans(limit = 10) {

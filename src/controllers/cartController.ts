@@ -45,20 +45,42 @@ export const cartController = {
   },
 
   async checkout(userId: string) {
-    // Calls server-side checkout logic for payment stub and ticket generation
-    const res = await fetch('/api/cart/checkout', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId })
-    });
+    const { doc, getDoc, setDoc, deleteDoc, serverTimestamp } = await import('firebase/firestore');
+    const { db } = await import('./lib/firebase');
 
-    if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.message || 'Checkout failed');
+    const cartRef = doc(db, COLLECTION, userId);
+    const cartSnap = await getDoc(cartRef);
+    if (!cartSnap.exists()) throw new Error("Cart not found");
+
+    const cart = cartSnap.data() as Cart;
+    const tickets = [];
+
+    // Assuming we have access to user info, but we can just use userId for now
+    const userDoc = await getDoc(doc(db, 'users', userId));
+    const userEmail = userDoc.exists() ? userDoc.data()?.email : 'customer@example.com';
+
+    for (const item of cart.items || []) {
+      for (let i = 0; i < item.quantity; i++) {
+        const ticketId = crypto.randomUUID();
+        const ticket = {
+          eventId: item.eventId,
+          ticketType: item.ticketType,
+          buyerEmail: userEmail,
+          buyerId: userId,
+          status: 'VALID',
+          price: item.price,
+          quantity: 1,
+          ticketImageUrl: item.ticketImageUrl,
+          createdAt: serverTimestamp()
+        };
+        await setDoc(doc(db, 'tickets', ticketId), ticket);
+        tickets.push({ id: ticketId, ...ticket });
+      }
     }
 
-    // Clear local storage on success
+    await deleteDoc(cartRef);
     localStorage.removeItem(`cart_${userId}`);
-    return res.json(); // { success: true, tickets: [...] }
+    
+    return { success: true, tickets };
   }
 };

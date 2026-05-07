@@ -21,7 +21,7 @@ service cloud.firestore {
     }
 
     function isAnyAdmin() {
-      return hasRole('SUPER_ADMIN') || hasRole('CEO') || hasRole('FINANCE_MANAGER') || hasRole('PUBLIC_RELATIONS');
+      return hasRole('SUPER_ADMIN') || hasRole('PRO') || hasRole('CEO') || hasRole('FINANCE_MANAGER');
     }
 
     function isOwner(userId) {
@@ -32,40 +32,60 @@ service cloud.firestore {
     match /users/{uid} {
       allow read: if isSignedIn();
       allow create: if isSignedIn();
-      allow update: if isOwner(uid) || hasRole('SUPER_ADMIN');
-      allow delete: if hasRole('SUPER_ADMIN');
+      allow update: if isOwner(uid) || isAnyAdmin();
+      allow delete: if isAnyAdmin();
     }
 
     // Tickets collection
     match /tickets/{ticketId} {
       allow read: if isSignedIn(); // Allow reading tickets for demo stats
-      // Tickets only created via server API
-      allow write: if hasRole('SUPER_ADMIN');
+      allow create: if isSignedIn(); // Allow client side checkout checkout
+      allow update: if isSignedIn(); // Allow client side scanner to update ticket status
+      allow delete: if hasRole('SUPER_ADMIN');
     }
 
     // Ticket scans
     match /ticket_scanned/{scanId} {
       allow read: if isSignedIn();
-      // Only scanner or admin can write via server
-      allow write: if hasRole('SUPER_ADMIN');
+      allow create: if isSignedIn(); // Allow scanner to log scans
+      allow update: if hasRole('SUPER_ADMIN');
+      allow delete: if hasRole('SUPER_ADMIN');
     }
 
     // Events collection
     match /events/{eventId} {
       allow read: if true;
-      allow write: if hasRole('SUPER_ADMIN') || hasRole('CEO') || hasRole('PUBLIC_RELATIONS');
+      allow write: if hasRole('SUPER_ADMIN') || hasRole('PRO') || hasRole('CEO');
     }
 
     // Team collection
     match /team/{memberId} {
       allow read: if true;
-      allow write: if hasRole('SUPER_ADMIN') || hasRole('CEO') || hasRole('PUBLIC_RELATIONS');
+      allow write: if hasRole('SUPER_ADMIN') || hasRole('CEO') || hasRole('PRO');
     }
 
     // Content collection
     match /content/{docId} {
       allow read: if true;
-      allow write: if hasRole('SUPER_ADMIN') || hasRole('CEO') || hasRole('PUBLIC_RELATIONS');
+      allow write: if hasRole('SUPER_ADMIN') || hasRole('CEO') || hasRole('PRO');
+    }
+
+    // About collection
+    match /about/{docId} {
+      allow read: if true;
+      allow write: if isAnyAdmin();
+    }
+    match /about {
+      allow read: if true;
+    }
+
+    // Work collection
+    match /work/{docId} {
+      allow read: if true;
+      allow write: if isAnyAdmin();
+    }
+    match /work {
+      allow read: if true;
     }
 
     // Sessions collection

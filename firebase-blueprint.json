@@ -121,6 +121,18 @@
         "updatedAt": { "type": "string", "format": "date-time" },
         "total": { "type": "number" }
       }
+    },
+    "About": {
+      "title": "About",
+      "description": "About us page content",
+      "type": "object",
+      "properties": {
+        "story": { "type": "object" },
+        "values": { "type": "array" },
+        "management": { "type": "array" },
+        "choirPictures": { "type": "array" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      }
     }
   },
   "firestore": {
@@ -130,6 +142,7 @@
     "/events/{eventId}": { "schema": "Event", "description": "Event listings" },
     "/team/{memberId}": { "schema": "TeamMember", "description": "Team members" },
     "/content/{docId}": { "schema": "Content", "description": "Site content" },
+    "/about/{docId}": { "schema": "About", "description": "About page content" },
     "/sessions/{sessionId}": { "schema": "Session", "description": "Auth sessions" },
     "/cart/{cartId}": { "schema": "Cart", "description": "User carts" }
   }
