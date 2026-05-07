@@ -14,7 +14,7 @@ export default function Home() {
   return (
     <div className="relative">
       {/* Hero Section */}
-      <section className="relative min-h-[80vh] flex items-center py-32 overflow-hidden bg-bai-black text-white">
+      <section className="relative py-32 overflow-hidden bg-bai-black text-white">
         {/* Background Overlay */}
         <div className="absolute inset-0 z-0">
           {/* 
@@ -26,7 +26,7 @@ export default function Home() {
             sectionKey="hero"
             src={`${import.meta.env.BASE_URL}assets/hero.jpg`}
             alt="Choir performance" 
-            className="opacity-80 object-center"
+            className="opacity-40 mix-blend-overlay"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-bai-black via-transparent to-transparent" />
         </div>
