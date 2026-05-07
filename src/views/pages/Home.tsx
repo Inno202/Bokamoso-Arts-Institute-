@@ -26,7 +26,7 @@ export default function Home() {
             sectionKey="hero"
             src={`${import.meta.env.BASE_URL}assets/hero.jpg`}
             alt="Choir performance" 
-            className="opacity-40 mix-blend-overlay"
+            className="opacity-50 object-center"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-bai-black via-transparent to-transparent" />
         </div>
