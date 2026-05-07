@@ -51,7 +51,7 @@ export default function Navbar() {
                */}
                <div className="absolute inset-0 piano-key-pattern rounded-full opacity-20 group-hover:animate-spin-slow transition-all" />
                <div className="relative z-10 w-9 h-9 bg-bai-black flex items-center justify-center rounded-full border-2 border-white group-hover:scale-110 transition-transform">
-                  <span className="text-white font-display font-black text-[10px]">BAI</span>
+                  <img src="./assets/logo.jpeg" alt="Bokamoso Arts Institute" className="w-full h-full object-contain" />
                </div>
             </div>
             <div className="hidden sm:flex flex-col">
