@@ -1,4 +1,4 @@
-import { ReactNode, lazy, Suspense } from 'react';
+import { ReactNode } from 'react';
 import { HashRouter as Router, Routes, Route } from 'react-router-dom';
 import { ROUTES } from './controllers/navigation';
 import Navbar from './views/components/Navbar';
@@ -9,19 +9,19 @@ import { AuthProvider } from './views/components/AuthProvider';
 import { ErrorBoundary } from './views/components/ErrorBoundary';
 
 // Pages
-const Home = lazy(() => import('./views/pages/Home'));
-const About = lazy(() => import('./views/pages/About'));
-const Programs = lazy(() => import('./views/pages/Programs'));
-const Events = lazy(() => import('./views/pages/Events'));
-const Traditions = lazy(() => import('./views/pages/Traditions'));
-const Donate = lazy(() => import('./views/pages/Donate'));
-const TicketScanner = lazy(() => import('./views/pages/TicketScanner'));
-const Login = lazy(() => import('./views/pages/Login'));
-const Register = lazy(() => import('./views/pages/Register'));
-const Dashboard = lazy(() => import('./views/pages/Dashboard'));
-const Cart = lazy(() => import('./views/pages/Cart'));
-const Checkout = lazy(() => import('./views/pages/Checkout'));
-const MyTickets = lazy(() => import('./views/pages/MyTickets'));
+import Home from './views/pages/Home';
+import About from './views/pages/About';
+import Programs from './views/pages/Programs';
+import Events from './views/pages/Events';
+import Traditions from './views/pages/Traditions';
+import Donate from './views/pages/Donate';
+import TicketScanner from './views/pages/TicketScanner';
+import Login from './views/pages/Login';
+import Register from './views/pages/Register';
+import Dashboard from './views/pages/Dashboard';
+import Cart from './views/pages/Cart';
+import Checkout from './views/pages/Checkout';
+import MyTickets from './views/pages/MyTickets';
 
 export default function App() {
   return (
@@ -31,25 +31,23 @@ export default function App() {
           <Navbar />
           <main className="flex-grow">
             <ErrorBoundary>
-              <Suspense fallback={<div className="h-[70vh] flex items-center justify-center"><div className="w-12 h-12 border-4 border-bai-red border-t-transparent rounded-full animate-spin" /></div>}>
-                <AnimatePresence mode="wait">
-                  <Routes>
-                    <Route path={ROUTES.HOME} element={<PageWrapper><Home /></PageWrapper>} />
-                    <Route path={ROUTES.ABOUT} element={<PageWrapper><About /></PageWrapper>} />
-                    <Route path={ROUTES.PROGRAMS} element={<PageWrapper><Programs /></PageWrapper>} />
-                    <Route path={ROUTES.EVENTS} element={<PageWrapper><Events /></PageWrapper>} />
-                    <Route path={ROUTES.TRADITIONS} element={<PageWrapper><Traditions /></PageWrapper>} />
-                    <Route path={ROUTES.DONATE} element={<PageWrapper><Donate /></PageWrapper>} />
-                    <Route path={ROUTES.SCANNER} element={<PageWrapper><TicketScanner /></PageWrapper>} />
-                    <Route path={ROUTES.LOGIN} element={<PageWrapper><Login /></PageWrapper>} />
-                    <Route path={ROUTES.REGISTER} element={<PageWrapper><Register /></PageWrapper>} />
-                    <Route path={ROUTES.DASHBOARD} element={<PageWrapper><Dashboard /></PageWrapper>} />
-                    <Route path={ROUTES.CART} element={<PageWrapper><Cart /></PageWrapper>} />
-                    <Route path={ROUTES.CHECKOUT} element={<PageWrapper><Checkout /></PageWrapper>} />
-                    <Route path={ROUTES.MY_TICKETS} element={<PageWrapper><MyTickets /></PageWrapper>} />
-                  </Routes>
-                </AnimatePresence>
-              </Suspense>
+              <AnimatePresence mode="wait">
+                <Routes>
+                  <Route path={ROUTES.HOME} element={<PageWrapper><Home /></PageWrapper>} />
+                  <Route path={ROUTES.ABOUT} element={<PageWrapper><About /></PageWrapper>} />
+                  <Route path={ROUTES.PROGRAMS} element={<PageWrapper><Programs /></PageWrapper>} />
+                  <Route path={ROUTES.EVENTS} element={<PageWrapper><Events /></PageWrapper>} />
+                  <Route path={ROUTES.TRADITIONS} element={<PageWrapper><Traditions /></PageWrapper>} />
+                  <Route path={ROUTES.DONATE} element={<PageWrapper><Donate /></PageWrapper>} />
+                  <Route path={ROUTES.SCANNER} element={<PageWrapper><TicketScanner /></PageWrapper>} />
+                  <Route path={ROUTES.LOGIN} element={<PageWrapper><Login /></PageWrapper>} />
+                  <Route path={ROUTES.REGISTER} element={<PageWrapper><Register /></PageWrapper>} />
+                  <Route path={ROUTES.DASHBOARD} element={<PageWrapper><Dashboard /></PageWrapper>} />
+                  <Route path={ROUTES.CART} element={<PageWrapper><Cart /></PageWrapper>} />
+                  <Route path={ROUTES.CHECKOUT} element={<PageWrapper><Checkout /></PageWrapper>} />
+                  <Route path={ROUTES.MY_TICKETS} element={<PageWrapper><MyTickets /></PageWrapper>} />
+                </Routes>
+              </AnimatePresence>
             </ErrorBoundary>
           </main>
           <Footer />
