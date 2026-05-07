@@ -170,7 +170,7 @@ export default function Programs() {
 
         {/* Pillars */}
         <section className="py-16 md:py-32 grid grid-cols-1 md:grid-cols-3 gap-12 md:gap-16">
-          {draft.pillars.map((pillar, idx) => (
+          {draft.pillars?.map((pillar, idx) => (
             <div key={`pillar-${idx}`} className="group relative">
               <div className={`mb-8 p-6 w-fit bg-bai-bone transition-all duration-300 border-b-8 ${
                  pillar.type === 'choral' ? 'border-bai-red' : 
@@ -237,7 +237,7 @@ export default function Programs() {
            </div>
 
            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {draft.projects.map((project, i) => (
+              {draft.projects?.map((project, i) => (
                 <div key={project.id} className="group relative aspect-[4/5] bg-bai-bone/10 overflow-hidden rounded-xl">
                    <ManagedImage 
                     src={project.imageUrl || `https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&q=80&w=800&sig=${project.id}`} 
@@ -310,13 +310,13 @@ export default function Programs() {
                   onChange={(e) => setDraft({ ...draft, outreach: { ...draft.outreach, description: e.target.value } })}
                 />
                 <div className="grid grid-cols-2 gap-8 md:gap-12 mb-12">
-                   {draft.outreach.stats.map((stat, i) => (
+                   {draft.outreach.stats?.map((stat, i) => (
                      <div key={i}>
                         <input className="font-display font-black text-4xl md:text-5xl text-bai-black italic bg-transparent w-full" value={stat.value} onChange={(e) => {
-                          const s = [...draft.outreach.stats]; s[i].value = e.target.value; setDraft({ ...draft, outreach: { ...draft.outreach, stats: s } });
+                          const s = [...(draft.outreach.stats || [])]; s[i].value = e.target.value; setDraft({ ...draft, outreach: { ...draft.outreach, stats: s } });
                         }} />
                         <input className="text-[10px] uppercase tracking-widest font-black text-bai-red mt-2 bg-transparent w-full" value={stat.label} onChange={(e) => {
-                          const s = [...draft.outreach.stats]; s[i].label = e.target.value; setDraft({ ...draft, outreach: { ...draft.outreach, stats: s } });
+                          const s = [...(draft.outreach.stats || [])]; s[i].label = e.target.value; setDraft({ ...draft, outreach: { ...draft.outreach, stats: s } });
                         }} />
                      </div>
                    ))}
@@ -331,7 +331,7 @@ export default function Programs() {
                    {content.outreach.description}
                 </p>
                 <div className="grid grid-cols-2 gap-8 md:gap-12 mb-12">
-                   {content.outreach.stats.map((stat, i) => (
+                   {content.outreach.stats?.map((stat, i) => (
                      <div key={i}>
                         <div className="font-display font-black text-4xl md:text-5xl text-bai-black italic">{stat.value}</div>
                         <div className="text-[10px] uppercase tracking-widest font-black text-bai-red mt-2">{stat.label}</div>

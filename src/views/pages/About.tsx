@@ -197,15 +197,15 @@ export default function About() {
             )}
 
             <div className="flex items-center space-x-12 pt-8 border-t border-bai-black/5">
-              {draft.story.stats.map((stat, i) => (
+              {draft.story.stats?.map((stat, i) => (
                 <div key={`stat-${i}`}>
                   {isEditing ? (
                     <>
                       <input className="text-4xl font-display font-black bg-transparent w-24" value={stat.value} onChange={(e) => {
-                        const s = [...draft.story.stats]; s[i].value = e.target.value; setDraft({ ...draft, story: { ...draft.story, stats: s } });
+                        const s = [...(draft.story.stats || [])]; s[i].value = e.target.value; setDraft({ ...draft, story: { ...draft.story, stats: s } });
                       }} />
                       <input className="block text-[10px] font-bold uppercase tracking-widest text-bai-red bg-transparent" value={stat.label} onChange={(e) => {
-                        const s = [...draft.story.stats]; s[i].label = e.target.value; setDraft({ ...draft, story: { ...draft.story, stats: s } });
+                        const s = [...(draft.story.stats || [])]; s[i].label = e.target.value; setDraft({ ...draft, story: { ...draft.story, stats: s } });
                       }} />
                     </>
                   ) : (
@@ -237,15 +237,15 @@ export default function About() {
           <div className="absolute top-0 right-0 w-64 h-64 piano-key-pattern opacity-10" />
           <h2 className="font-display font-black text-3xl md:text-5xl uppercase italic mb-16 text-bai-blue">Our Foundation</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12">
-            {draft.values.map((v, i) => (
+            {draft.values?.map((v, i) => (
               <div key={`value-${i}`} className="space-y-4 group">
                 {isEditing ? (
                   <>
                     <input className="w-full font-display font-bold text-xl uppercase tracking-wider bg-transparent border-b border-white/10 outline-none text-bai-red" value={v.title} onChange={(e) => {
-                      const vals = [...draft.values]; vals[i].title = e.target.value; setDraft({ ...draft, values: vals });
+                      const vals = [...(draft.values || [])]; vals[i].title = e.target.value; setDraft({ ...draft, values: vals });
                     }} />
                     <textarea className="w-full text-white/40 text-sm bg-transparent outline-none" rows={3} value={v.desc} onChange={(e) => {
-                      const vals = [...draft.values]; vals[i].desc = e.target.value; setDraft({ ...draft, values: vals });
+                      const vals = [...(draft.values || [])]; vals[i].desc = e.target.value; setDraft({ ...draft, values: vals });
                     }} />
                   </>
                 ) : (
@@ -284,7 +284,7 @@ export default function About() {
             )}
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-12">
-             {draft.management.map((m, i) => (
+             {draft.management?.map((m, i) => (
                <div key={`member-${i}`} className="flex flex-col bg-white rounded-3xl overflow-hidden shadow-xl border border-bai-black/5 group relative">
                  {isEditing && (
                    <button 
@@ -351,7 +351,7 @@ export default function About() {
             <h2 className="font-display font-black text-3xl md:text-5xl uppercase italic tracking-tight">CHOIR.</h2>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            {draft.choirPictures.map((img, i) => (
+            {draft.choirPictures?.map((img, i) => (
               <div key={`choir-pic-${i}`} className="aspect-square rounded-2xl overflow-hidden bg-bai-bone relative group">
                 <ManagedImage src={img} publicId="" alt="Choir" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
                 {isEditing && (
