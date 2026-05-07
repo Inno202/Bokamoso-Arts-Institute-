@@ -24,7 +24,7 @@ export default function Home() {
           */}
           <ManagedImage 
             sectionKey="hero"
-            src="/assets/hero.jpg" 
+            src={`${import.meta.env.BASE_URL}assets/hero.jpg`}
             alt="Choir performance" 
             className="opacity-40 mix-blend-overlay"
           />
@@ -88,7 +88,7 @@ export default function Home() {
                  and change the src below to "./assets/philosophy.jpg"
                */}
               <ManagedImage 
-                src="/assets/philosophy.jpg" 
+                src={`${import.meta.env.BASE_URL}assets/philosophy.jpg`}
                 sectionKey="philosophy"
                 alt="Choir Singing"
                 className="w-full h-full object-cover grayscale brightness-75 transition-all group-hover:grayscale-0 group-hover:brightness-100"
@@ -135,7 +135,7 @@ export default function Home() {
                   and change the src below to `./assets/community/community-${i}.jpg`
                 */}
                 <img 
-                  src={`/assets/community/community-${i}.jpg`} 
+                  src={`${import.meta.env.BASE_URL}assets/community/community-${i}.jpg`} 
                   alt={`Community activity ${i}`}
                   className="w-full h-full object-cover opacity-50 group-hover:opacity-100 group-hover:scale-110 transition-all duration-700" 
                 />
