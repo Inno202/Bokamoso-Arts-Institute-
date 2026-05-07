@@ -148,7 +148,6 @@ class WorkController {
   }
 
   async seedInitialData(): Promise<WorkContent> {
-    const path = `${this.collectionName}/${this.docId}`;
     try {
       const docRef = doc(db, this.collectionName, this.docId);
       await setDoc(docRef, {
@@ -158,8 +157,8 @@ class WorkController {
       
       return INITIAL_WORK_DATA;
     } catch (error) {
-      handleFirestoreError(error, OperationType.WRITE, path);
-      return {} as WorkContent;
+      console.warn('Could not seed initial work data (likely permission denied for guest). Returning local data.');
+      return INITIAL_WORK_DATA;
     }
   }
 }

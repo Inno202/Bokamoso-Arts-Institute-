@@ -28,14 +28,8 @@ export default function Programs() {
         setContent(data);
         if (!isEditing) setDraft(data);
       } else {
-        workController.seedInitialData().then((data) => {
-          if (data && data.hero) {
-            setContent(data);
-            setDraft(data);
-          }
-        }).catch(err => {
-          console.error('Failed to seed work content:', err);
-        });
+        setContent(INITIAL_WORK_DATA);
+        setDraft(INITIAL_WORK_DATA);
       }
     });
     return () => unsubscribe();

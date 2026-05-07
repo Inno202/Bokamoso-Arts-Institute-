@@ -61,6 +61,34 @@ export interface AboutContent {
   choirPictures: string[];
 }
 
+export const INITIAL_ABOUT_DATA: AboutContent = {
+  story: {
+    title: "Our Story",
+    quote: '"Our music is a vessel for resilience. When we sing \'Bula Pelo\', we are commanding the world to witness our light."',
+    description: "Founded deep within the industrial heart of Mabopane, BAI was a response to the lack of artistic sanctuaries for marginalized youth. We believe that discipline in music translates to discipline in life. Our choristers don't just gain vocal skills; they gain a spiritual compass and an artistic drive.",
+    stats: [
+      { value: "2", label: "World Titles" },
+      { value: "EST", label: "2022 Foundation" }
+    ]
+  },
+  values: [
+    { title: 'Township Resilience', desc: 'Finding power in our origins and overcoming systemic barriers.' },
+    { title: 'Global Precision', desc: 'Adhering to world-class standards in artistic excellence and performance.' },
+    { title: 'Ubuntu Leadership', desc: 'Fostering collective responsibility and community focus.' },
+    { title: 'Spiritual Fire', desc: 'Maintaining the sacred energy of traditional African choral art.' },
+  ],
+  management: [
+    { role: 'President', name: 'Mabopane Mokwena', desc: 'Visionary behind BAI, driving the mission of township excellence through song.', image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=400&h=400' },
+    { role: 'CEO', name: 'Lesedi Gwangwa', desc: 'Managing global partnerships and sustainable institutional growth.', image: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=400&h=400' },
+  ],
+  choirPictures: [
+    "https://images.unsplash.com/photo-1516280440614-37939bbacd81?auto=format&fit=crop&q=80&w=800",
+    "https://images.unsplash.com/photo-1514320291840-2e0a9bf2a9ae?auto=format&fit=crop&q=80&w=800",
+    "https://images.unsplash.com/photo-1493225255756-d9584f8606e9?auto=format&fit=crop&q=80&w=800",
+    "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&q=80&w=800",
+  ]
+};
+
 class AboutController {
   private collectionName = 'about';
   private docId = 'main';
@@ -97,47 +125,18 @@ class AboutController {
 
   // Initial seed data if document is missing
   async seedInitialData(): Promise<AboutContent> {
-    const path = `${this.collectionName}/${this.docId}`;
     try {
-      const initialData: AboutContent = {
-        story: {
-          title: "Our Story",
-          quote: '"Our music is a vessel for resilience. When we sing \'Bula Pelo\', we are commanding the world to witness our light."',
-          description: "Founded deep within the industrial heart of Mabopane, BAI was a response to the lack of artistic sanctuaries for marginalized youth. We believe that discipline in music translates to discipline in life. Our choristers don't just gain vocal skills; they gain a spiritual compass and an artistic drive.",
-          stats: [
-            { value: "2", label: "World Titles" },
-            { value: "EST", label: "2022 Foundation" }
-          ]
-        },
-        values: [
-          { title: 'Township Resilience', desc: 'Finding power in our origins and overcoming systemic barriers.' },
-          { title: 'Global Precision', desc: 'Adhering to world-class standards in artistic excellence and performance.' },
-          { title: 'Ubuntu Leadership', desc: 'Fostering collective responsibility and community focus.' },
-          { title: 'Spiritual Fire', desc: 'Maintaining the sacred energy of traditional African choral art.' },
-        ],
-        management: [
-          { role: 'President', name: 'Mabopane Mokwena', desc: 'Visionary behind BAI, driving the mission of township excellence through song.', image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=400&h=400' },
-          { role: 'CEO', name: 'Lesedi Gwangwa', desc: 'Managing global partnerships and sustainable institutional growth.', image: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=400&h=400' },
-        ],
-        choirPictures: [
-          "https://images.unsplash.com/photo-1516280440614-37939bbacd81?auto=format&fit=crop&q=80&w=800",
-          "https://images.unsplash.com/photo-1514320291840-2e0a9bf2a9ae?auto=format&fit=crop&q=80&w=800",
-          "https://images.unsplash.com/photo-1493225255756-d9584f8606e9?auto=format&fit=crop&q=80&w=800",
-          "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&q=80&w=800",
-        ]
-      };
-
       const docRef = doc(db, this.collectionName, this.docId);
       await setDoc(docRef, {
-        ...initialData,
+        ...INITIAL_ABOUT_DATA,
         updatedAt: new Date().toISOString()
       }, { merge: true });
       
-      return initialData;
+      return INITIAL_ABOUT_DATA;
     } catch (error) {
-      handleFirestoreError(error, OperationType.WRITE, path);
-      // fallback to initialData if errors
-      return {} as AboutContent; 
+      // Just log and return the data so the app doesn't break
+      console.warn('Could not seed initial about data (likely permission denied for guest). Returning local data.');
+      return INITIAL_ABOUT_DATA;
     }
   }
 }

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Edit2, Save, X, Plus, Trash2, Upload } from 'lucide-react';
 import { useAuth } from '../components/AuthProvider';
-import { aboutController, AboutContent } from '../../controllers/aboutController';
+import { aboutController, AboutContent, INITIAL_ABOUT_DATA } from '../../controllers/aboutController';
 import { cloudinaryService } from '../../services/cloudinaryService';
 import { ManagedImage } from '../components/ManagedImage';
 import ImageCropperModal from '../components/ImageCropperModal';
@@ -30,15 +30,9 @@ export default function About() {
         setContent(data);
         if (!isEditing) setDraft(data);
       } else {
-        console.log('No about data or invalid structure, seeding...');
-        aboutController.seedInitialData().then((data) => {
-          if (data && data.story) {
-            setContent(data);
-            setDraft(data);
-          }
-        }).catch(err => {
-          console.error('Failed to seed about content:', err);
-        });
+        console.log('No about data or invalid structure, falling back to initial data...');
+        setContent(INITIAL_ABOUT_DATA);
+        setDraft(INITIAL_ABOUT_DATA);
       }
     });
     return () => unsubscribe();
