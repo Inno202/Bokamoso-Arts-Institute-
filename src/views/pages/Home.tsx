@@ -24,7 +24,7 @@ export default function Home() {
           */}
           <ManagedImage 
             sectionKey="hero"
-            src="https://images.unsplash.com/photo-1459749411177-042180ce673c?auto=format&fit=crop&q=80&w=2000" 
+            src="/assets/hero.jpg" 
             alt="Choir performance" 
             className="opacity-40 mix-blend-overlay"
           />
@@ -88,7 +88,7 @@ export default function Home() {
                  and change the src below to "/assets/philosophy.jpg"
                */}
               <ManagedImage 
-                src="https://images.unsplash.com/photo-1516280440614-37939bbacd81?auto=format&fit=crop&q=80&w=800" 
+                src="/assets/philosophy.jpg" 
                 sectionKey="philosophy"
                 alt="Choir Singing"
                 className="w-full h-full object-cover grayscale brightness-75 transition-all group-hover:grayscale-0 group-hover:brightness-100"
@@ -135,7 +135,7 @@ export default function Home() {
                   and change the src below to `/assets/community/community-${i}.jpg`
                 */}
                 <img 
-                  src={`https://images.unsplash.com/photo-1517457373958-b7bdd458ad20?auto=format&fit=crop&q=80&w=800&sig=${i}`} 
+                  src={`/assets/community/community-${i}.jpg`} 
                   alt={`Community activity ${i}`}
                   className="w-full h-full object-cover opacity-50 group-hover:opacity-100 group-hover:scale-110 transition-all duration-700" 
                 />
