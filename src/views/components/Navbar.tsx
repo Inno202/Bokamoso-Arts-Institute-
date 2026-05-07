@@ -45,14 +45,11 @@ export default function Navbar() {
             <div className="relative w-12 h-12 flex items-center justify-center">
                {/* 
                  LOGO PLACEMENT:
-                 To use your own logo, save it as 'logo.png' in public/assets/
+                 To use your own logo, save it as 'logo.jpeg' in public/assets/
                  and replace the div below with:
-                 <img src="./assets/logo.png" alt="Bokamoso Arts Institute" className="w-full h-full object-contain" />
+                 <img src={`${import.meta.env.BASE_URL}assets/logo.jpeg`} alt="Bokamoso Arts Institute" className="w-full h-full object-contain" />
                */}
-               <div className="absolute inset-0 piano-key-pattern rounded-full opacity-20 group-hover:animate-spin-slow transition-all" />
-               <div className="relative z-10 w-9 h-9 bg-bai-black flex items-center justify-center rounded-full border-2 border-white group-hover:scale-110 transition-transform">
-                  <img src="./assets/logo.jpeg" alt="Bokamoso Arts Institute" className="w-full h-full object-contain" />
-               </div>
+               <img src={`${import.meta.env.BASE_URL}assets/logo.jpeg`} alt="Bokamoso Arts Institute" className="w-full h-full object-contain group-hover:scale-105 transition-transform" />
             </div>
             <div className="hidden sm:flex flex-col">
               <span className="font-display font-bold text-base leading-tight tracking-tighter">BOKAMOSO</span>
