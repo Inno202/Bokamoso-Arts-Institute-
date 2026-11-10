@@ -234,11 +234,39 @@ test('scan history is staff-only', async () => {
 
 // ---------- content, carts, everything else ----------
 
-test('site content is public to read and admin-only to write', async () => {
+const section = (uid, extra = {}) => ({ data: { quote: 'x' }, updatedAt: serverTimestamp(), updatedBy: uid, ...extra });
+
+test('site content is public to read', async () => {
+  await env.withSecurityRulesDisabled(ctx => setDoc(doc(ctx.firestore(), 'content/home'), { data: { a: 1 } }));
+  await assertSucceeds(getDoc(doc(guest(), 'content/home')));
+  await assertSucceeds(getDocs(collection(guest(), 'content')));
   await assertSucceeds(getDoc(doc(guest(), 'about/main')));
-  await assertFails(setDoc(doc(as('alice'), 'about/main'), { story: {} }));
-  await assertFails(setDoc(doc(as('door'), 'work/main'), { hero: {} }));
-  await assertSucceeds(setDoc(doc(as('pro'), 'about/main'), { story: {} }));
+});
+
+test('only content editors can change site content', async () => {
+  for (const uid of ['root', 'ceo', 'pro']) {
+    await assertSucceeds(setDoc(doc(as(uid), 'content/donate'), section(uid)));
+  }
+  for (const uid of ['alice', 'door', 'fin', 'exadmin']) {
+    await assertFails(setDoc(doc(as(uid), 'content/donate'), section(uid)));
+  }
+  await assertFails(setDoc(doc(guest(), 'content/donate'), section('root')));
+  await assertFails(deleteDoc(doc(as('pro'), 'content/donate')));
+  await assertFails(deleteDoc(doc(as('alice'), 'content/donate')));
+});
+
+test('content saves must be well-formed and signed by the person saving', async () => {
+  const db = as('pro');
+  await assertFails(setDoc(doc(db, 'content/donate'), section('root')), 'someone else as author');
+  await assertFails(setDoc(doc(db, 'content/donate'), section('pro', { updatedAt: Timestamp.fromMillis(0) })), 'back-dated');
+  await assertFails(setDoc(doc(db, 'content/donate'), section('pro', { role: 'SUPER_ADMIN' })), 'extra fields');
+  await assertFails(setDoc(doc(db, 'content/donate'), section('pro', { data: 'text' })), 'data is not a map');
+  await assertFails(setDoc(doc(db, 'content/anything-else'), section('pro')), 'unknown section');
+});
+
+test('the earlier About and Our Work documents are read-only', async () => {
+  await assertFails(setDoc(doc(as('root'), 'about/main'), { story: {} }));
+  await assertFails(setDoc(doc(as('pro'), 'work/main'), { hero: {} }));
 });
 
 test('carts are private', async () => {

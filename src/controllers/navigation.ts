@@ -11,7 +11,12 @@ export const ROUTES = {
   REGISTER: '/register',
   CART: '/cart',
   CHECKOUT: '/checkout',
-  MY_TICKETS: '/my-tickets'
+  MY_TICKETS: '/my-tickets',
+  ADMIN_EVENTS: '/admin/events',
+  ADMIN_CONTENT: '/admin/content',
+  TERMS: '/terms',
+  PRIVACY: '/privacy',
+  COOKIES: '/cookies',
 };
 
 /**

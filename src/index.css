@@ -18,6 +18,8 @@
 
   --tracking-tighter: -0.04em;
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  /* A firmer ease-out than the browser default, for presses and hovers. */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
 }
 
 @layer base {
@@ -75,9 +77,49 @@
     );
   }
 
-  .btn-primary {
-    @apply px-8 py-4 bg-bai-black text-white font-display font-bold uppercase tracking-widest transition-all hover:bg-bai-red active:scale-95 border-2 border-transparent hover:border-white;
+  /* ---- Buttons: one shape, a few colours. Every button on the site uses these. ---- */
+  .btn {
+    @apply inline-flex items-center justify-center gap-3 min-h-12 px-6 py-3 rounded-lg font-display font-bold uppercase tracking-widest text-xs text-center select-none;
+    transition: background-color 0.2s var(--ease-out), color 0.2s var(--ease-out), border-color 0.2s var(--ease-out), transform 0.16s var(--ease-out);
   }
+  .btn:active:not(:disabled) { transform: scale(0.97); }
+  .btn:disabled { opacity: 0.55; }
+  .btn-lg { @apply min-h-14 px-8 text-sm; }
+  .btn-block { @apply w-full; }
+  .btn-primary { @apply bg-bai-black text-white hover:bg-bai-red; }
+  .btn-accent { @apply bg-bai-red text-white hover:bg-bai-black; }
+  .btn-outline { @apply border-2 border-bai-black text-bai-black hover:bg-bai-black hover:text-white; }
+  .btn-danger { @apply border-2 border-bai-red text-bai-red hover:bg-bai-red hover:text-white; }
+  /* On dark surfaces */
+  .btn-light { @apply bg-white text-bai-black hover:bg-bai-red hover:text-white; }
+  .btn-accent-light { @apply bg-bai-red text-white hover:bg-white hover:text-bai-black; }
+  .btn-outline-light { @apply border-2 border-white/70 text-white hover:bg-white hover:text-bai-black hover:border-white; }
+
+  /* Round icon-only control, always at least 44px. */
+  .icon-btn {
+    @apply inline-flex items-center justify-center w-11 h-11 rounded-full shrink-0;
+    transition: background-color 0.2s var(--ease-out), color 0.2s var(--ease-out), transform 0.16s var(--ease-out);
+  }
+  .icon-btn:active:not(:disabled) { transform: scale(0.94); }
+
+  .link {
+    @apply font-semibold text-bai-blue underline hover:text-bai-red;
+    transition: color 0.2s var(--ease-out);
+  }
+
+  /* ---- Form fields ---- */
+  .field {
+    @apply w-full min-h-12 px-4 py-2.5 bg-white border-2 border-bai-black/20 rounded-lg text-base placeholder:text-bai-black/60;
+    transition: border-color 0.2s var(--ease-out);
+  }
+  .field:focus { border-color: var(--color-bai-black); }
+  .field[aria-invalid="true"] { border-color: #b91c1c; }
+  .field-label { @apply block text-sm font-bold mb-2; }
+  .field-help { @apply text-sm text-bai-black/70 mt-1.5; }
+  .field-error { @apply text-sm font-semibold text-red-700 mt-1.5; }
+
+  /* ---- Headings shared by every page ---- */
+  .display { @apply font-display font-bold uppercase italic tracking-tighter leading-none; }
 
   /* Prices, counts and references line up when their digits share a width. */
   .num {
@@ -117,10 +159,11 @@
 }
 
 .toast-in {
-  animation: toast-in 0.45s var(--ease-out-expo) both;
-}
-@keyframes toast-in {
-  from { opacity: 0; transform: translateY(12px); }
+  transition: opacity 0.3s var(--ease-out), transform 0.3s var(--ease-out);
+  @starting-style {
+    opacity: 0;
+    transform: translateY(12px);
+  }
 }
 
 /* Html5Qrcode draws its own controls; bring them into the scanner's dark surface. */
@@ -161,4 +204,10 @@
   * {
     transition-property: color, background-color, border-color, opacity, box-shadow !important;
   }
+}
+
+/* A photo inside its frame eases in slightly on hover (pointer devices only). */
+.photo-zoom { transition: transform 0.6s var(--ease-out); }
+@media (hover: hover) and (pointer: fine) {
+  .group:hover .photo-zoom { transform: scale(1.03); }
 }

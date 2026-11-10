@@ -8,6 +8,5 @@
  */
 export const PAYMENTS_LIVE = false;
 
-export const CONTACT_EMAIL = 'info@bokamosoarts.org';
 
 export const FALLBACK_EVENT_IMAGE = `${import.meta.env.BASE_URL}assets/hero.jpg`;

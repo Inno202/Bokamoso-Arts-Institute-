@@ -2,35 +2,44 @@ import { Youtube, Facebook, Instagram, MessageCircle, ChevronUp, ChevronDown, Ma
 import { Link } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { ROUTES } from '../../controllers/navigation';
+import { useContent } from '../../content/store';
 
 const readCollapsed = () => {
   try { return localStorage.getItem('footer_collapsed') === 'true'; } catch { return false; }
 };
 
+const NETWORKS = {
+  youtube: { name: 'YouTube', Icon: Youtube },
+  facebook: { name: 'Facebook', Icon: Facebook },
+  instagram: { name: 'Instagram', Icon: Instagram },
+  whatsapp: { name: 'WhatsApp', Icon: MessageCircle },
+} as const;
+
+const quickLinks = [
+  { name: 'Home', path: ROUTES.HOME },
+  { name: 'About Us', path: ROUTES.ABOUT },
+  { name: 'Our Work', path: ROUTES.PROGRAMS },
+  { name: 'Events', path: ROUTES.EVENTS },
+  { name: 'Traditions', path: ROUTES.TRADITIONS },
+  { name: 'Donate', path: ROUTES.DONATE },
+];
+
+const legalLinks = [
+  { name: 'Terms', path: ROUTES.TERMS },
+  { name: 'Privacy', path: ROUTES.PRIVACY },
+  { name: 'Cookies', path: ROUTES.COOKIES },
+];
+
 export default function Footer() {
+  const { contact, footerBlurb, copyrightLine, socials, partners } = useContent('site');
   const [isCollapsed, setIsCollapsed] = useState(readCollapsed);
 
   useEffect(() => {
     try { localStorage.setItem('footer_collapsed', String(isCollapsed)); } catch { /* preference simply is not remembered */ }
   }, [isCollapsed]);
 
-  const quickLinks = [
-    { name: 'Home', path: ROUTES.HOME },
-    { name: 'About Us', path: ROUTES.ABOUT },
-    { name: 'Our Work', path: ROUTES.PROGRAMS },
-    { name: 'Events', path: ROUTES.EVENTS },
-    { name: 'Traditions', path: ROUTES.TRADITIONS },
-    { name: 'Donate', path: ROUTES.DONATE },
-  ];
-
-  const socials = [
-    { name: 'YouTube', icon: <Youtube size={20} strokeWidth={1.5} aria-hidden="true" />, url: 'https://youtube.com/@bokamosoartsinstitute?si=KQ55EgXECEq4iSDR' },
-    { name: 'Facebook', icon: <Facebook size={20} strokeWidth={1.5} aria-hidden="true" />, url: 'https://www.facebook.com/share/1G9FqBQFUC/' },
-    { name: 'Instagram', icon: <Instagram size={20} strokeWidth={1.5} aria-hidden="true" />, url: 'https://www.instagram.com/bokamoso_arts_institute?igsh=dG9sdTQzYjU5aWtx' },
-    { name: 'WhatsApp', icon: <MessageCircle size={20} strokeWidth={1.5} aria-hidden="true" />, url: 'https://whatsapp.com/channel/0029VaRVyM3GufJ0VIXtp93n/145' },
-  ];
-
-  const heading = 'font-display font-bold uppercase tracking-[0.18em] text-xs mb-6 text-bai-blue-soft';
+  const heading = 'font-display font-bold uppercase tracking-wide text-sm mb-5 text-bai-blue-soft';
+  const footerLink = 'inline-block py-2 text-white/75 hover:text-white transition-colors';
 
   return (
     <footer className="bg-bai-black text-white relative">
@@ -40,7 +49,7 @@ export default function Footer() {
           aria-expanded={!isCollapsed}
           aria-controls="footer-details"
           aria-label={isCollapsed ? 'Show contact details and links' : 'Hide contact details and links'}
-          className="w-11 h-11 bg-bai-red text-white rounded-full flex items-center justify-center border-4 border-bai-black hover:scale-110 transition-transform"
+          className="icon-btn bg-bai-red text-white border-4 border-bai-black"
         >
           {isCollapsed ? <ChevronUp size={20} aria-hidden="true" /> : <ChevronDown size={20} aria-hidden="true" />}
         </button>
@@ -56,76 +65,74 @@ export default function Footer() {
                 </span>
                 <span className="flex flex-col">
                   <span className="font-display font-bold text-lg leading-tight tracking-tight">BOKAMOSO</span>
-                  <span className="text-[11px] uppercase tracking-[0.18em] font-semibold text-bai-red-soft">Arts Institute</span>
+                  <span className="text-xs uppercase tracking-[0.18em] font-semibold text-bai-red-soft">Arts Institute</span>
                 </span>
               </div>
-              <p className="text-white/70 text-sm leading-relaxed mb-6 font-light italic max-w-xs">
-                Bula Pelo. Open your heart. We nurture the voices of Mabopane to resonate across the globe.
-              </p>
-              <div className="flex items-center -ml-3">
-                {socials.map((social) => (
-                  <a
-                    key={social.name}
-                    href={social.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    aria-label={`${social.name} (opens in a new tab)`}
-                    className="w-11 h-11 flex items-center justify-center text-white/70 hover:text-bai-red-soft transition-colors rounded-full"
-                  >
-                    {social.icon}
-                  </a>
-                ))}
-              </div>
+              {footerBlurb && <p className="text-white/75 leading-relaxed mb-6 italic max-w-xs">{footerBlurb}</p>}
+              {socials.length > 0 && (
+                <ul className="flex items-center -ml-3">
+                  {socials.map((social) => {
+                    const { name, Icon } = NETWORKS[social.network];
+                    return (
+                      <li key={social.url}>
+                        <a href={social.url} target="_blank" rel="noopener noreferrer" aria-label={`${name} (opens in a new tab)`} className="icon-btn text-white/75 hover:text-bai-red-soft">
+                          <Icon size={20} strokeWidth={1.5} aria-hidden="true" />
+                        </a>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
             </div>
 
             <nav aria-label="Footer">
               <h2 className={heading}>Explore</h2>
-              <ul className="space-y-1">
+              <ul>
                 {quickLinks.map((link) => (
-                  <li key={link.name}>
-                    <Link to={link.path} className="inline-block py-1.5 text-sm text-white/70 hover:text-white transition-colors">
-                      {link.name}
-                    </Link>
-                  </li>
+                  <li key={link.name}><Link to={link.path} className={footerLink}>{link.name}</Link></li>
                 ))}
               </ul>
             </nav>
 
             <div>
               <h2 className={heading}>Contact</h2>
-              <ul className="space-y-4 text-sm text-white/70">
-                <li className="flex items-start gap-3">
-                  <MapPin size={16} className="text-bai-red-soft shrink-0 mt-0.5" aria-hidden="true" />
-                  <span>110 Industrial Park, Mabopane, Gauteng, 0190</span>
+              <ul className="space-y-3 text-white/75">
+                <li className="flex items-start gap-3 py-1">
+                  <MapPin size={18} className="text-bai-red-soft shrink-0 mt-0.5" aria-hidden="true" />
+                  <span>{contact.address}</span>
                 </li>
                 <li className="flex items-center gap-3">
-                  <Phone size={16} className="text-bai-red-soft shrink-0" aria-hidden="true" />
-                  <a href="tel:+27127024455" className="hover:text-white transition-colors py-1">+27 12 702 4455</a>
+                  <Phone size={18} className="text-bai-red-soft shrink-0" aria-hidden="true" />
+                  <a href={`tel:${contact.phone.replace(/[^+\d]/g, '')}`} className={footerLink}>{contact.phone}</a>
                 </li>
                 <li className="flex items-center gap-3">
-                  <Mail size={16} className="text-bai-red-soft shrink-0" aria-hidden="true" />
-                  <a href="mailto:info@bokamosoarts.org" className="hover:text-white transition-colors py-1 break-all">info@bokamosoarts.org</a>
+                  <Mail size={18} className="text-bai-red-soft shrink-0" aria-hidden="true" />
+                  <a href={`mailto:${contact.email}`} className={`${footerLink} break-all`}>{contact.email}</a>
                 </li>
               </ul>
             </div>
 
-            <div>
-              <h2 className={heading}>Partners</h2>
-              <ul className="space-y-2 text-sm text-white/70">
-                <li>Entsika Foundation</li>
-                <li>Old Mutual ZA</li>
-                <li>Tshwane Heritage</li>
-                <li>Bokamoso Passenger</li>
-              </ul>
-            </div>
+            {partners.length > 0 && (
+              <div>
+                <h2 className={heading}>Partners</h2>
+                <ul className="space-y-2 text-white/75">
+                  {partners.map((partner) => <li key={partner.name}>{partner.name}</li>)}
+                </ul>
+              </div>
+            )}
           </div>
         </div>
       )}
 
-      <div className="border-t border-white/10 py-8">
-        <p className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center md:text-left text-xs uppercase tracking-[0.18em] text-white/60 font-semibold">
-          © {new Date().getFullYear()} Bokamoso Arts Institute. Cultural excellence from Mabopane.
-        </p>
+      <div className="border-t border-white/10 py-6">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row md:items-center justify-between gap-2 text-sm text-white/70">
+          <p>© {new Date().getFullYear()} Bokamoso Arts Institute. {copyrightLine}</p>
+          <ul className="flex gap-6">
+            {legalLinks.map((link) => (
+              <li key={link.name}><Link to={link.path} className={footerLink}>{link.name}</Link></li>
+            ))}
+          </ul>
+        </div>
       </div>
     </footer>
   );

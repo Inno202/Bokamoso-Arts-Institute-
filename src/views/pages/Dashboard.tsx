@@ -1,24 +1,23 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import type { QueryDocumentSnapshot } from 'firebase/firestore';
-import { Users, Ticket, Banknote, Activity, Calendar, TrendingUp, Clock, Shield, Settings, ChevronRight, Plus, UserX, UserCheck } from 'lucide-react';
+import { ArrowRight, Ticket, UserX, UserCheck } from 'lucide-react';
 import { ROUTES } from '../../controllers/navigation';
 import { useAuth } from '../components/AuthProvider';
+import { AdminShell } from '../admin/AdminShell';
 import { ticketController } from '../../controllers/ticketController';
 import { eventController } from '../../controllers/eventController';
 import { userController } from '../../controllers/userController';
 import { logger } from '../../services/loggerService';
 import { toast } from '../../services/toast';
-import { NewEventModal } from '../components/NewEventModal';
-import { formatCurrency, formatDate, formatDateTime, friendlyError } from '../../controllers/lib/utils';
-import { isEventManager, isFinance, isUserAdmin, ROLE_LABELS, TicketScan, UserProfile, UserRole } from '../../models/types';
+import { formatCurrency, formatDateTime, friendlyError } from '../../controllers/lib/utils';
+import { isEventManager, isFinance, isScanner, isUserAdmin, ROLE_LABELS, TicketScan, UserProfile, UserRole } from '../../models/types';
 
 const ROLE_OPTIONS = Object.keys(ROLE_LABELS) as UserRole[];
 const EMPTY_USER = { displayName: '', email: '', password: '', role: 'USER' as UserRole };
-const field = 'w-full h-12 px-4 bg-white border border-bai-black/20 rounded-lg text-sm focus:border-bai-black placeholder:text-bai-black/60 transition-colors';
 
 export default function Dashboard() {
-  const { user, userData, role } = useAuth();
+  const { user, role } = useAuth();
   const canSeeUsers = isUserAdmin(role);
   const canSeeSales = isFinance(role);
   const canManageEvents = isEventManager(role);
@@ -27,7 +26,6 @@ export default function Dashboard() {
   const [stats, setStats] = useState<{ totalUsers?: number; totalTickets?: number; revenue?: number; activeEvents?: number }>({});
   const [recentScans, setRecentScans] = useState<TicketScan[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isEventModalOpen, setIsEventModalOpen] = useState(false);
 
   const [showUsers, setShowUsers] = useState(false);
   const [users, setUsers] = useState<UserProfile[]>([]);
@@ -125,139 +123,97 @@ export default function Dashboard() {
     }
   };
 
-  const greeting = () => {
-    const hour = new Date().getHours();
-    if (hour < 12) return 'Good morning';
-    if (hour < 17) return 'Good afternoon';
-    return 'Good evening';
-  };
-
   const show = (value: number | undefined, format: (n: number) => string = String) => (value === undefined ? '—' : format(value));
   // CEOs may add staff, but only a super admin can create another super admin.
   const creatableRoles = ROLE_OPTIONS.filter(r => isSuper || r !== 'SUPER_ADMIN');
-  const actionCard = 'flex items-center justify-between p-5 bg-white border border-bai-black/10 rounded-2xl group hover:border-bai-red transition-colors text-left w-full';
-  const actionIcon = 'w-10 h-10 bg-bai-bone text-bai-black rounded-xl flex items-center justify-center group-hover:bg-bai-red group-hover:text-white transition-colors';
+  const links = [
+    { name: 'Events', detail: 'Add, edit and remove events', to: ROUTES.ADMIN_EVENTS, show: canManageEvents },
+    { name: 'Site content', detail: 'Edit the text and photos on the public pages', to: ROUTES.ADMIN_CONTENT, show: canManageEvents },
+    { name: 'Door scanner', detail: 'Check tickets at the door', to: ROUTES.SCANNER, show: isScanner(role) },
+  ].filter(link => link.show);
 
   return (
-    <div className="pb-24 bg-bai-bone min-h-screen">
-      <section className="bg-bai-black text-white py-14 px-4 relative overflow-hidden">
-        <div className="absolute inset-0 piano-key-pattern opacity-10" aria-hidden="true" />
-        <div className="max-w-7xl mx-auto sm:px-2 lg:px-4 relative z-10 flex flex-col md:flex-row md:items-end justify-between gap-6">
-          <div>
-            <h1 className="font-display font-bold text-4xl md:text-6xl tracking-tighter uppercase italic leading-none">
-              <span className="block text-lg md:text-xl not-italic tracking-normal normal-case font-sans font-normal text-white/80 mb-2">{greeting()},</span>
-              {userData?.displayName || user?.displayName || 'Admin'}
-            </h1>
-            <p className="text-white/80 text-sm mt-4 flex items-center gap-2">
-              <Shield size={14} className="text-bai-blue-soft" aria-hidden="true" />
-              <span>{role ? ROLE_LABELS[role] : ''}</span>
-            </p>
-          </div>
-          <p className="text-white/80 text-sm flex items-center gap-2">
-            <Calendar size={16} aria-hidden="true" />
-            <span>{formatDate(new Date())}</span>
-          </p>
-        </div>
-      </section>
-
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8">
-        <dl className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6" aria-busy={loading}>
-          {canSeeUsers && <Stat title="Registered users" value={loading ? null : show(stats.totalUsers)} icon={<Users size={22} aria-hidden="true" />} />}
-          {canSeeSales && <Stat title="Tickets issued" value={loading ? null : show(stats.totalTickets)} icon={<Ticket size={22} aria-hidden="true" />} />}
-          {canSeeSales && <Stat title="Ticket value" value={loading ? null : show(stats.revenue, formatCurrency)} icon={<Banknote size={22} aria-hidden="true" />} />}
-          <Stat title="Events on sale" value={stats.activeEvents === undefined ? null : String(stats.activeEvents)} icon={<Activity size={22} aria-hidden="true" />} />
+    <AdminShell title="Overview">
+        <dl className="grid grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-8 border-y border-bai-black/15 py-8" aria-busy={loading}>
+          {canSeeUsers && <Stat title="Registered users" value={loading ? null : show(stats.totalUsers)} />}
+          {canSeeSales && <Stat title="Tickets issued" value={loading ? null : show(stats.totalTickets)} />}
+          {canSeeSales && <Stat title="Ticket value" value={loading ? null : show(stats.revenue, formatCurrency)} />}
+          <Stat title="Events on sale" value={stats.activeEvents === undefined ? null : String(stats.activeEvents)} />
         </dl>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-10 mt-12">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-12 mt-12">
           <section className="lg:col-span-2" aria-labelledby="scans-heading">
-            <h2 id="scans-heading" className="font-display font-bold text-2xl uppercase tracking-tighter italic flex items-center gap-3 mb-6">
-              <Clock size={20} className="text-bai-red" aria-hidden="true" />
-              <span>Recent scans</span>
-            </h2>
-            <div className="bg-white rounded-3xl border border-bai-black/10 overflow-hidden">
-              {loading ? (
-                <div className="p-6 space-y-4" role="status" aria-label="Loading scans">
-                  {[1, 2, 3].map(i => <div key={i} className="h-12 bg-bai-bone animate-pulse rounded-xl" />)}
-                </div>
-              ) : recentScans.length > 0 ? (
-                <ul className="divide-y divide-bai-black/10">
-                  {recentScans.map((scan) => (
-                    <li key={scan.id} className="px-5 py-4 flex items-center justify-between gap-4">
-                      <div className="flex items-center gap-4 min-w-0">
-                        <div className="w-10 h-10 bg-green-100 text-green-800 rounded-xl flex items-center justify-center shrink-0">
-                          <Ticket size={18} aria-hidden="true" />
-                        </div>
-                        <div className="min-w-0">
-                          <p className="font-bold text-sm truncate">{scan.buyerEmail || 'Unknown buyer'}</p>
-                          <p className="num text-xs text-bai-black/70">{scan.ticketId}</p>
-                        </div>
+            <h2 id="scans-heading" className="display text-2xl mb-5">Recent scans</h2>
+            {loading ? (
+              <div className="space-y-3" role="status" aria-label="Loading scans">
+                {[1, 2, 3].map(i => <div key={i} className="h-14 bg-white animate-pulse rounded-lg" />)}
+              </div>
+            ) : recentScans.length > 0 ? (
+              <ul className="border-t border-bai-black/15">
+                {recentScans.map((scan) => (
+                  <li key={scan.id} className="py-4 border-b border-bai-black/15 flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-4 min-w-0">
+                      <Ticket size={20} className="text-green-800 shrink-0" aria-hidden="true" />
+                      <div className="min-w-0">
+                        <p className="font-bold truncate">{scan.buyerEmail || 'Unknown buyer'}</p>
+                        <p className="num text-sm text-bai-black/70">{scan.ticketId}</p>
                       </div>
-                      <p className="num text-xs text-bai-black/70 text-right shrink-0">{formatDateTime(scan.scannedAt) || 'Just now'}</p>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="p-10 text-center text-bai-black/70 text-sm">No tickets have been scanned yet. Scans appear here as people arrive.</p>
-              )}
-            </div>
+                    </div>
+                    <p className="num text-sm text-bai-black/70 text-right shrink-0">{formatDateTime(scan.scannedAt) || 'Just now'}</p>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="py-8 border-y border-bai-black/15 text-bai-black/75">No tickets have been scanned yet. Scans appear here as people arrive.</p>
+            )}
           </section>
 
           <section aria-labelledby="manage-heading">
-            <h2 id="manage-heading" className="font-display font-bold text-2xl uppercase tracking-tighter italic flex items-center gap-3 mb-6">
-              <Settings size={20} className="text-bai-red" aria-hidden="true" />
-              <span>Manage</span>
-            </h2>
-            <div className="grid grid-cols-1 gap-3">
-              {canManageEvents && (
-                <button onClick={() => setIsEventModalOpen(true)} className={actionCard}>
-                  <span className="flex items-center gap-4">
-                    <span className={actionIcon}><Plus size={20} aria-hidden="true" /></span>
-                    <span className="font-bold text-xs uppercase tracking-widest">New event</span>
-                  </span>
-                  <ChevronRight size={18} className="text-bai-black/60" aria-hidden="true" />
-                </button>
-              )}
-              <Link to={ROUTES.ABOUT} className={actionCard}>
-                <span className="flex items-center gap-4">
-                  <span className={actionIcon}><TrendingUp size={20} aria-hidden="true" /></span>
-                  <span className="font-bold text-xs uppercase tracking-widest">Edit About page</span>
-                </span>
-                <ChevronRight size={18} className="text-bai-black/60" aria-hidden="true" />
-              </Link>
+            <h2 id="manage-heading" className="display text-2xl mb-5">Manage</h2>
+            <ul className="border-t border-bai-black/15">
+              {links.map(link => (
+                <li key={link.to} className="border-b border-bai-black/15">
+                  <Link to={link.to} className="group flex items-center justify-between gap-4 py-4 min-h-14">
+                    <span>
+                      <span className="block font-bold group-hover:text-bai-red transition-colors">{link.name}</span>
+                      <span className="block text-sm text-bai-black/70">{link.detail}</span>
+                    </span>
+                    <ArrowRight size={18} className="shrink-0 transition-transform duration-200 group-hover:translate-x-1" aria-hidden="true" />
+                  </Link>
+                </li>
+              ))}
               {canSeeUsers && (
-                <button
-                  onClick={() => { setShowUsers(true); void loadUsers(); }}
-                  aria-expanded={showUsers}
-                  className={actionCard}
-                >
-                  <span className="flex items-center gap-4">
-                    <span className={actionIcon}><Users size={20} aria-hidden="true" /></span>
-                    <span className="font-bold text-xs uppercase tracking-widest">Manage users</span>
-                  </span>
-                  <ChevronRight size={18} className="text-bai-black/60" aria-hidden="true" />
-                </button>
+                <li className="border-b border-bai-black/15">
+                  <button onClick={() => { setShowUsers(true); void loadUsers(); }} aria-expanded={showUsers} className="group w-full text-left flex items-center justify-between gap-4 py-4 min-h-14">
+                    <span>
+                      <span className="block font-bold group-hover:text-bai-red transition-colors">Users</span>
+                      <span className="block text-sm text-bai-black/70">Add staff, change roles, deactivate accounts</span>
+                    </span>
+                    <ArrowRight size={18} className="shrink-0 transition-transform duration-200 group-hover:translate-x-1" aria-hidden="true" />
+                  </button>
+                </li>
               )}
-            </div>
+            </ul>
           </section>
         </div>
 
         {showUsers && canSeeUsers && (
-          <section className="mt-12 bg-white rounded-3xl p-4 sm:p-8 border border-bai-black/10" aria-labelledby="users-heading">
+          <section className="mt-14" aria-labelledby="users-heading">
             <div className="flex items-center justify-between mb-6">
-              <h2 id="users-heading" className="font-display font-bold text-2xl uppercase tracking-tighter italic">Users</h2>
-              <button onClick={() => setShowUsers(false)} className="text-sm font-bold text-bai-black/70 hover:text-bai-red px-3 py-2">Close</button>
+              <h2 id="users-heading" className="display text-2xl">Users</h2>
+              <button onClick={() => setShowUsers(false)} className="btn btn-outline">Close</button>
             </div>
 
-            <form onSubmit={handleAddUser} className="mb-8 bg-bai-bone p-4 rounded-2xl">
-              <h3 className="text-sm font-bold mb-3">Add a staff account</h3>
+            <form onSubmit={handleAddUser} className="mb-8 border-y border-bai-black/15 py-6">
+              <h3 className="font-bold mb-3">Add a staff account</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-                <input required type="text" aria-label="Full name" placeholder="Full name" maxLength={100} className={field} value={newUser.displayName} onChange={e => setNewUser({ ...newUser, displayName: e.target.value })} />
-                <input required type="email" aria-label="Email address" placeholder="Email address" autoComplete="off" className={field} value={newUser.email} onChange={e => setNewUser({ ...newUser, email: e.target.value })} />
-                <input required type="password" aria-label="Temporary password, at least 8 characters" placeholder="Temporary password (8+)" minLength={8} autoComplete="new-password" className={field} value={newUser.password} onChange={e => setNewUser({ ...newUser, password: e.target.value })} />
-                <select aria-label="Role" className={field} value={newUser.role} onChange={e => setNewUser({ ...newUser, role: e.target.value as UserRole })}>
+                <input required type="text" aria-label="Full name" placeholder="Full name" maxLength={100} className="field" value={newUser.displayName} onChange={e => setNewUser({ ...newUser, displayName: e.target.value })} />
+                <input required type="email" aria-label="Email address" placeholder="Email address" autoComplete="off" className="field" value={newUser.email} onChange={e => setNewUser({ ...newUser, email: e.target.value })} />
+                <input required type="password" aria-label="Temporary password, at least 8 characters" placeholder="Temporary password (8+)" minLength={8} autoComplete="new-password" className="field" value={newUser.password} onChange={e => setNewUser({ ...newUser, password: e.target.value })} />
+                <select aria-label="Role" className="field" value={newUser.role} onChange={e => setNewUser({ ...newUser, role: e.target.value as UserRole })}>
                   {creatableRoles.map(r => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
                 </select>
-                <button type="submit" disabled={addingUser} className="h-12 px-6 bg-bai-black text-white rounded-lg text-xs font-bold uppercase tracking-widest hover:bg-bai-red transition-colors disabled:opacity-60">
+                <button type="submit" disabled={addingUser} className="btn btn-primary">
                   {addingUser ? 'Adding' : 'Add user'}
                 </button>
               </div>
@@ -278,7 +234,7 @@ export default function Dashboard() {
                     <div className="flex items-center gap-2">
                       <select
                         aria-label={`Role for ${u.displayName || u.email}`}
-                        className="h-11 bg-bai-bone text-sm px-3 rounded-lg flex-1 lg:flex-none disabled:opacity-70"
+                        className="field w-auto flex-1 lg:flex-none disabled:opacity-70"
                         value={u.role || 'USER'}
                         onChange={e => handleRoleChange(u, e.target.value as UserRole)}
                         disabled={!isSuper || isSelf}
@@ -289,9 +245,7 @@ export default function Dashboard() {
                       {canToggle && (
                         <button
                           onClick={() => handleToggleActive(u)}
-                          className={`h-11 px-4 rounded-lg text-xs font-bold uppercase tracking-widest flex items-center gap-2 transition-colors ${
-                            inactive ? 'bg-bai-black text-white hover:bg-green-800' : 'border border-bai-black/20 text-bai-black hover:bg-bai-red hover:text-white hover:border-bai-red'
-                          }`}
+                          className={`btn ${inactive ? 'btn-primary' : 'btn-danger'}`}
                         >
                           {inactive ? <UserCheck size={14} aria-hidden="true" /> : <UserX size={14} aria-hidden="true" />}
                           <span>{inactive ? 'Reactivate' : 'Deactivate'}</span>
@@ -305,24 +259,20 @@ export default function Dashboard() {
             {usersLoading && <p className="py-6 text-center text-sm text-bai-black/70" role="status">Loading users</p>}
             {!usersLoading && users.length === 0 && <p className="py-6 text-center text-sm text-bai-black/70">No users found.</p>}
             {cursor && !usersLoading && (
-              <button onClick={() => loadUsers(cursor)} className="mt-4 w-full h-12 border border-bai-black/20 rounded-lg text-xs font-bold uppercase tracking-widest hover:bg-bai-bone transition-colors">Load more users</button>
+              <button onClick={() => loadUsers(cursor)} className="btn btn-outline btn-block mt-4">Load more users</button>
             )}
           </section>
         )}
-      </div>
-
-      <NewEventModal isOpen={isEventModalOpen} onClose={() => setIsEventModalOpen(false)} />
-    </div>
+    </AdminShell>
   );
 }
 
-function Stat({ title, value, icon }: { title: string; value: string | null; icon: React.ReactNode }) {
+function Stat({ title, value }: { title: string; value: string | null }) {
   return (
-    <div className="bg-white p-5 sm:p-6 rounded-3xl border border-bai-black/10">
-      <div className="w-11 h-11 bg-bai-bone rounded-2xl flex items-center justify-center mb-5">{icon}</div>
-      <dt className="text-bai-black/70 text-xs font-bold uppercase tracking-widest">{title}</dt>
-      <dd className="num text-2xl sm:text-3xl font-display font-bold tracking-tight mt-1 break-words">
-        {value === null ? <span className="inline-block h-7 w-20 bg-bai-bone animate-pulse rounded" aria-label="Loading" /> : value}
+    <div className="flex flex-col-reverse">
+      <dt className="text-bai-black/75 font-semibold mt-1">{title}</dt>
+      <dd className="num text-3xl sm:text-4xl font-display font-bold tracking-tight break-words">
+        {value === null ? <span className="inline-block h-8 w-20 bg-bai-black/10 animate-pulse rounded" aria-label="Loading" /> : value}
       </dd>
     </div>
   );

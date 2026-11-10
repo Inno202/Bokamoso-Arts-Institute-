@@ -89,7 +89,11 @@ export default function Register() {
               </div>
             </div>
 
-            <button type="submit" disabled={loading} className="w-full h-14 bg-bai-black text-white font-display font-bold uppercase tracking-[0.18em] hover:bg-bai-blue transition-colors flex items-center justify-center gap-3 disabled:opacity-60 rounded-lg">
+            <p className="text-sm text-bai-black/75">
+              By creating an account you agree to our <Link to={ROUTES.TERMS} className="link">terms</Link> and <Link to={ROUTES.PRIVACY} className="link">privacy policy</Link>.
+            </p>
+
+            <button type="submit" disabled={loading} className="btn btn-lg btn-primary btn-block">
               {loading ? <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" role="status" aria-label="Creating your account" /> : <><span>Create account</span> <UserPlus size={18} aria-hidden="true" /></>}
             </button>
           </form>

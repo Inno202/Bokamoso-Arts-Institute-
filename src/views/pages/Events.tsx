@@ -1,28 +1,25 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Calendar, Ticket, MapPin, Search, CheckCircle2, Trash2, Edit2 } from 'lucide-react';
+import { Calendar, Ticket, MapPin, Search, CheckCircle2 } from 'lucide-react';
 import { eventController } from '../../controllers/eventController';
-import { BAIEvent, isEventManager } from '../../models/types';
+import { BAIEvent } from '../../models/types';
 import { cloudinaryService } from '../../services/cloudinaryService';
 import { useCart } from '../../hooks/useCart';
 import { useAuth } from '../components/AuthProvider';
-import { NewEventModal } from '../components/NewEventModal';
 import { ROUTES } from '../../controllers/navigation';
-import { formatCurrency, formatDate, formatTime, friendlyError } from '../../controllers/lib/utils';
+import { formatCurrency, formatDate, formatTime } from '../../controllers/lib/utils';
 import { FALLBACK_EVENT_IMAGE } from '../../config';
 import { toast } from '../../services/toast';
-import { logger } from '../../services/loggerService';
 
 export default function Events() {
   const { addToCart } = useCart();
-  const { user, role } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const [events, setEvents] = useState<BAIEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [addedIds, setAddedIds] = useState<Set<string>>(new Set());
-  const [editingEvent, setEditingEvent] = useState<BAIEvent | null>(null);
 
   useEffect(() => eventController.subscribeToEvents((data) => {
     setEvents(data);
@@ -33,23 +30,10 @@ export default function Events() {
     setLoading(false);
   }), []);
 
-  const canManage = isEventManager(role);
   const term = searchTerm.trim().toLowerCase();
   const filteredEvents = term
     ? events.filter(e => [e.name, e.city, e.venue].some(v => (v || '').toLowerCase().includes(term)))
     : events;
-
-  const handleDelete = async (event: BAIEvent) => {
-    const sold = event.ticketsSold > 0 ? ` ${event.ticketsSold} ticket${event.ticketsSold === 1 ? ' has' : 's have'} already been issued for it.` : '';
-    if (!window.confirm(`Delete "${event.name}"?${sold} This cannot be undone.`)) return;
-    try {
-      await eventController.deleteEvent(event.id);
-      toast.success('Event deleted.');
-    } catch (err) {
-      logger.error('Failed to delete event', err);
-      toast.error(friendlyError(err, 'The event could not be deleted.'));
-    }
-  };
 
   const handleAddToCart = (event: BAIEvent) => {
     if (!user) {
@@ -150,16 +134,6 @@ export default function Events() {
                         <Calendar size={14} aria-hidden="true" />
                         <span>{formatDate(event.date, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}{formatTime(event.date) ? `, ${formatTime(event.date)}` : ''}</span>
                       </p>
-                      {canManage && (
-                        <div className="flex gap-1 shrink-0 -mt-2 -mr-2">
-                          <button onClick={() => setEditingEvent(event)} aria-label={`Edit ${event.name}`} className="w-11 h-11 flex items-center justify-center text-bai-blue hover:bg-bai-blue hover:text-white rounded-full transition-colors">
-                            <Edit2 size={16} aria-hidden="true" />
-                          </button>
-                          <button onClick={() => handleDelete(event)} aria-label={`Delete ${event.name}`} className="w-11 h-11 flex items-center justify-center text-bai-red hover:bg-bai-red hover:text-white rounded-full transition-colors">
-                            <Trash2 size={16} aria-hidden="true" />
-                          </button>
-                        </div>
-                      )}
                     </div>
 
                     <h2 className="font-display font-bold text-2xl uppercase mb-2 leading-none break-words">{event.name}</h2>
@@ -200,9 +174,6 @@ export default function Events() {
         )}
       </section>
 
-      {editingEvent && (
-        <NewEventModal isOpen onClose={() => setEditingEvent(null)} event={editingEvent} />
-      )}
     </div>
   );
 }

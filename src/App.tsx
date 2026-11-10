@@ -7,7 +7,7 @@ import { AuthProvider, useAuth } from './views/components/AuthProvider';
 import { CartProvider } from './hooks/useCart';
 import { ErrorBoundary } from './views/components/ErrorBoundary';
 import { Toaster } from './views/components/Toaster';
-import { isAnyAdmin, isScanner, type UserRole } from './models/types';
+import { isAnyAdmin, isEventManager, isScanner, type UserRole } from './models/types';
 import Home from './views/pages/Home';
 
 // Each page loads on demand, so a first visit downloads the home page only.
@@ -23,6 +23,9 @@ const Dashboard = lazy(() => import('./views/pages/Dashboard'));
 const Cart = lazy(() => import('./views/pages/Cart'));
 const Checkout = lazy(() => import('./views/pages/Checkout'));
 const MyTickets = lazy(() => import('./views/pages/MyTickets'));
+const AdminEvents = lazy(() => import('./views/admin/AdminEvents'));
+const AdminContent = lazy(() => import('./views/admin/AdminContent'));
+const Legal = lazy(() => import('./views/pages/Legal'));
 
 export default function App() {
   return (
@@ -52,6 +55,12 @@ export default function App() {
                     <Route path={ROUTES.MY_TICKETS} element={<Protected><MyTickets /></Protected>} />
                     <Route path={ROUTES.DASHBOARD} element={<Protected allow={isAnyAdmin}><Dashboard /></Protected>} />
                     <Route path={ROUTES.SCANNER} element={<Protected allow={isScanner}><TicketScanner /></Protected>} />
+                    <Route path={ROUTES.ADMIN_EVENTS} element={<Protected allow={isEventManager}><AdminEvents /></Protected>} />
+                    <Route path={ROUTES.ADMIN_CONTENT} element={<Protected allow={isEventManager}><AdminContent /></Protected>} />
+                    <Route path={`${ROUTES.ADMIN_CONTENT}/:section`} element={<Protected allow={isEventManager}><AdminContent /></Protected>} />
+                    <Route path={ROUTES.TERMS} element={<Legal doc="terms" />} />
+                    <Route path={ROUTES.PRIVACY} element={<Legal doc="privacy" />} />
+                    <Route path={ROUTES.COOKIES} element={<Legal doc="cookies" />} />
                     <Route path="*" element={<NotFound />} />
                   </Routes>
                 </Suspense>
@@ -79,9 +88,9 @@ function Protected({ children, allow }: { children: ReactNode; allow?: (role: Us
   if (allow && !allow(role)) {
     return (
       <div className="min-h-[70vh] flex flex-col items-center justify-center p-6 text-center">
-        <h1 className="font-display font-bold text-3xl md:text-5xl uppercase italic tracking-tighter mb-4">Staff only</h1>
+        <h1 className="display text-3xl md:text-5xl mb-4">Staff only</h1>
         <p className="text-bai-black/70 max-w-sm mb-8">Your account does not have access to this page. If you think it should, ask an administrator to update your role.</p>
-        <Link to={ROUTES.HOME} className="h-12 px-8 bg-bai-black text-white font-display font-bold uppercase tracking-widest text-xs rounded-xl hover:bg-bai-red transition-colors flex items-center">Back to home</Link>
+        <Link to={ROUTES.HOME} className="btn btn-primary">Back to home</Link>
       </div>
     );
   }
@@ -91,9 +100,9 @@ function Protected({ children, allow }: { children: ReactNode; allow?: (role: Us
 function NotFound() {
   return (
     <div className="min-h-[70vh] flex flex-col items-center justify-center p-6 text-center">
-      <h1 className="font-display font-bold text-4xl md:text-6xl uppercase italic tracking-tighter mb-4">Page not found</h1>
+      <h1 className="display text-4xl md:text-6xl mb-4">Page not found</h1>
       <p className="text-bai-black/70 max-w-sm mb-8">That page does not exist or has moved.</p>
-      <Link to={ROUTES.HOME} className="h-12 px-8 bg-bai-black text-white font-display font-bold uppercase tracking-widest text-xs rounded-xl hover:bg-bai-red transition-colors flex items-center">Back to home</Link>
+      <Link to={ROUTES.HOME} className="btn btn-primary">Back to home</Link>
     </div>
   );
 }

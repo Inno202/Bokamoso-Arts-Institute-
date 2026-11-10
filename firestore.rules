@@ -194,25 +194,33 @@ service cloud.firestore {
     }
 
     // ---------- site content ----------
+    //
+    // One document per section of the site. Everyone can read it; only content
+    // editors can change it, and every save records who made it and when.
 
-    match /team/{memberId} {
+    function isContentEditor() { return hasAnyRole(['SUPER_ADMIN', 'PRO', 'CEO']); }
+
+    match /content/{section} {
       allow read: if true;
-      allow write: if isEventManager();
+      allow create, update: if isContentEditor()
+        && section in ['site', 'home', 'about', 'work', 'traditions', 'donate']
+        && request.resource.data.keys().hasOnly(['data', 'updatedAt', 'updatedBy'])
+        && request.resource.data.data is map
+        && request.resource.data.updatedAt == request.time
+        && request.resource.data.updatedBy == request.auth.uid;
+      allow delete: if isSuperAdmin();
     }
 
-    match /content/{docId} {
-      allow read: if true;
-      allow write: if isEventManager();
-    }
-
+    // Where the About and Our Work pages kept their content before the content
+    // store existed. Still readable as a fallback, no longer writable.
     match /about/{docId} {
       allow read: if true;
-      allow write: if isAnyAdmin();
+      allow write: if false;
     }
 
     match /work/{docId} {
       allow read: if true;
-      allow write: if isAnyAdmin();
+      allow write: if false;
     }
 
     // ---------- carts ----------
