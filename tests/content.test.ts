@@ -31,6 +31,18 @@ describe('safe links and images', () => {
   });
 });
 
+// A price list, to exercise number fields the way any priced content would use them.
+const priceList: Field[] = [
+  { kind: 'text', key: 'quote', label: 'Quote', max: 240 },
+  { kind: 'list', key: 'tiers', label: 'Prices', itemLabel: 'Price', titleKey: 'title', min: 1, max: 6, fields: [
+    { kind: 'text', key: 'title', label: 'Name', max: 40, required: true },
+    { kind: 'number', key: 'amount', label: 'Amount in rand', min: 1, max: 1000000, integer: true },
+    { kind: 'text', key: 'perk', label: 'What it pays for', max: 160, required: true },
+  ] },
+  { kind: 'number', key: 'minimumAmount', label: 'Smallest amount', min: 1, max: 100000, integer: true },
+];
+const priceDefaults = { quote: '', tiers: [{ title: 'Standard', amount: 50, perk: 'Entry.' }], minimumAmount: 10 };
+
 describe('loading content', () => {
   it('shows the built-in defaults when the store is empty or unreachable', () => {
     for (const key of SECTION_KEYS) {
@@ -70,7 +82,7 @@ describe('loading content', () => {
   });
 
   it('drops malformed list items and wrong types instead of crashing', () => {
-    const donate = resolveSection('donate', {
+    const prices = resolve(priceList, {
       tiers: [
         { title: 'Friend', amount: 100, perk: 'Sheet music for a term.' },
         { title: 'No amount', amount: '', perk: 'x' },
@@ -79,14 +91,14 @@ describe('loading content', () => {
         null,
       ],
       minimumAmount: 'ten',
-    });
-    expect(donate.tiers).toEqual([{ title: 'Friend', amount: 100, perk: 'Sheet music for a term.' }]);
-    expect(donate.minimumAmount).toBe(10);
+    }, priceDefaults) as any;
+    expect(prices.tiers).toEqual([{ title: 'Friend', amount: 100, perk: 'Sheet music for a term.' }]);
+    expect(prices.minimumAmount).toBe(10);
   });
 
   it('falls back to the default list when too few valid items remain', () => {
-    const donate = resolveSection('donate', { tiers: [{ title: '', amount: 0, perk: '' }] });
-    expect(donate.tiers).toEqual(SECTIONS.donate.defaults.tiers);
+    const list = resolve(priceList, { tiers: [{ title: '', amount: 0, perk: '' }] }, priceDefaults);
+    expect(list.tiers).toEqual(priceDefaults.tiers);
   });
 
   it('allows a list to be emptied on purpose', () => {
@@ -138,7 +150,7 @@ describe('loading content', () => {
 });
 
 describe('validating what staff type', () => {
-  const tierFields = SECTIONS.donate.fields;
+  const tierFields = priceList;
 
   it('rejects empty and out-of-range prices', () => {
     const draft = { quote: '', minimumAmount: 10, tiers: [

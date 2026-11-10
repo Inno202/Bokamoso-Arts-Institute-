@@ -245,22 +245,22 @@ test('site content is public to read', async () => {
 
 test('only content editors can change site content', async () => {
   for (const uid of ['root', 'ceo', 'pro']) {
-    await assertSucceeds(setDoc(doc(as(uid), 'content/donate'), section(uid)));
+    await assertSucceeds(setDoc(doc(as(uid), 'content/traditions'), section(uid)));
   }
   for (const uid of ['alice', 'door', 'fin', 'exadmin']) {
-    await assertFails(setDoc(doc(as(uid), 'content/donate'), section(uid)));
+    await assertFails(setDoc(doc(as(uid), 'content/traditions'), section(uid)));
   }
-  await assertFails(setDoc(doc(guest(), 'content/donate'), section('root')));
-  await assertFails(deleteDoc(doc(as('pro'), 'content/donate')));
-  await assertFails(deleteDoc(doc(as('alice'), 'content/donate')));
+  await assertFails(setDoc(doc(guest(), 'content/traditions'), section('root')));
+  await assertFails(deleteDoc(doc(as('pro'), 'content/traditions')));
+  await assertFails(deleteDoc(doc(as('alice'), 'content/traditions')));
 });
 
 test('content saves must be well-formed and signed by the person saving', async () => {
   const db = as('pro');
-  await assertFails(setDoc(doc(db, 'content/donate'), section('root')), 'someone else as author');
-  await assertFails(setDoc(doc(db, 'content/donate'), section('pro', { updatedAt: Timestamp.fromMillis(0) })), 'back-dated');
-  await assertFails(setDoc(doc(db, 'content/donate'), section('pro', { role: 'SUPER_ADMIN' })), 'extra fields');
-  await assertFails(setDoc(doc(db, 'content/donate'), section('pro', { data: 'text' })), 'data is not a map');
+  await assertFails(setDoc(doc(db, 'content/traditions'), section('root')), 'someone else as author');
+  await assertFails(setDoc(doc(db, 'content/traditions'), section('pro', { updatedAt: Timestamp.fromMillis(0) })), 'back-dated');
+  await assertFails(setDoc(doc(db, 'content/traditions'), section('pro', { role: 'SUPER_ADMIN' })), 'extra fields');
+  await assertFails(setDoc(doc(db, 'content/traditions'), section('pro', { data: 'text' })), 'data is not a map');
   await assertFails(setDoc(doc(db, 'content/anything-else'), section('pro')), 'unknown section');
 });
 

@@ -57,9 +57,6 @@ export default function Legal({ doc }: { doc: Doc }) {
               <li>Event dates, times and venues can change. The Events page and your ticket always show the current details.</li>
             </UL>
 
-            <H>Donations</H>
-            <P>The Donate page does not take payment. It opens an email to us with the amount you would like to give, and we reply with payment details. A pledge is not a binding commitment.</P>
-
             <H>Using the site</H>
             <P>Do not try to break, overload or gain unauthorised access to the site, book tickets with automated tools, or use another person's account.</P>
 
@@ -80,7 +77,7 @@ export default function Legal({ doc }: { doc: Doc }) {
               <li><strong>Account details:</strong> your name and email address when you create an account. If you sign in with Google, we receive your name and email address from Google. Your password is handled by Google Firebase Authentication; we never see or store it.</li>
               <li><strong>Tickets:</strong> which events you booked, how many tickets, the price, the time of booking, and when a ticket was scanned at the door and by which staff account.</li>
               <li><strong>Your bag:</strong> the tickets you have added but not yet booked, saved to your account and in your browser so they are still there when you come back.</li>
-              <li><strong>Emails you send us:</strong> a donation pledge or mailing-list request is an ordinary email sent from your own email app. We receive whatever you choose to send.</li>
+              <li><strong>Emails you send us:</strong> a mailing-list request is an ordinary email sent from your own email app. We receive whatever you choose to send.</li>
               <li><strong>Staff activity:</strong> for staff accounts, your role and a record of which account last changed site content or scanned a ticket.</li>
             </UL>
             <P>We do not collect card or bank details on this site, and we do not use advertising or analytics trackers.</P>

@@ -4,7 +4,6 @@ export const ROUTES = {
   PROGRAMS: '/programs',
   EVENTS: '/events',
   TRADITIONS: '/traditions',
-  DONATE: '/donate',
   DASHBOARD: '/dashboard',
   SCANNER: '/scanner',
   LOGIN: '/login',

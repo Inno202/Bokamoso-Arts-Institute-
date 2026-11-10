@@ -26,7 +26,7 @@ export interface HomeContent {
   community: { headingLine1: string; headingLine2: string; caption: string; images: string[] };
   highlights: {
     headingLine1: string; headingLine2: string; intro: string;
-    items: Array<{ date: string; title: string; text: string; linkLabel: string; linkTo: 'traditions' | 'events' | 'about' | 'programs' | 'donate' }>;
+    items: Array<{ date: string; title: string; text: string; linkLabel: string; linkTo: 'traditions' | 'events' | 'about' | 'programs' }>;
   };
 }
 
@@ -57,19 +57,12 @@ export interface TraditionsContent {
   mailingList: { heading: string; text: string };
 }
 
-export interface DonateContent {
-  quote: string;
-  tiers: Array<{ title: string; amount: number; perk: string }>;
-  minimumAmount: number;
-}
-
 export interface ContentMap {
   site: SiteContent;
   home: HomeContent;
   about: AboutContent;
   work: WorkContent;
   traditions: TraditionsContent;
-  donate: DonateContent;
 }
 export type SectionKey = keyof ContentMap;
 
@@ -104,13 +97,13 @@ const statFields = (withDetail: boolean): Field[] => [
 const site: SectionDef<'site'> = {
   key: 'site',
   title: 'Contact, socials and partners',
-  shownOn: 'The footer of every page, the partners strip on the home page, and the donation and mailing-list emails.',
+  shownOn: 'The footer of every page, the partners strip on the home page, and the mailing-list email.',
   preview: '/',
   fields: [
     { kind: 'group', key: 'contact', label: 'Contact details', fields: [
       text('address', 'Address', 200, required),
       { kind: 'tel', key: 'phone', label: 'Phone number', required: true },
-      { kind: 'email', key: 'email', label: 'Email address', required: true, help: 'Donation pledges and mailing-list requests are sent here.' },
+      { kind: 'email', key: 'email', label: 'Email address', required: true, help: 'Mailing-list requests are sent here.' },
     ] },
     text('footerBlurb', 'Footer introduction', 200, long),
     text('copyrightLine', 'Line after the copyright notice', 100),
@@ -190,7 +183,6 @@ const home: SectionDef<'home'> = {
           { value: 'events', label: 'Events page' },
           { value: 'about', label: 'About page' },
           { value: 'programs', label: 'Our Work page' },
-          { value: 'donate', label: 'Donate page' },
         ] },
       ] },
     ] },
@@ -391,32 +383,7 @@ const traditions: SectionDef<'traditions'> = {
   },
 };
 
-const donate: SectionDef<'donate'> = {
-  key: 'donate',
-  title: 'Donate page',
-  shownOn: 'The Donate page.',
-  preview: '/donate',
-  fields: [
-    text('quote', 'Quote', 240, long),
-    { kind: 'list', key: 'tiers', label: 'Suggested amounts', itemLabel: 'Amount', titleKey: 'title', min: 1, max: 6, fields: [
-      text('title', 'Name', 40, required),
-      { kind: 'number', key: 'amount', label: 'Amount in rand', min: 1, max: 1000000, integer: true },
-      text('perk', 'What it pays for', 160, required),
-    ] },
-    { kind: 'number', key: 'minimumAmount', label: 'Smallest amount accepted, in rand', min: 1, max: 100000, integer: true },
-  ],
-  defaults: {
-    quote: '"Bula Pelo. Open your heart to the potential of Mabopane."',
-    tiers: [
-      { title: 'Artist Seeder', amount: 250, perk: 'Sponsors 1 month of training and uniform costs.' },
-      { title: 'Lead Sponsor', amount: 500, perk: 'Sponsors full training journey for one performer.' },
-      { title: 'Global Envoy', amount: 2500, perk: 'Directly funds one chorister for an international tour.' },
-    ],
-    minimumAmount: 10,
-  },
-};
-
-export const SECTIONS: { [K in SectionKey]: SectionDef<K> } = { site, home, about, work, traditions, donate };
+export const SECTIONS: { [K in SectionKey]: SectionDef<K> } = { site, home, about, work, traditions };
 export const SECTION_KEYS = Object.keys(SECTIONS) as SectionKey[];
 export const isSectionKey = (value: unknown): value is SectionKey =>
   typeof value === 'string' && (SECTION_KEYS as string[]).includes(value);

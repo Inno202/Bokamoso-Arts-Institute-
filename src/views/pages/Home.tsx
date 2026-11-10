@@ -9,7 +9,6 @@ const LINKS = {
   events: ROUTES.EVENTS,
   about: ROUTES.ABOUT,
   programs: ROUTES.PROGRAMS,
-  donate: ROUTES.DONATE,
 } as const;
 
 export default function Home() {
@@ -31,13 +30,10 @@ export default function Home() {
             </h1>
             <p className="text-white/85 text-lg md:text-2xl font-light mb-4 leading-relaxed max-w-2xl">{hero.text}</p>
             {hero.tagline && <p className="font-serif italic text-white text-xl md:text-2xl mb-10">{hero.tagline}</p>}
-            <div className="flex flex-col sm:flex-row gap-4">
-              <Link to={ROUTES.EVENTS} className="btn btn-lg btn-accent-light">
-                <span>See upcoming events</span>
-                <ArrowRight size={18} aria-hidden="true" />
-              </Link>
-              <Link to={ROUTES.DONATE} className="btn btn-lg btn-outline-light">Support the choir</Link>
-            </div>
+            <Link to={ROUTES.EVENTS} className="btn btn-lg btn-accent-light">
+              <span>See upcoming events</span>
+              <ArrowRight size={18} aria-hidden="true" />
+            </Link>
           </div>
         </div>
       </section>

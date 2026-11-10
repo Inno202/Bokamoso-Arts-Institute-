@@ -20,7 +20,6 @@ export default function Navbar() {
     { name: 'Our Work', path: ROUTES.PROGRAMS },
     { name: 'Events', path: ROUTES.EVENTS },
     { name: 'Traditions', path: ROUTES.TRADITIONS },
-    { name: 'Donate', path: ROUTES.DONATE },
   ];
 
   if (user) {

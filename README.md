@@ -48,7 +48,7 @@ Deactivating an account (`isActive: false`) signs the person out and removes all
 
 ## Editing the site (content store)
 
-Everything that changes on the public pages lives in one place: the Firestore `content` collection, one document per section (`site`, `home`, `about`, `work`, `traditions`, `donate`). Events live in the `events` collection.
+Everything that changes on the public pages lives in one place: the Firestore `content` collection, one document per section (`site`, `home`, `about`, `work`, `traditions`). Events live in the `events` collection.
 
 - **Staff edit it in the admin area** (Dashboard, then Events or Site content). Public pages only read; nothing is edited on a live page.
 - **Who may edit is enforced by `firestore.rules`**, not by hidden buttons: only Super Admin, CEO and PR Officer can write content or events, and every content save records who made it and when.
@@ -85,8 +85,6 @@ Checkout currently issues tickets **without charging anyone** and tells the buye
 1. Add a server-side function (for example a Firebase Cloud Function) that receives the provider's payment confirmation (PayFast ITN, Yoco or Ozow webhook), verifies its signature, and creates the tickets with the Admin SDK.
 2. Change the `tickets` `create` rule in `firestore.rules` to `if false`, so browsers can no longer create tickets.
 3. Only then set `PAYMENTS_LIVE` to `true`.
-
-The same applies to donations, which are currently pledged by email.
 
 ## Project layout
 

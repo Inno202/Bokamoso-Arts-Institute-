@@ -203,7 +203,7 @@ service cloud.firestore {
     match /content/{section} {
       allow read: if true;
       allow create, update: if isContentEditor()
-        && section in ['site', 'home', 'about', 'work', 'traditions', 'donate']
+        && section in ['site', 'home', 'about', 'work', 'traditions']
         && request.resource.data.keys().hasOnly(['data', 'updatedAt', 'updatedBy'])
         && request.resource.data.data is map
         && request.resource.data.updatedAt == request.time

@@ -15,7 +15,6 @@ const About = lazy(() => import('./views/pages/About'));
 const Programs = lazy(() => import('./views/pages/Programs'));
 const Events = lazy(() => import('./views/pages/Events'));
 const Traditions = lazy(() => import('./views/pages/Traditions'));
-const Donate = lazy(() => import('./views/pages/Donate'));
 const TicketScanner = lazy(() => import('./views/pages/TicketScanner'));
 const Login = lazy(() => import('./views/pages/Login'));
 const Register = lazy(() => import('./views/pages/Register'));
@@ -47,7 +46,6 @@ export default function App() {
                     <Route path={ROUTES.PROGRAMS} element={<Programs />} />
                     <Route path={ROUTES.EVENTS} element={<Events />} />
                     <Route path={ROUTES.TRADITIONS} element={<Traditions />} />
-                    <Route path={ROUTES.DONATE} element={<Donate />} />
                     <Route path={ROUTES.LOGIN} element={<Login />} />
                     <Route path={ROUTES.REGISTER} element={<Register />} />
                     <Route path={ROUTES.CART} element={<Cart />} />

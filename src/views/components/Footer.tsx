@@ -21,7 +21,6 @@ const quickLinks = [
   { name: 'Our Work', path: ROUTES.PROGRAMS },
   { name: 'Events', path: ROUTES.EVENTS },
   { name: 'Traditions', path: ROUTES.TRADITIONS },
-  { name: 'Donate', path: ROUTES.DONATE },
 ];
 
 const legalLinks = [
