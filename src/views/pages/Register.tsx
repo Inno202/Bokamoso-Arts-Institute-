@@ -6,7 +6,7 @@ import { authController } from '../../controllers/authController';
 import { friendlyError } from '../../controllers/lib/utils';
 
 const MIN_PASSWORD = 8;
-const input = 'w-full h-12 pl-12 bg-bai-bone border-2 border-bai-black/15 focus:border-bai-blue text-base transition-colors rounded-lg font-medium placeholder:text-bai-black/60';
+const input = 'field pl-12';
 
 function passwordStrength(password: string) {
   if (password.length < MIN_PASSWORD) return { label: `Too short: use at least ${MIN_PASSWORD} characters`, bar: 'bg-red-600', width: '25%' };
@@ -46,7 +46,7 @@ export default function Register() {
     <div className="min-h-[90vh] flex items-center justify-center p-4 bg-bai-bone">
       <div className="w-full max-w-sm bg-white rounded-2xl shadow-[0_24px_60px_-28px_rgb(0_0_0/0.45)] border-t-8 border-bai-blue overflow-hidden">
         <div className="px-8 pt-8 pb-6 text-center">
-          <h1 className="font-display font-bold text-3xl uppercase tracking-tighter italic leading-none">
+          <h1 className="display text-3xl ">
             Join <span className="text-bai-blue">Bokamoso</span>
           </h1>
           <p className="text-sm text-bai-black/70 mt-3">An account keeps your tickets in one place.</p>
@@ -73,7 +73,7 @@ export default function Register() {
                 <label htmlFor="reg-password" className="sr-only">Password, at least {MIN_PASSWORD} characters</label>
                 <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-bai-black/60" size={18} aria-hidden="true" />
                 <input id="reg-password" type={showPassword ? 'text' : 'password'} required minLength={MIN_PASSWORD} autoComplete="new-password" aria-describedby="reg-password-hint" value={password} onChange={(e) => setPassword(e.target.value)} placeholder={`Password (${MIN_PASSWORD}+ characters)`} className={`${input} pr-12`} />
-                <button type="button" onClick={() => setShowPassword(!showPassword)} aria-label={showPassword ? 'Hide password' : 'Show password'} aria-pressed={showPassword} className="absolute right-0.5 top-1/2 -translate-y-1/2 w-11 h-11 flex items-center justify-center text-bai-black/60 hover:text-bai-blue rounded-lg">
+                <button type="button" onClick={() => setShowPassword(!showPassword)} aria-label={showPassword ? 'Hide password' : 'Show password'} aria-pressed={showPassword} className="icon-btn absolute right-0.5 top-1/2 -translate-y-1/2 text-bai-black/70 hover:text-bai-blue">
                   {showPassword ? <EyeOff size={18} aria-hidden="true" /> : <Eye size={18} aria-hidden="true" />}
                 </button>
               </div>
@@ -81,7 +81,7 @@ export default function Register() {
                 {password && (
                   <>
                     <div className="h-1 w-full bg-bai-black/10 rounded-full overflow-hidden" aria-hidden="true">
-                      <div className={`h-full ${strength.bar} transition-all duration-300`} style={{ width: strength.width }} />
+                      <div className={`h-full ${strength.bar} transition-[width] duration-300`} style={{ width: strength.width }} />
                     </div>
                     <p className="text-xs text-bai-black/70 mt-1.5">{strength.label}</p>
                   </>
@@ -100,7 +100,7 @@ export default function Register() {
         </div>
 
         <p className="p-6 bg-bai-bone text-center border-t border-bai-black/10 text-sm text-bai-black/70">
-          Already have an account? <Link to={ROUTES.LOGIN} state={location.state} className="font-bold text-bai-blue underline">Sign in</Link>
+          Already have an account? <Link to={ROUTES.LOGIN} state={location.state} className="link">Sign in</Link>
         </p>
       </div>
     </div>

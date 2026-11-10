@@ -8,7 +8,7 @@ import { db } from '../../controllers/lib/firebase';
 import { friendlyError } from '../../controllers/lib/utils';
 import { GoogleMark } from '../components/GoogleMark';
 
-const input = 'w-full h-12 pl-12 bg-bai-bone border-2 border-bai-black/15 focus:border-bai-red text-base transition-colors rounded-lg font-medium placeholder:text-bai-black/60';
+const input = 'field pl-12';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -75,7 +75,7 @@ export default function Login() {
     <div className="min-h-[90vh] flex items-center justify-center p-4 bg-bai-bone">
       <div className="w-full max-w-sm bg-white rounded-2xl shadow-[0_24px_60px_-28px_rgb(0_0_0/0.45)] border-t-8 border-bai-red overflow-hidden">
         <div className="px-8 pt-8 pb-6 text-center">
-          <h1 className="font-display font-bold text-3xl uppercase tracking-tighter italic leading-none">
+          <h1 className="display text-3xl ">
             Sign <span className="text-bai-red">in</span>
           </h1>
           <p className="text-sm text-bai-black/70 mt-3">Book tickets and see the ones you have.</p>
@@ -96,18 +96,18 @@ export default function Login() {
               <label htmlFor="login-password" className="sr-only">Password</label>
               <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-bai-black/60" size={18} aria-hidden="true" />
               <input id="login-password" type={showPassword ? 'text' : 'password'} required autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password" className={`${input} pr-12`} />
-              <button type="button" onClick={() => setShowPassword(!showPassword)} aria-label={showPassword ? 'Hide password' : 'Show password'} aria-pressed={showPassword} className="absolute right-0.5 top-1/2 -translate-y-1/2 w-11 h-11 flex items-center justify-center text-bai-black/60 hover:text-bai-red rounded-lg">
+              <button type="button" onClick={() => setShowPassword(!showPassword)} aria-label={showPassword ? 'Hide password' : 'Show password'} aria-pressed={showPassword} className="icon-btn absolute right-0.5 top-1/2 -translate-y-1/2 text-bai-black/70 hover:text-bai-red">
                 {showPassword ? <EyeOff size={18} aria-hidden="true" /> : <Eye size={18} aria-hidden="true" />}
               </button>
             </div>
 
             <div className="flex justify-end">
-              <button type="button" onClick={handleForgot} className="text-sm font-semibold text-bai-blue hover:text-bai-red transition-colors py-1 underline">
+              <button type="button" onClick={handleForgot} className="link py-1">
                 Forgot password?
               </button>
             </div>
 
-            <button type="submit" disabled={loading} className="w-full h-14 bg-bai-black text-white font-display font-bold uppercase tracking-[0.18em] hover:bg-bai-red transition-colors flex items-center justify-center gap-3 disabled:opacity-60 rounded-lg">
+            <button type="submit" disabled={loading} className="btn btn-lg btn-primary btn-block">
               {loading ? <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" role="status" aria-label="Signing in" /> : <><span>Sign in</span> <LogIn size={18} aria-hidden="true" /></>}
             </button>
           </form>
@@ -116,14 +116,14 @@ export default function Login() {
             <span className="h-px flex-grow bg-bai-black/15" />or<span className="h-px flex-grow bg-bai-black/15" />
           </div>
 
-          <button onClick={() => run(() => authController.loginWithGoogle())} disabled={loading} className="w-full h-12 bg-white border-2 border-bai-black/20 hover:border-bai-black transition-colors flex items-center justify-center gap-3 rounded-lg font-bold text-sm disabled:opacity-60">
+          <button onClick={() => run(() => authController.loginWithGoogle())} disabled={loading} className="btn btn-outline btn-block">
             <GoogleMark className="w-5 h-5" />
             <span>Sign in with Google</span>
           </button>
         </div>
 
         <p className="p-6 bg-bai-bone text-center border-t border-bai-black/10 text-sm text-bai-black/70">
-          New here? <Link to={ROUTES.REGISTER} state={location.state} className="font-bold text-bai-red underline">Create an account</Link>
+          New here? <Link to={ROUTES.REGISTER} state={location.state} className="link">Create an account</Link>
         </p>
       </div>
     </div>

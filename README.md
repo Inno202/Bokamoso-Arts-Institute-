@@ -46,6 +46,34 @@ Everyone who signs up is a `USER`. Roles are changed by a super admin in Dashboa
 
 Deactivating an account (`isActive: false`) signs the person out and removes all staff access immediately.
 
+## Editing the site (content store)
+
+Everything that changes on the public pages lives in one place: the Firestore `content` collection, one document per section (`site`, `home`, `about`, `work`, `traditions`, `donate`). Events live in the `events` collection.
+
+- **Staff edit it in the admin area** (Dashboard, then Events or Site content). Public pages only read; nothing is edited on a live page.
+- **Who may edit is enforced by `firestore.rules`**, not by hidden buttons: only Super Admin, CEO and PR Officer can write content or events, and every content save records who made it and when.
+- **Built-in defaults** in `src/content/sections.ts` are shown whenever a section has never been saved or the database cannot be reached.
+- **Adding an editable field:** add it to the section's `fields` and `defaults` in `src/content/sections.ts` and use it in the page. The admin form, the validation and the safe loading all come from that one definition.
+- The About and Our Work pages fall back to their earlier `about/main` and `work/main` documents until someone saves them once in the admin area.
+
+```bash
+npm run test:unit  # content loading and validation
+```
+
+To try the admin area without touching live data, run the emulators and the dev server side by side:
+
+```bash
+npx firebase-tools emulators:start --only firestore,auth --project bokamosoarts-6bf62
+```
+
+```bash
+VITE_USE_EMULATORS=true npx vite
+```
+
+## Terms, privacy and cookies
+
+`src/views/pages/Legal.tsx` holds the three policies. Update it, and its "last updated" date, in the same change as anything that alters what is charged, collected, stored or promised.
+
 ## Images
 
 Set `VITE_CLOUDINARY_CLOUD_NAME` and `VITE_CLOUDINARY_UPLOAD_PRESET` (see `.env.example`) so uploads go to Cloudinary. Without them, uploaded images are compressed and stored inside Firestore documents, which caps each page at roughly 1 MB of images.
@@ -63,8 +91,9 @@ The same applies to donations, which are currently pledged by email.
 ## Project layout
 
 ```
+src/content       the content store: sections, defaults, validation, loader
 src/controllers   data access (Firestore, auth)
-src/views         pages and components
+src/views         public pages, components and the admin area (views/admin)
 src/hooks         shared cart state
 src/services      image upload, toasts, logging
 firestore.rules   who can read and write what

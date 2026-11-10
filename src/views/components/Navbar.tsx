@@ -87,7 +87,7 @@ export default function Navbar() {
               <Link
                 to={ROUTES.CART}
                 aria-label={totalItems > 0 ? `Your bag, ${totalItems} ${totalItems === 1 ? 'ticket' : 'tickets'}` : 'Your bag, empty'}
-                className="relative w-11 h-11 flex items-center justify-center text-bai-black hover:text-bai-red transition-colors rounded-full"
+                className="icon-btn relative text-bai-black hover:text-bai-red"
               >
                 <ShoppingCart size={20} strokeWidth={1.75} aria-hidden="true" />
                 {totalItems > 0 && (
@@ -100,11 +100,11 @@ export default function Navbar() {
 
             <div className="hidden md:block">
               {user ? (
-                <button onClick={handleSignOut} className="h-11 px-5 bg-bai-black text-white text-xs font-bold uppercase tracking-widest hover:bg-bai-red transition-colors">
+                <button onClick={handleSignOut} className="btn btn-primary">
                   Sign Out
                 </button>
               ) : (
-                <Link to={ROUTES.LOGIN} className="h-11 px-5 bg-bai-black text-white text-xs font-bold uppercase tracking-widest hover:bg-bai-red transition-colors flex items-center">
+                <Link to={ROUTES.LOGIN} className="btn btn-primary">
                   Sign In
                 </Link>
               )}
@@ -115,7 +115,7 @@ export default function Navbar() {
               aria-expanded={isOpen}
               aria-controls="mobile-menu"
               aria-label={isOpen ? 'Close menu' : 'Open menu'}
-              className="lg:hidden w-11 h-11 flex items-center justify-center text-bai-black rounded-full"
+              className="icon-btn lg:hidden text-bai-black"
             >
               {isOpen ? <X size={22} aria-hidden="true" /> : <Menu size={22} aria-hidden="true" />}
             </button>
@@ -143,11 +143,11 @@ export default function Navbar() {
               })}
               <div className="pt-5 mt-3 border-t border-bai-black/10">
                 {user ? (
-                  <button onClick={handleSignOut} className="w-full py-4 bg-bai-black text-white font-display font-bold uppercase tracking-widest">
+                  <button onClick={handleSignOut} className="btn btn-primary btn-block">
                     Sign Out
                   </button>
                 ) : (
-                  <Link to={ROUTES.LOGIN} className="block w-full py-4 bg-bai-black text-white text-center font-display font-bold uppercase tracking-widest">
+                  <Link to={ROUTES.LOGIN} className="btn btn-primary btn-block">
                     Sign In
                   </Link>
                 )}

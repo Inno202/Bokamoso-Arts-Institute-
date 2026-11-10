@@ -109,7 +109,7 @@ export default function MyTickets() {
       <div className="bg-bai-black text-white py-12 px-4 mb-12 relative overflow-hidden">
         <div className="absolute inset-0 piano-key-pattern opacity-10" aria-hidden="true" />
         <div className="max-w-7xl mx-auto relative z-10 sm:px-2 lg:px-4">
-          <h1 className="font-display font-bold text-4xl md:text-6xl tracking-tighter uppercase italic leading-none">Your <span className="text-bai-red-soft">tickets.</span></h1>
+          <h1 className="display text-4xl md:text-6xl ">Your <span className="text-bai-red-soft">tickets.</span></h1>
         </div>
       </div>
 
@@ -124,7 +124,7 @@ export default function MyTickets() {
             <TicketIcon size={56} className="mx-auto text-bai-black/25 mb-6" aria-hidden="true" />
             <h2 className="font-display font-bold text-2xl uppercase italic">No tickets yet</h2>
             <p className="text-bai-black/70 mt-4 mb-8 max-w-xs mx-auto">Tickets you book appear here, ready to show at the door.</p>
-            <Link to={ROUTES.EVENTS} className="inline-flex h-12 px-8 items-center bg-bai-black text-white font-display font-bold uppercase tracking-widest text-xs rounded-xl hover:bg-bai-red transition-colors">See upcoming events</Link>
+            <Link to={ROUTES.EVENTS} className="btn btn-primary">See upcoming events</Link>
           </div>
         ) : (
           <ul className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -134,7 +134,7 @@ export default function MyTickets() {
                 <li key={ticket.id}>
                   <button
                     onClick={() => setSelected(ticket)}
-                    className="w-full text-left bg-white rounded-3xl overflow-hidden border border-bai-black/10 shadow-[0_8px_24px_-12px_rgb(0_0_0/0.25)] flex flex-col group hover:shadow-[0_16px_40px_-16px_rgb(0_0_0/0.4)] transition-shadow"
+                    className="w-full text-left bg-white rounded-2xl overflow-hidden border border-bai-black/10 shadow-[0_8px_24px_-12px_rgb(0_0_0/0.25)] flex flex-col group hover:shadow-[0_16px_40px_-16px_rgb(0_0_0/0.4)] transition-shadow"
                   >
                     <div className="aspect-[16/9] relative overflow-hidden w-full">
                       <img
@@ -143,7 +143,7 @@ export default function MyTickets() {
                         onError={(e) => { if (!e.currentTarget.dataset.fallback) { e.currentTarget.dataset.fallback = '1'; e.currentTarget.src = FALLBACK_EVENT_IMAGE; } }}
                         loading="lazy"
                         decoding="async"
-                        className={`w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 ${ticket.status === 'VALID' ? '' : 'grayscale'}`}
+                        className={`w-full h-full object-cover photo-zoom ${ticket.status === 'VALID' ? '' : 'grayscale'}`}
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent" />
                       <div className="absolute bottom-4 left-5 right-5 flex items-end justify-between gap-3">
@@ -167,7 +167,7 @@ export default function MyTickets() {
                           <span className="line-clamp-1">{ticket.event?.venue || 'Venue to be confirmed'}</span>
                         </p>
                       </div>
-                      <span className="w-full mt-6 flex items-center justify-between p-4 bg-bai-bone rounded-xl group-hover:bg-bai-black group-hover:text-white transition-colors">
+                      <span className="w-full mt-6 flex items-center justify-between p-4 bg-bai-bone rounded-lg group-hover:bg-bai-black group-hover:text-white transition-colors">
                         <span className="text-xs font-bold uppercase tracking-widest">View ticket</span>
                         <ChevronRight size={16} aria-hidden="true" />
                       </span>
@@ -184,7 +184,7 @@ export default function MyTickets() {
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="ticket-title">
           <div onClick={() => setSelected(null)} className="absolute inset-0 bg-black/85" aria-hidden="true" />
 
-          <div className="w-full max-w-lg max-h-[92dvh] overflow-y-auto bg-white rounded-3xl relative shadow-[0_32px_80px_-24px_rgb(0_0_0/0.6)]">
+          <div className="w-full max-w-lg max-h-[92dvh] overflow-y-auto bg-white rounded-2xl relative shadow-[0_32px_80px_-24px_rgb(0_0_0/0.6)]">
             <div className="bg-bai-black px-8 pt-10 pb-8 text-center relative overflow-hidden">
               <div className="absolute inset-0 piano-key-pattern opacity-10" aria-hidden="true" />
               <button
@@ -244,11 +244,11 @@ export default function MyTickets() {
               </div>
 
               <div className="no-print grid grid-cols-2 gap-4 mt-8 pt-8 border-t-2 border-dashed border-bai-black/15">
-                <button onClick={() => handleDownload(selected)} className="h-14 bg-bai-black text-white rounded-xl font-display font-bold uppercase tracking-widest text-xs flex items-center justify-center gap-3 hover:bg-bai-red transition-colors">
+                <button onClick={() => handleDownload(selected)} className="btn btn-lg btn-primary">
                   <Download size={18} aria-hidden="true" />
                   <span>Save QR</span>
                 </button>
-                <button onClick={() => handleShare(selected)} className="h-14 border-2 border-bai-black text-bai-black rounded-xl font-display font-bold uppercase tracking-widest text-xs flex items-center justify-center gap-3 hover:bg-bai-bone transition-colors">
+                <button onClick={() => handleShare(selected)} className="btn btn-lg btn-outline">
                   <Share2 size={18} aria-hidden="true" />
                   <span>Share</span>
                 </button>

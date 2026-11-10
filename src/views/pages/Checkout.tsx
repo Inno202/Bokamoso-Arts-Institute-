@@ -50,11 +50,11 @@ export default function Checkout() {
         <div className="w-24 h-24 bg-green-100 text-green-700 rounded-full flex items-center justify-center mb-8">
           <CheckCircle size={48} aria-hidden="true" />
         </div>
-        <h1 className="font-display font-bold text-4xl md:text-6xl uppercase tracking-tighter italic mb-4">
+        <h1 className="display text-4xl md:text-6xl  mb-4">
           {issued === 1 ? 'Your ticket is' : 'Your tickets are'} <span className="text-bai-red">ready.</span>
         </h1>
         <p className="text-bai-black/70 max-w-md mb-8">Taking you to your tickets now.</p>
-        <Link to={ROUTES.MY_TICKETS} className="text-sm font-bold text-bai-blue underline">Go to my tickets</Link>
+        <Link to={ROUTES.MY_TICKETS} className="link">Go to my tickets</Link>
       </div>
     );
   }
@@ -73,7 +73,7 @@ export default function Checkout() {
     <div className="pb-24 bg-bai-bone min-h-screen">
       <div className="bg-bai-black text-white py-12 px-4 mb-12">
         <div className="max-w-4xl mx-auto">
-          <h1 className="font-display font-bold text-4xl md:text-6xl tracking-tighter uppercase italic leading-none">
+          <h1 className="display text-4xl md:text-6xl ">
             Confirm your <span className="text-bai-red-soft">order.</span>
           </h1>
         </div>
@@ -114,7 +114,7 @@ export default function Checkout() {
 
           <form onSubmit={handleConfirm} className="md:col-span-2 space-y-5">
             {!PAYMENTS_LIVE && (
-              <div className="p-4 bg-blue-50 text-blue-950 rounded-xl flex items-start gap-3">
+              <div className="p-4 bg-blue-50 text-blue-950 rounded-lg flex items-start gap-3">
                 <Info size={20} className="shrink-0 mt-0.5 text-bai-blue" aria-hidden="true" />
                 <p className="text-sm leading-relaxed">
                   <strong>Card payments are not live yet.</strong> Confirming issues your tickets now and does not charge you. We never ask for card details on this page.
@@ -127,13 +127,13 @@ export default function Checkout() {
             </p>
 
             {error && (
-              <p role="alert" className="p-4 bg-red-50 text-red-800 text-sm rounded-xl">{error}</p>
+              <p role="alert" className="p-4 bg-red-50 text-red-800 text-sm rounded-lg">{error}</p>
             )}
 
             <button
               type="submit"
               disabled={submitting}
-              className="w-full h-16 bg-bai-black text-white font-display font-bold uppercase tracking-widest rounded-xl hover:bg-bai-red transition-colors flex items-center justify-center gap-4 disabled:opacity-60"
+              className="btn btn-lg btn-primary btn-block"
             >
               {submitting ? (
                 <>
@@ -147,7 +147,7 @@ export default function Checkout() {
                 </>
               )}
             </button>
-            <Link to={ROUTES.CART} className="block text-center text-sm font-bold text-bai-blue underline py-2">Back to your bag</Link>
+            <Link to={ROUTES.CART} className="block text-center link py-2">Back to your bag</Link>
           </form>
         </div>
       </div>

@@ -19,7 +19,7 @@ export default function Home() {
   return (
     <div>
       <section className="relative py-24 md:py-32 overflow-hidden bg-bai-black text-white">
-        <div className="absolute inset-0" aria-hidden="true">
+        <div className="absolute inset-0 isolate" aria-hidden="true">
           <img src={contentImage(hero.image, 1600)} alt="" fetchPriority="high" decoding="async" className="w-full h-full object-cover opacity-40 mix-blend-overlay" />
           <div className="absolute inset-0 bg-gradient-to-t from-bai-black via-transparent to-transparent" />
         </div>

@@ -71,7 +71,7 @@ export default function TicketScanner() {
   };
 
   const modeButton = (active: boolean) =>
-    `h-14 rounded-xl flex items-center justify-center gap-3 font-bold text-xs uppercase tracking-widest border-2 transition-colors ${
+    `h-14 rounded-lg flex items-center justify-center gap-3 font-bold text-xs uppercase tracking-widest border-2 transition-colors ${
       active ? 'bg-white text-bai-black border-white' : 'border-white/30 text-white/80 hover:border-white/60'
     }`;
 
@@ -81,7 +81,7 @@ export default function TicketScanner() {
     }`}>
       <div className="max-w-lg mx-auto w-full flex-grow flex flex-col">
         <div className="pt-8 pb-6 text-center">
-          <h1 className="font-display font-bold text-2xl uppercase tracking-tighter italic flex items-center justify-center gap-3">
+          <h1 className="display text-2xl  flex items-center justify-center gap-3">
             <TicketIcon size={22} className="text-bai-red-soft" aria-hidden="true" />
             Door scanner
           </h1>
@@ -90,7 +90,7 @@ export default function TicketScanner() {
 
         <div className="mb-6 min-h-48" aria-live="assertive">
           {result?.kind === 'success' ? (
-            <div className="bg-white text-bai-black rounded-3xl p-6 sm:p-8">
+            <div className="bg-white text-bai-black rounded-2xl p-6 sm:p-8">
               <div className="flex items-center gap-4 mb-5">
                 <div className="w-14 h-14 bg-green-700 text-white rounded-2xl flex items-center justify-center shrink-0">
                   <CheckCircle size={32} aria-hidden="true" />
@@ -110,13 +110,13 @@ export default function TicketScanner() {
               </dl>
             </div>
           ) : result?.kind === 'error' ? (
-            <div className="bg-bai-red text-white rounded-3xl p-8 text-center">
+            <div className="bg-bai-red text-white rounded-2xl p-8 text-center">
               <XCircle size={56} className="mx-auto mb-4" aria-hidden="true" />
               <p className="font-display font-bold text-3xl uppercase italic mb-2">Do not admit</p>
               <p className="font-semibold">{result.message}</p>
             </div>
           ) : (
-            <div className="h-48 flex items-center justify-center border-2 border-dashed border-white/25 rounded-3xl text-white/70">
+            <div className="h-48 flex items-center justify-center border-2 border-dashed border-white/25 rounded-2xl text-white/70">
               {checking ? 'Checking ticket' : 'Ready for the next ticket'}
             </div>
           )}
@@ -124,9 +124,9 @@ export default function TicketScanner() {
 
         <div className="flex-grow flex flex-col items-center">
           {!showManual ? (
-            <div className="w-full bg-white/5 rounded-3xl overflow-hidden" id="qr-reader" />
+            <div className="w-full bg-white/5 rounded-2xl overflow-hidden" id="qr-reader" />
           ) : (
-            <form onSubmit={submitManual} className="w-full bg-white/5 rounded-3xl p-6 sm:p-8 space-y-5">
+            <form onSubmit={submitManual} className="w-full bg-white/5 rounded-2xl p-6 sm:p-8 space-y-5">
               <div>
                 <label htmlFor="manual-ticket" className="block text-sm font-bold text-white/80 mb-3">Ticket reference</label>
                 <input
@@ -138,13 +138,13 @@ export default function TicketScanner() {
                   autoCapitalize="characters"
                   autoComplete="off"
                   spellCheck={false}
-                  className="num w-full h-16 bg-white/10 border-2 border-white/30 text-white placeholder:text-white/50 rounded-xl px-5 focus:border-white font-mono text-lg uppercase"
+                  className="num w-full h-16 bg-white/10 border-2 border-white/30 text-white placeholder:text-white/50 rounded-lg px-5 focus:border-white font-mono text-lg uppercase"
                 />
               </div>
               <button
                 type="submit"
                 disabled={checking || !manualId.trim()}
-                className="w-full h-16 bg-white text-bai-black font-display font-bold uppercase tracking-widest rounded-xl hover:bg-bai-red hover:text-white transition-colors disabled:opacity-50"
+                className="btn btn-lg btn-light btn-block"
               >
                 {checking ? 'Checking' : 'Check ticket'}
               </button>

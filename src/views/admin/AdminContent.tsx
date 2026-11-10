@@ -152,7 +152,7 @@ function SectionEditor({ sectionKey }: { sectionKey: SectionKey }) {
         ))}
       </div>
 
-      <div className="sticky bottom-0 mt-12 -mx-4 px-4 py-4 bg-bai-bone/95 backdrop-blur-sm border-t border-bai-black/15 flex flex-wrap items-center gap-3">
+      <div className="sticky bottom-0 mt-12 -mx-4 px-4 py-4 bg-bai-bone border-t border-bai-black/15 flex flex-wrap items-center gap-3">
         <button type="submit" disabled={saving || !dirty} className="btn btn-primary">
           {saving ? <Loader2 size={16} className="animate-spin" aria-hidden="true" /> : <Save size={16} aria-hidden="true" />}
           <span>{saving ? 'Saving' : 'Save changes'}</span>

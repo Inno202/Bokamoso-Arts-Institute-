@@ -51,9 +51,9 @@ export default function Cart() {
     return (
       <div className="min-h-[70vh] flex flex-col items-center justify-center p-4 text-center">
         <ShoppingBag size={56} className="text-bai-black/25 mb-6" aria-hidden="true" />
-        <h1 className="font-display font-bold text-3xl uppercase tracking-tighter italic mb-4">Your bag is empty</h1>
+        <h1 className="display text-3xl  mb-4">Your bag is empty</h1>
         <p className="text-bai-black/70 max-w-xs mb-8">Pick a performance and your tickets will wait here until you check out.</p>
-        <Link to={ROUTES.EVENTS} className="h-14 px-10 bg-bai-black text-white font-display font-bold uppercase tracking-widest text-sm rounded-xl hover:bg-bai-red transition-colors flex items-center">
+        <Link to={ROUTES.EVENTS} className="btn btn-lg btn-primary">
           See upcoming events
         </Link>
       </div>
@@ -64,7 +64,7 @@ export default function Cart() {
     <div className="pb-24 bg-bai-bone min-h-screen">
       <div className="bg-bai-black text-white py-12 px-4 mb-12">
         <div className="max-w-7xl mx-auto sm:px-2 lg:px-4 flex items-end justify-between gap-6">
-          <h1 className="font-display font-bold text-4xl md:text-6xl tracking-tighter uppercase italic leading-none">Your <span className="text-bai-red-soft">bag.</span></h1>
+          <h1 className="display text-4xl md:text-6xl ">Your <span className="text-bai-red-soft">bag.</span></h1>
           <p className="num font-display font-bold text-xl md:text-2xl">{totalItems} {totalItems === 1 ? 'ticket' : 'tickets'}</p>
         </div>
       </div>
@@ -123,8 +123,8 @@ export default function Cart() {
           </div>
 
           <aside className="lg:col-span-1" aria-labelledby="bag-summary">
-            <div className="bg-white rounded-3xl p-6 sm:p-8 border-t-8 border-bai-black shadow-[0_24px_60px_-28px_rgb(0_0_0/0.4)] sticky top-28">
-              <h2 id="bag-summary" className="font-display font-bold text-2xl uppercase tracking-tighter italic mb-6">Summary</h2>
+            <div className="bg-white rounded-2xl p-6 sm:p-8 border-t-8 border-bai-black shadow-[0_24px_60px_-28px_rgb(0_0_0/0.4)] sticky top-28">
+              <h2 id="bag-summary" className="display text-2xl  mb-6">Summary</h2>
               <dl className="space-y-3 mb-8 text-sm">
                 <div className="flex justify-between">
                   <dt className="text-bai-black/70">Subtotal</dt>
@@ -141,7 +141,7 @@ export default function Cart() {
                   <dd className="num font-display font-bold text-3xl text-bai-red">{formatCurrency(total)}</dd>
                 </div>
               </dl>
-              <button onClick={handleCheckout} className="w-full h-16 bg-bai-black text-white font-display font-bold uppercase tracking-widest hover:bg-bai-red transition-colors flex items-center justify-center gap-4 rounded-xl">
+              <button onClick={handleCheckout} className="btn btn-lg btn-primary btn-block">
                 <span>{user ? 'Checkout' : 'Sign in to checkout'}</span>
                 <ArrowRight size={20} aria-hidden="true" />
               </button>
