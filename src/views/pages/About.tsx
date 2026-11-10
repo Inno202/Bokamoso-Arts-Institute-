@@ -5,6 +5,10 @@ import { aboutController, AboutContent, INITIAL_ABOUT_DATA } from '../../control
 import { cloudinaryService } from '../../services/cloudinaryService';
 import { ManagedImage } from '../components/ManagedImage';
 import ImageCropperModal from '../components/ImageCropperModal';
+import { friendlyError } from '../../controllers/lib/utils';
+import { toast } from '../../services/toast';
+import { logger } from '../../services/loggerService';
+import { isAnyAdmin } from '../../models/types';
 
 export default function About() {
   const { role } = useAuth();
@@ -21,11 +25,10 @@ export default function About() {
     index?: number;
   } | null>(null);
 
-  const isAdmin = role === 'SUPER_ADMIN' || role === 'PRO' || role === 'CEO' || role === 'FINANCE_MANAGER';
+  const isAdmin = isAnyAdmin(role);
 
   useEffect(() => {
     const unsubscribe = aboutController.subscribeToAbout((data) => {
-      console.log('About data received:', data);
       if (data && data.story) {
         const mergedData = {
           ...INITIAL_ABOUT_DATA,
@@ -41,7 +44,6 @@ export default function About() {
         setContent(mergedData);
         if (!isEditing) setDraft(mergedData);
       } else {
-        console.log('No about data or invalid structure, falling back to initial data...');
         setContent(INITIAL_ABOUT_DATA);
         setDraft(INITIAL_ABOUT_DATA);
       }
@@ -66,16 +68,10 @@ export default function About() {
       await aboutController.updateAbout(draft);
       setContent(draft);
       setIsEditing(false);
-      alert('Changes saved successfully!');
-      console.log('Changes saved successfully to Firebase');
+      toast.success('Changes saved.');
     } catch (err) {
-      console.error('Save failed:', err);
-      const msg = err instanceof Error ? err.message : 'Unknown error';
-      if (msg.includes('permission-denied')) {
-        alert('Permission Denied: You do not have permission to edit this content.');
-      } else {
-        alert('Failed to save changes. Please check the console for details.');
-      }
+      logger.error('Save failed:', err);
+      toast.error(friendlyError(err, 'Your changes could not be saved. Check your connection and try again.'));
     } finally {
       setSaving(false);
     }
@@ -117,14 +113,14 @@ export default function About() {
         }
       }
     } catch (err) {
-      console.error('Upload error:', err);
-      alert('Image upload failed. Please try again.');
+      logger.error('Upload error:', err);
+      toast.error(friendlyError(err, 'The image could not be uploaded. Please try again.'));
     } finally {
       if (type === 'management') setUploadingIndex(null);
     }
   };
 
-  if (!content || !draft || !content.story) return <div className="min-h-screen flex items-center justify-center font-display font-black text-4xl animate-pulse italic uppercase tracking-tighter">BULA PELO...</div>;
+  if (!content || !draft || !content.story) return <div className="min-h-screen flex items-center justify-center font-display font-bold text-4xl animate-pulse italic uppercase tracking-tighter">BULA PELO...</div>;
 
   return (
     <div className="pb-24 relative bg-bai-bone">
@@ -133,11 +129,11 @@ export default function About() {
         <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1516280440614-37939bbacd81?auto=format&fit=crop&q=80&w=1600')] bg-cover bg-center opacity-20" />
         <div className="absolute inset-0 piano-key-pattern opacity-10" />
         <div className="max-w-7xl mx-auto relative z-10">
-          <span className="bula-pelo-text text-white text-2xl mb-4 block">The BAI Rhythm</span>
-          <h1 className="font-display font-extrabold text-4xl sm:text-5xl md:text-7xl tracking-tighter leading-[1] mb-8 italic uppercase">
-            ABOUT <br /> <span className="text-bai-red">BOKAMOSO.</span>
+          <span className="font-serif italic text-white text-2xl mb-4 block">The BAI Rhythm</span>
+          <h1 className="font-display font-bold text-4xl sm:text-5xl md:text-7xl tracking-tighter leading-[1] mb-8 italic uppercase">
+            ABOUT <br /> <span className="text-bai-red-soft">BOKAMOSO.</span>
           </h1>
-          <p className="max-w-2xl text-white/60 text-lg md:text-2xl font-light leading-relaxed font-serif italic">
+          <p className="max-w-2xl text-white/80 text-lg md:text-2xl font-light leading-relaxed font-serif italic">
             "We are not just a choir; we are the guardians of the community's soul."
           </p>
         </div>
@@ -152,7 +148,7 @@ export default function About() {
               className={`${isEditing ? 'bg-bai-red' : 'bg-bai-black'} text-white px-6 py-3 rounded-full shadow-xl hover:scale-105 transition-all flex items-center space-x-3 border-2 border-white`}
             >
               {isEditing ? <X size={20} /> : <Edit2 size={20} />}
-              <span className="font-bold uppercase tracking-widest text-[10px]">{isEditing ? 'Cancel' : 'Edit Content'}</span>
+              <span className="font-bold uppercase tracking-widest text-xs">{isEditing ? 'Cancel' : 'Edit Content'}</span>
             </button>
             {isEditing && (
               <button
@@ -161,7 +157,7 @@ export default function About() {
                 className="mt-4 bg-green-600 text-white px-8 py-3 rounded-full shadow-xl hover:bg-green-700 transition-all flex items-center justify-center space-x-3 border-2 border-white"
               >
                 <Save size={20} />
-                <span className="font-bold uppercase tracking-widest text-[10px]">{saving ? 'Saving...' : 'Save All'}</span>
+                <span className="font-bold uppercase tracking-widest text-xs">{saving ? 'Saving...' : 'Save All'}</span>
               </button>
             )}
           </div>
@@ -170,17 +166,17 @@ export default function About() {
         {/* Section 1: Our Story */}
         <section className="py-20 md:py-32 grid grid-cols-1 lg:grid-cols-2 gap-20 items-center">
           <div className="space-y-8">
-            <div className="inline-block px-3 py-1 bg-bai-red text-white text-[10px] font-black uppercase tracking-widest rounded-sm">
+            <div className="inline-block px-3 py-1 bg-bai-red text-white text-xs font-black uppercase tracking-widest rounded-sm">
               Since 2022
             </div>
             {isEditing ? (
               <input
-                className="w-full font-display font-black text-4xl md:text-6xl uppercase tracking-tighter italic bg-transparent border-b border-bai-black/10 outline-none"
+                className="w-full font-display font-bold text-4xl md:text-6xl uppercase tracking-tighter italic bg-transparent border-b border-bai-black/10 outline-none"
                 value={draft.story.title}
                 onChange={(e) => setDraft({ ...draft, story: { ...draft.story, title: e.target.value } })}
               />
             ) : (
-              <h2 className="font-display font-black text-4xl md:text-6xl uppercase tracking-tighter italic">{content.story.title}</h2>
+              <h2 className="font-display font-bold text-4xl md:text-6xl uppercase tracking-tighter italic">{content.story.title}</h2>
             )}
             
             {isEditing ? (
@@ -201,17 +197,17 @@ export default function About() {
                 <div key={`stat-${i}`}>
                   {isEditing ? (
                     <>
-                      <input className="text-4xl font-display font-black bg-transparent w-24" value={stat.value} onChange={(e) => {
+                      <input className="text-4xl font-display font-bold bg-transparent w-24" value={stat.value} onChange={(e) => {
                         const s = [...(draft.story.stats || [])]; s[i].value = e.target.value; setDraft({ ...draft, story: { ...draft.story, stats: s } });
                       }} />
-                      <input className="block text-[10px] font-bold uppercase tracking-widest text-bai-red bg-transparent" value={stat.label} onChange={(e) => {
+                      <input className="block text-xs font-bold uppercase tracking-widest text-bai-red bg-transparent" value={stat.label} onChange={(e) => {
                         const s = [...(draft.story.stats || [])]; s[i].label = e.target.value; setDraft({ ...draft, story: { ...draft.story, stats: s } });
                       }} />
                     </>
                   ) : (
                     <>
-                      <div className="text-4xl font-display font-black">{stat.value}</div>
-                      <div className="text-[10px] font-bold uppercase tracking-widest text-bai-red">{stat.label}</div>
+                      <div className="text-4xl font-display font-bold">{stat.value}</div>
+                      <div className="text-xs font-bold uppercase tracking-widest text-bai-red">{stat.label}</div>
                     </>
                   )}
                 </div>
@@ -235,23 +231,23 @@ export default function About() {
         {/* Section 2: Values */}
         <section className="py-20 bg-bai-black text-white rounded-[3rem] px-8 md:px-16 overflow-hidden relative">
           <div className="absolute top-0 right-0 w-64 h-64 piano-key-pattern opacity-10" />
-          <h2 className="font-display font-black text-3xl md:text-5xl uppercase italic mb-16 text-bai-blue">Our Foundation</h2>
+          <h2 className="font-display font-bold text-3xl md:text-5xl uppercase italic mb-16 text-bai-blue-soft">Our Foundation</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12">
             {draft.values?.map((v, i) => (
               <div key={`value-${i}`} className="space-y-4 group">
                 {isEditing ? (
                   <>
-                    <input className="w-full font-display font-bold text-xl uppercase tracking-wider bg-transparent border-b border-white/10 outline-none text-bai-red" value={v.title} onChange={(e) => {
+                    <input className="w-full font-display font-bold text-xl uppercase tracking-wider bg-transparent border-b border-white/30 outline-none text-bai-red-soft" value={v.title} onChange={(e) => {
                       const vals = [...(draft.values || [])]; vals[i].title = e.target.value; setDraft({ ...draft, values: vals });
                     }} />
-                    <textarea className="w-full text-white/40 text-sm bg-transparent outline-none" rows={3} value={v.desc} onChange={(e) => {
+                    <textarea className="w-full text-white/75 text-sm bg-transparent outline-none" rows={3} value={v.desc} onChange={(e) => {
                       const vals = [...(draft.values || [])]; vals[i].desc = e.target.value; setDraft({ ...draft, values: vals });
                     }} />
                   </>
                 ) : (
                   <>
-                    <h3 className="font-display font-bold text-xl uppercase tracking-wider text-bai-red group-hover:translate-x-2 transition-transform">{v.title}</h3>
-                    <p className="text-white/40 text-sm leading-relaxed">{v.desc}</p>
+                    <h3 className="font-display font-bold text-xl uppercase tracking-wider text-bai-red-soft group-hover:translate-x-2 transition-transform">{v.title}</h3>
+                    <p className="text-white/75 text-sm leading-relaxed">{v.desc}</p>
                   </>
                 )}
               </div>
@@ -262,7 +258,7 @@ export default function About() {
         {/* Section 3: Management */}
         <section className="py-20 md:py-32">
           <div className="flex flex-col md:flex-row justify-between items-center mb-20 gap-8">
-            <h2 className="font-display font-black text-4xl md:text-7xl uppercase italic tracking-tighter">MANAGEMENT <span className="text-bai-red">TEAM.</span></h2>
+            <h2 className="font-display font-bold text-4xl md:text-7xl uppercase italic tracking-tighter">MANAGEMENT <span className="text-bai-red">TEAM.</span></h2>
             {isEditing && (
               <button 
                 onClick={() => {
@@ -312,7 +308,7 @@ export default function About() {
                        ) : (
                          <Upload className="text-white" />
                        )}
-                       <span className="text-white text-[10px] font-bold uppercase tracking-widest">
+                       <span className="text-white text-xs font-bold uppercase tracking-widest">
                          {uploadingIndex === i ? 'Uploading...' : 'Change Photo'}
                        </span>
                        <input type="file" accept="image/*" hidden onChange={(e) => e.target.files?.[0] && handleImageUpload(e.target.files[0], 'management', i)} />
@@ -325,18 +321,18 @@ export default function About() {
                         <input className="font-display font-bold uppercase text-xs text-bai-red tracking-widest bg-transparent border-b border-bai-black/10 w-full" value={m.role} onChange={(e) => {
                           const ms = [...draft.management]; ms[i].role = e.target.value; setDraft({ ...draft, management: ms });
                         }} />
-                        <input className="font-display font-black text-2xl uppercase bg-transparent border-b border-bai-black/10 w-full" value={m.name} onChange={(e) => {
+                        <input className="font-display font-bold text-2xl uppercase bg-transparent border-b border-bai-black/10 w-full" value={m.name} onChange={(e) => {
                           const ms = [...draft.management]; ms[i].name = e.target.value; setDraft({ ...draft, management: ms });
                         }} />
-                        <textarea className="text-bai-black/60 text-sm bg-transparent border-b border-bai-black/10 w-full" rows={3} value={m.desc} onChange={(e) => {
+                        <textarea className="text-bai-black/75 text-sm bg-transparent border-b border-bai-black/10 w-full" rows={3} value={m.desc} onChange={(e) => {
                           const ms = [...draft.management]; ms[i].desc = e.target.value; setDraft({ ...draft, management: ms });
                         }} />
                       </div>
                     ) : (
                       <>
-                        <span className="font-display font-bold uppercase text-[10px] text-bai-red tracking-widest mb-2 block">{m.role}</span>
-                        <h3 className="font-display font-black text-2xl uppercase mb-4 leading-none">{m.name}</h3>
-                        <p className="text-bai-black/60 text-sm leading-relaxed line-clamp-4">{m.desc}</p>
+                        <span className="font-display font-bold uppercase text-xs text-bai-red tracking-widest mb-2 block">{m.role}</span>
+                        <h3 className="font-display font-bold text-2xl uppercase mb-4 leading-none">{m.name}</h3>
+                        <p className="text-bai-black/75 text-sm leading-relaxed line-clamp-4">{m.desc}</p>
                       </>
                     )}
                  </div>
@@ -348,7 +344,7 @@ export default function About() {
         {/* Section 4: Choir */}
         <section className="py-20 md:py-32">
           <div className="mb-12">
-            <h2 className="font-display font-black text-3xl md:text-5xl uppercase italic tracking-tight">CHOIR.</h2>
+            <h2 className="font-display font-bold text-3xl md:text-5xl uppercase italic tracking-tight">CHOIR.</h2>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
             {draft.choirPictures?.map((img, i) => (

@@ -2,6 +2,8 @@ import React, { useState, useCallback } from 'react';
 import Cropper from 'react-easy-crop';
 import { X, Check, ZoomIn, ZoomOut } from 'lucide-react';
 import { getCroppedImg } from '../../services/imageUtils';
+import { logger } from '../../services/loggerService';
+import { toast } from '../../services/toast';
 
 interface ImageCropperModalProps {
   image: string;
@@ -31,16 +33,17 @@ const ImageCropperModal: React.FC<ImageCropperModalProps> = ({
         onConfirm(croppedImage);
       }
     } catch (e) {
-      console.error(e);
+      logger.error('Cropping failed', e);
+      toast.error('The image could not be cropped. Try a different photo.');
     }
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-bai-black/90 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-bai-black/90" role="dialog" aria-modal="true" aria-label="Adjust image">
       <div className="bg-white w-full max-w-2xl rounded-3xl overflow-hidden shadow-2xl flex flex-col h-[80vh]">
         <div className="p-6 border-b border-bai-black/5 flex justify-between items-center bg-bai-bone">
-          <h3 className="font-display font-black uppercase italic tracking-tight text-xl">Adjust Image</h3>
-          <button onClick={onCancel} className="p-2 hover:bg-bai-black/5 rounded-full transition-colors">
+          <h3 className="font-display font-bold uppercase italic tracking-tight text-xl">Adjust Image</h3>
+          <button onClick={onCancel} aria-label="Cancel" className="w-11 h-11 flex items-center justify-center hover:bg-bai-black/5 rounded-full transition-colors">
             <X size={24} />
           </button>
         </div>
@@ -59,30 +62,30 @@ const ImageCropperModal: React.FC<ImageCropperModalProps> = ({
 
         <div className="p-8 bg-white space-y-6">
           <div className="flex items-center space-x-4">
-            <ZoomOut size={20} className="text-bai-black/40" />
+            <ZoomOut size={20} className="text-bai-black/70" />
             <input
               type="range"
               value={zoom}
               min={1}
               max={3}
               step={0.1}
-              aria-labelledby="Zoom"
+              aria-label="Zoom"
               onChange={(e) => setZoom(Number(e.target.value))}
               className="flex-grow accent-bai-black h-1 bg-bai-black/10 rounded-full appearance-none cursor-pointer"
             />
-            <ZoomIn size={20} className="text-bai-black/40" />
+            <ZoomIn size={20} className="text-bai-black/70" />
           </div>
 
           <div className="flex space-x-4">
             <button
               onClick={onCancel}
-              className="flex-1 py-4 px-6 border-2 border-bai-black text-bai-black font-display font-black uppercase tracking-widest text-xs rounded-xl hover:bg-bai-black/5 transition-all"
+              className="flex-1 py-4 px-6 border-2 border-bai-black text-bai-black font-display font-bold uppercase tracking-widest text-xs rounded-xl hover:bg-bai-black/5 transition-all"
             >
               Cancel
             </button>
             <button
               onClick={handleConfirm}
-              className="flex-1 py-4 px-6 bg-bai-black text-white font-display font-black uppercase tracking-widest text-xs rounded-xl hover:bg-bai-blue transition-all flex items-center justify-center space-x-2 shadow-lg"
+              className="flex-1 py-4 px-6 bg-bai-black text-white font-display font-bold uppercase tracking-widest text-xs rounded-xl hover:bg-bai-blue transition-all flex items-center justify-center space-x-2 shadow-lg"
             >
               <Check size={18} />
               <span>Confirm Crop</span>

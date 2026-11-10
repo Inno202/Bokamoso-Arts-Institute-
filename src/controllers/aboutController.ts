@@ -3,45 +3,10 @@ import {
   onSnapshot, 
   setDoc
 } from 'firebase/firestore';
-import { db, auth } from './lib/firebase';
+import { db } from './lib/firebase';
+import { AppError } from './lib/utils';
+import { approximateDocBytes, FIRESTORE_DOC_LIMIT } from '../services/cloudinaryService';
 import { logger } from '../services/loggerService';
-
-enum OperationType {
-  CREATE = 'create',
-  UPDATE = 'update',
-  DELETE = 'delete',
-  LIST = 'list',
-  GET = 'get',
-  WRITE = 'write',
-}
-
-interface FirestoreErrorInfo {
-  error: string;
-  operationType: OperationType;
-  path: string | null;
-  authInfo: {
-    userId?: string | null;
-    email?: string | null;
-    emailVerified?: boolean | null;
-    isAnonymous?: boolean | null;
-  }
-}
-
-function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
-  const errInfo: FirestoreErrorInfo = {
-    error: error instanceof Error ? error.message : String(error),
-    authInfo: {
-      userId: auth.currentUser?.uid,
-      email: auth.currentUser?.email,
-      emailVerified: auth.currentUser?.emailVerified,
-      isAnonymous: auth.currentUser?.isAnonymous,
-    },
-    operationType,
-    path
-  };
-  console.error('Firestore Error: ', JSON.stringify(errInfo));
-  throw new Error(JSON.stringify(errInfo));
-}
 
 export interface AboutContent {
   id?: string;
@@ -103,42 +68,24 @@ class AboutController {
       }
     }, (error) => {
       logger.error('Error subscribing to about content:', error);
+      callback(null); // fall back to the built-in content rather than loading forever
     });
   }
 
   async updateAbout(data: AboutContent) {
-    const path = `${this.collectionName}/${this.docId}`;
-    try {
-      const docRef = doc(db, this.collectionName, this.docId);
-      const cleanData = { ...data };
-      delete cleanData.id;
-
-      await setDoc(docRef, {
-        ...cleanData,
-        updatedAt: new Date().toISOString()
-      });
-      return true;
-    } catch (error) {
-      handleFirestoreError(error, OperationType.WRITE, path);
+    const { id: _id, ...cleanData } = data;
+    // Images uploaded without Cloudinary live inside this one document, which
+    // Firestore caps at 1 MB. Catch that here with a message that says what to do.
+    if (approximateDocBytes(cleanData) > FIRESTORE_DOC_LIMIT * 0.95) {
+      throw new AppError('This page now holds more images than can be saved at once. Remove a photo or two and save again.');
     }
+    await setDoc(doc(db, this.collectionName, this.docId), {
+      ...cleanData,
+      updatedAt: new Date().toISOString(),
+    });
+    return true;
   }
 
-  // Initial seed data if document is missing
-  async seedInitialData(): Promise<AboutContent> {
-    try {
-      const docRef = doc(db, this.collectionName, this.docId);
-      await setDoc(docRef, {
-        ...INITIAL_ABOUT_DATA,
-        updatedAt: new Date().toISOString()
-      }, { merge: true });
-      
-      return INITIAL_ABOUT_DATA;
-    } catch (error) {
-      // Just log and return the data so the app doesn't break
-      console.warn('Could not seed initial about data (likely permission denied for guest). Returning local data.');
-      return INITIAL_ABOUT_DATA;
-    }
-  }
 }
 
 export const aboutController = new AboutController();

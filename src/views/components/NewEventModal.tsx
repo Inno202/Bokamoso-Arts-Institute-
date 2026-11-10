@@ -1,9 +1,20 @@
-import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import { X, Calendar as CalendarIcon, MapPin, Loader2, DollarSign } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, Calendar as CalendarIcon, MapPin, Loader2 } from 'lucide-react';
 import { eventController } from '../../controllers/eventController';
 import { useAuth } from './AuthProvider';
 import { BAIEvent } from '../../models/types';
+import { cloudinaryService } from '../../services/cloudinaryService';
+import { friendlyError, toDate } from '../../controllers/lib/utils';
+import { toast } from '../../services/toast';
+import { logger } from '../../services/loggerService';
+
+/** datetime-local wants local wall-clock time, not UTC. */
+const toLocalInput = (date: BAIEvent['date']) => {
+  const d = toDate(date);
+  if (!d) return '';
+  const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
+  return local.toISOString().slice(0, 16);
+};
 
 interface NewEventModalProps {
   isOpen: boolean;
@@ -23,7 +34,7 @@ export function NewEventModal({ isOpen, onClose, onCreated, event }: NewEventMod
     name: event?.name || '',
     venue: event?.venue || '',
     city: event?.city || '',
-    date: event?.date ? (typeof event.date === 'string' ? event.date : new Date(event.date.seconds * 1000).toISOString().slice(0, 16)) : '',
+    date: toLocalInput(event?.date),
     price: event?.price || 0,
     capacity: event?.capacity || 100,
     description: event?.description || '',
@@ -37,7 +48,7 @@ export function NewEventModal({ isOpen, onClose, onCreated, event }: NewEventMod
         name: event.name,
         venue: event.venue,
         city: event.city,
-        date: event.date ? (typeof event.date === 'string' ? event.date : new Date(event.date.seconds * 1000).toISOString().slice(0, 16)) : '',
+        date: toLocalInput(event.date),
         price: event.price,
         capacity: event.capacity,
         description: event.description,
@@ -82,175 +93,185 @@ export function NewEventModal({ isOpen, onClose, onCreated, event }: NewEventMod
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.name || !formData.date) {
-      alert('Please fill in at least the event name and date.');
+    const date = new Date(formData.date);
+    if (!formData.name.trim() || Number.isNaN(date.getTime())) {
+      toast.error('Add an event name and a valid date.');
       return;
     }
-    
+
     setLoading(true);
     try {
-      const { cloudinaryService } = await import('../../services/cloudinaryService');
-      let bannerUrl = undefined;
-      let ticketUrl = undefined;
-      
-      if (bannerFile) {
-        const res = await cloudinaryService.upload(bannerFile, 'events');
-        bannerUrl = res.url || res.publicId;
-      }
-
-      if (ticketFile) {
-        const res = await cloudinaryService.upload(ticketFile, 'events');
-        ticketUrl = res.url || res.publicId;
-      }
+      const bannerUrl = bannerFile ? (await cloudinaryService.upload(bannerFile, 'events')).url : event?.bannerImageUrl;
+      const ticketUrl = ticketFile ? (await cloudinaryService.upload(ticketFile, 'events')).url : (event?.ticketImageUrl || bannerUrl);
 
       const eventData = {
-        ...formData,
-        date: new Date(formData.date),
-        createdBy: event?.createdBy || user?.uid || 'admin',
-        bannerImageUrl: bannerUrl || event?.bannerImageUrl || undefined,
-        ticketImageUrl: ticketUrl || event?.ticketImageUrl || bannerUrl || event?.bannerImageUrl || undefined
+        name: formData.name.trim(),
+        venue: formData.venue.trim(),
+        city: formData.city.trim(),
+        description: formData.description.trim(),
+        status: formData.status,
+        price: Math.max(0, Number(formData.price) || 0),
+        capacity: Math.max(1, Math.floor(Number(formData.capacity) || 1)),
+        date,
+        createdBy: event?.createdBy || user?.uid || '',
+        ...(bannerUrl ? { bannerImageUrl: bannerUrl } : {}),
+        ...(ticketUrl ? { ticketImageUrl: ticketUrl } : {}),
       };
 
       if (event?.id) {
-        console.log('Updating event:', event.id, eventData);
+        if (eventData.capacity < (event.ticketsSold || 0)) {
+          toast.error(`${event.ticketsSold} tickets are already issued, so capacity cannot go below that.`);
+          return;
+        }
         await eventController.updateEvent(event.id, eventData);
-        alert('Event updated successfully!');
+        toast.success('Event updated.');
       } else {
-        console.log('Creating event:', eventData);
         await eventController.createEvent(eventData);
-        alert('Event created successfully!');
+        toast.success('Event created. It is now on sale.');
       }
-      if (onCreated) onCreated();
+      onCreated?.();
       onClose();
     } catch (err) {
-      console.error('Event creation error:', err);
-      alert('Failed to create event. Please try again.');
+      logger.error('Saving the event failed', err);
+      toast.error(friendlyError(err, 'The event could not be saved. Please try again.'));
     } finally {
       setLoading(false);
     }
   };
 
+  // Escape closes the dialog.
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   return (
-    <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <motion.div 
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          onClick={onClose}
-          className="absolute inset-0 bg-bai-black/60 backdrop-blur-sm"
-        />
-        
-        <motion.div 
-          initial={{ opacity: 0, scale: 0.95, y: 20 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.95, y: 20 }}
-          className="relative w-full max-w-xl bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
-        >
+      <div className="fixed inset-0 z-[90] flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="event-modal-title">
+        <div onClick={onClose} className="absolute inset-0 bg-bai-black/70" aria-hidden="true" />
+
+        <div className="relative w-full max-w-xl bg-white rounded-3xl shadow-[0_32px_80px_-24px_rgb(0_0_0/0.6)] overflow-hidden flex flex-col max-h-[90dvh]">
           <div className="p-5 md:p-8 overflow-y-auto">
-            <button 
+            <button
+              type="button"
               onClick={onClose}
-              className="absolute top-4 right-4 text-bai-black/40 hover:text-bai-red transition-colors z-10"
+              aria-label="Close"
+              className="absolute top-2 right-2 w-11 h-11 flex items-center justify-center text-bai-black/70 hover:text-bai-red transition-colors z-10 rounded-full"
             >
-              <X size={20} />
+              <X size={20} aria-hidden="true" />
             </button>
 
-            <h2 className="font-display font-black text-xl md:text-2xl uppercase tracking-tighter italic mb-4">
+            <h2 id="event-modal-title" className="font-display font-bold text-xl md:text-2xl uppercase tracking-tighter italic mb-4">
               {event ? 'Edit' : 'Create'} <span className="text-bai-red">Event</span>
             </h2>
 
             <form onSubmit={handleSubmit} className="space-y-3 md:space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
               <div>
-                <label className="block text-[8px] md:text-[10px] font-black uppercase tracking-widest text-bai-black/40 mb-1">Event Name</label>
-                <input 
+                <label htmlFor="ev-name" className="block text-xs font-bold uppercase tracking-widest text-bai-black/70 mb-1">Event Name</label>
+                <input id="ev-name" 
                   type="text" 
                   required
                   value={formData.name}
                   onChange={e => setFormData({...formData, name: e.target.value})}
-                  className="w-full h-10 text-sm bg-bai-bone rounded-xl px-4 outline-none focus:ring-2 focus:ring-bai-red transition-all"
+                  className="w-full h-11 text-sm bg-bai-bone rounded-xl px-4 outline-none focus:ring-2 focus:ring-bai-red transition-all"
                   placeholder="e.g. Summer Festival"
                 />
               </div>
               
               <div>
-                <label className="block text-[8px] md:text-[10px] font-black uppercase tracking-widest text-bai-black/40 mb-1">Date & Time</label>
+                <label htmlFor="ev-date" className="block text-xs font-bold uppercase tracking-widest text-bai-black/70 mb-1">Date & Time</label>
                 <div className="relative">
                   <CalendarIcon size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-bai-black/40" />
-                  <input 
+                  <input id="ev-date" 
                     type="datetime-local" 
                     required
                     value={formData.date}
                     onChange={e => setFormData({...formData, date: e.target.value})}
-                    className="w-full h-10 text-sm bg-bai-bone rounded-xl pl-9 pr-4 outline-none focus:ring-2 focus:ring-bai-red transition-all"
+                    className="w-full h-11 text-sm bg-bai-bone rounded-xl pl-9 pr-4 outline-none focus:ring-2 focus:ring-bai-red transition-all"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-[8px] md:text-[10px] font-black uppercase tracking-widest text-bai-black/40 mb-1">Venue</label>
+                <label htmlFor="ev-venue" className="block text-xs font-bold uppercase tracking-widest text-bai-black/70 mb-1">Venue</label>
                 <div className="relative">
                   <MapPin size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-bai-black/40" />
-                  <input 
+                  <input id="ev-venue" 
                     type="text" 
                     required
                     value={formData.venue}
                     onChange={e => setFormData({...formData, venue: e.target.value})}
-                    className="w-full h-10 text-sm bg-bai-bone rounded-xl pl-9 pr-4 outline-none focus:ring-2 focus:ring-bai-red transition-all"
+                    className="w-full h-11 text-sm bg-bai-bone rounded-xl pl-9 pr-4 outline-none focus:ring-2 focus:ring-bai-red transition-all"
                     placeholder="Venue Name"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-[8px] md:text-[10px] font-black uppercase tracking-widest text-bai-black/40 mb-1">City</label>
-                <input 
+                <label htmlFor="ev-city" className="block text-xs font-bold uppercase tracking-widest text-bai-black/70 mb-1">City</label>
+                <input id="ev-city" 
                   type="text" 
                   required
                   value={formData.city}
                   onChange={e => setFormData({...formData, city: e.target.value})}
-                  className="w-full h-10 text-sm bg-bai-bone rounded-xl px-4 outline-none focus:ring-2 focus:ring-bai-red transition-all"
+                  className="w-full h-11 text-sm bg-bai-bone rounded-xl px-4 outline-none focus:ring-2 focus:ring-bai-red transition-all"
                   placeholder="e.g. Pretoria"
                 />
               </div>
 
               <div>
-                <label className="block text-[8px] md:text-[10px] font-black uppercase tracking-widest text-bai-black/40 mb-1">Ticket Price (R)</label>
+                <label htmlFor="ev-price" className="block text-xs font-bold uppercase tracking-widest text-bai-black/70 mb-1">Ticket Price (R)</label>
                 <div className="relative">
-                  <DollarSign size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-bai-black/40" />
-                  <input 
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-bai-black/70 text-sm font-bold" aria-hidden="true">R</span>
+                  <input id="ev-price" 
                     type="number" 
                     required
                     min="0"
+                    step="0.01"
                     value={formData.price}
                     onChange={e => setFormData({...formData, price: Number(e.target.value)})}
-                    className="w-full h-10 text-sm bg-bai-bone rounded-xl pl-9 pr-4 outline-none focus:ring-2 focus:ring-bai-red transition-all"
+                    className="w-full h-11 text-sm bg-bai-bone rounded-xl pl-9 pr-4 outline-none focus:ring-2 focus:ring-bai-red transition-all"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-[8px] md:text-[10px] font-black uppercase tracking-widest text-bai-black/40 mb-1">Capacity</label>
-                <input 
+                <label htmlFor="ev-capacity" className="block text-xs font-bold uppercase tracking-widest text-bai-black/70 mb-1">Capacity</label>
+                <input id="ev-capacity" 
                   type="number" 
                   required
                   min="1"
                   value={formData.capacity}
                   onChange={e => setFormData({...formData, capacity: Number(e.target.value)})}
-                  className="w-full h-10 text-sm bg-bai-bone rounded-xl px-4 outline-none focus:ring-2 focus:ring-bai-red transition-all"
+                  className="w-full h-11 text-sm bg-bai-bone rounded-xl px-4 outline-none focus:ring-2 focus:ring-bai-red transition-all"
                 />
               </div>
             </div>
 
+            <div>
+              <label htmlFor="ev-status" className="block text-xs font-bold uppercase tracking-widest text-bai-black/70 mb-1">Status</label>
+              <select id="ev-status"
+                value={formData.status}
+                onChange={e => setFormData({...formData, status: e.target.value})}
+                className="w-full h-11 text-sm bg-bai-bone rounded-xl px-4 outline-none focus:ring-2 focus:ring-bai-red transition-all"
+              >
+                <option value="On Sale">On sale (listed on the Events page)</option>
+                <option value="Draft">Draft (hidden from visitors)</option>
+                <option value="Closed">Closed (hidden, sales ended)</option>
+              </select>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-[9px] font-black uppercase tracking-widest text-bai-black/40 mb-1">Event Banner (16:9)</label>
+                <label htmlFor="ev-banner" className="block text-xs font-bold uppercase tracking-widest text-bai-black/70 mb-1">Event Banner (16:9)</label>
                 <div className="w-full h-10 bg-bai-bone rounded-xl px-4 flex items-center mb-3">
-                  <input 
+                  <input id="ev-banner" 
                     type="file" 
-                    accept="image/*"
+                    accept="image/jpeg,image/png,image/webp"
                     onChange={(e) => handleImageChange(e, 'banner')}
                     className="w-full text-xs outline-none"
                   />
@@ -258,17 +279,17 @@ export function NewEventModal({ isOpen, onClose, onCreated, event }: NewEventMod
                 {posterDataUrl && (
                   <div className="rounded-2xl overflow-hidden relative w-full border border-bai-black/10 shadow-inner bg-bai-bone p-2">
                     <img src={posterDataUrl} alt="Banner Preview" className="w-full h-auto max-h-48 object-contain mx-auto rounded-lg" />
-                    <div className="absolute top-4 left-4 bg-bai-black/60 text-white text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded backdrop-blur-sm">Banner Preview</div>
+                    <div className="absolute top-4 left-4 bg-bai-black/80 text-white text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded ">Banner Preview</div>
                   </div>
                 )}
               </div>
 
               <div>
-                <label className="block text-[9px] font-black uppercase tracking-widest text-bai-black/40 mb-1">Ticket Design (2:3)</label>
+                <label htmlFor="ev-ticket" className="block text-xs font-bold uppercase tracking-widest text-bai-black/70 mb-1">Ticket Design (2:3)</label>
                 <div className="w-full h-10 bg-bai-bone rounded-xl px-4 flex items-center mb-3">
-                  <input 
+                  <input id="ev-ticket" 
                     type="file" 
-                    accept="image/*"
+                    accept="image/jpeg,image/png,image/webp"
                     onChange={(e) => handleImageChange(e, 'ticket')}
                     className="w-full text-xs outline-none"
                   />
@@ -276,15 +297,15 @@ export function NewEventModal({ isOpen, onClose, onCreated, event }: NewEventMod
                 {ticketDataUrl && (
                   <div className="rounded-2xl overflow-hidden relative w-32 mx-auto border border-bai-black/10 shadow-inner bg-bai-bone p-2">
                     <img src={ticketDataUrl} alt="Ticket Preview" className="w-full h-auto max-h-48 object-contain mx-auto rounded-lg" />
-                    <div className="absolute top-4 left-4 bg-bai-black/60 text-white text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded backdrop-blur-sm">Ticket</div>
+                    <div className="absolute top-4 left-4 bg-bai-black/80 text-white text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded ">Ticket</div>
                   </div>
                 )}
               </div>
             </div>
 
             <div>
-              <label className="block text-[9px] font-black uppercase tracking-widest text-bai-black/40 mb-1">Description</label>
-              <textarea 
+              <label htmlFor="ev-desc" className="block text-xs font-bold uppercase tracking-widest text-bai-black/70 mb-1">Description</label>
+              <textarea id="ev-desc" 
                 required
                 rows={2}
                 value={formData.description}
@@ -299,14 +320,11 @@ export function NewEventModal({ isOpen, onClose, onCreated, event }: NewEventMod
               disabled={loading}
               className="w-full h-12 bg-bai-black text-white rounded-xl text-sm font-display font-black uppercase tracking-widest flex items-center justify-center space-x-2 hover:bg-bai-red transition-all disabled:opacity-50 mt-6"
             >
-              {loading ? <Loader2 className="animate-spin" size={16} /> : <span>{event ? 'Update' : 'Create'} Event</span>}
+              {loading ? <Loader2 className="animate-spin" size={16} aria-label="Saving" /> : <span>{event ? 'Update' : 'Create'} Event</span>}
             </button>
           </form>
           </div>
-        </motion.div>
+        </div>
       </div>
-
-      {/* No cropper used */}
-    </AnimatePresence>
   );
 }

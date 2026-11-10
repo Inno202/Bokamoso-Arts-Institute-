@@ -1,16 +1,23 @@
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Space+Grotesk:wght@300;400;700&family=Libre+Baskerville:italic@1&display=swap');
 @import "tailwindcss";
 
 @theme {
   --font-sans: "Outfit", ui-sans-serif, system-ui, sans-serif;
-  --font-display: "Space Grotesk", sans-serif;
-  --font-serif: "Libre Baskerville", serif;
+  --font-display: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Libre Baskerville", ui-serif, Georgia, serif;
 
+  /* Brand */
   --color-bai-red: #E11D48;
   --color-bai-blue: #1D4ED8;
-  --color-bai-black: #000000;
-  --color-bai-charcoal: #1A1A1A;
+  /* Lighter steps of the same hues, for small text on dark surfaces (AA contrast). */
+  --color-bai-red-soft: #FB7189;
+  --color-bai-blue-soft: #8FB0FF;
+  /* Neutrals carry a trace of the brand red's warmth instead of pure grey. */
+  --color-bai-black: #0B0B0C;
+  --color-bai-charcoal: #1A1A1C;
   --color-bai-bone: #FAF9F6;
+
+  --tracking-tighter: -0.04em;
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 @layer base {
@@ -18,15 +25,37 @@
     /* Limit base font size on small screens, scaling up to 16px on bigger screens.
        This scales down EVERYTHING built with tailwind rem units. */
     font-size: clamp(14px, 1.2vw + 10px, 16px);
+    scrollbar-color: color-mix(in srgb, var(--color-bai-black) 35%, transparent) transparent;
+    -webkit-tap-highlight-color: transparent;
   }
   body {
     @apply bg-bai-bone text-bai-black font-sans antialiased overflow-x-hidden;
+    caret-color: var(--color-bai-red);
+  }
+  h1, h2, h3 {
+    text-wrap: balance;
+  }
+  p {
+    text-wrap: pretty;
+  }
+  ::selection {
+    background: var(--color-bai-red);
+    color: #fff;
+  }
+  a {
+    text-underline-offset: 0.2em;
+  }
+  button:not(:disabled), [role="button"], select, label[for], summary {
+    cursor: pointer;
+  }
+  button:disabled {
+    cursor: not-allowed;
   }
 }
 
 @layer components {
   .township-grid {
-    background-image: 
+    background-image:
       linear-gradient(rgba(0, 0, 0, 0.03) 1px, transparent 1px),
       linear-gradient(90deg, rgba(0, 0, 0, 0.03) 1px, transparent 1px);
     background-size: 40px 40px;
@@ -50,28 +79,86 @@
     @apply px-8 py-4 bg-bai-black text-white font-display font-bold uppercase tracking-widest transition-all hover:bg-bai-red active:scale-95 border-2 border-transparent hover:border-white;
   }
 
-  .glass-card {
-    @apply bg-white/80 backdrop-blur-md border border-bai-black/10 rounded-2xl p-8 shadow-sm;
+  /* Prices, counts and references line up when their digits share a width. */
+  .num {
+    font-variant-numeric: tabular-nums;
   }
 }
 
-.bula-pelo-text {
-  @apply font-serif italic text-bai-red;
+/* Keyboard focus is always visible, on any surface. Unlayered on purpose, so the
+   many `outline-none` utilities in the markup cannot switch it off. */
+:focus-visible {
+  outline: 2px solid var(--color-bai-blue);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px #fff;
 }
 
-.heading-shred {
-  position: relative;
-  display: inline-block;
-}
-
-.heading-shred::after {
-  content: '';
+.skip-link {
   position: absolute;
-  bottom: -4px;
-  left: 0;
-  width: 100%;
-  height: 8px;
-  background-color: var(--color-bai-blue);
-  z-index: -1;
-  clip-path: polygon(0% 0%, 100% 20%, 95% 80%, 0% 100%);
+  left: 1rem;
+  top: -4rem;
+  z-index: 300;
+  padding: 0.75rem 1.25rem;
+  background: var(--color-bai-black);
+  color: #fff;
+  font-weight: 600;
+  border-radius: 0.5rem;
+  transition: top 0.2s var(--ease-out-expo);
+}
+.skip-link:focus {
+  top: 1rem;
+}
+
+.hero-rise {
+  animation: hero-rise 0.9s var(--ease-out-expo) both;
+}
+@keyframes hero-rise {
+  from { opacity: 0; transform: translateY(28px); }
+}
+
+.toast-in {
+  animation: toast-in 0.45s var(--ease-out-expo) both;
+}
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(12px); }
+}
+
+/* Html5Qrcode draws its own controls; bring them into the scanner's dark surface. */
+#qr-reader { border: 0 !important; color: #fff; }
+#qr-reader img { display: inline-block; }
+#qr-reader button {
+  background: #fff;
+  color: var(--color-bai-black);
+  font-weight: 700;
+  padding: 0.6rem 1rem;
+  border-radius: 0.5rem;
+  margin: 0.5rem 0.25rem;
+}
+#qr-reader select {
+  background: var(--color-bai-charcoal);
+  color: #fff;
+  padding: 0.5rem;
+  border-radius: 0.5rem;
+  max-width: 100%;
+}
+#qr-reader a { color: var(--color-bai-blue-soft); }
+
+@media print {
+  nav, footer, .no-print { display: none !important; }
+}
+
+/* People who ask for less motion still get every state change, without the travel. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+  }
+  .animate-spin, .animate-pulse {
+    animation-duration: 1.5s !important;
+    animation-iteration-count: infinite !important;
+  }
+  * {
+    transition-property: color, background-color, border-color, opacity, box-shadow !important;
+  }
 }

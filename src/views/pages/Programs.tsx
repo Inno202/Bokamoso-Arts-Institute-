@@ -5,6 +5,10 @@ import { workController, WorkContent, INITIAL_WORK_DATA } from '../../controller
 import { cloudinaryService } from '../../services/cloudinaryService';
 import { ManagedImage } from '../components/ManagedImage';
 import ImageCropperModal from '../components/ImageCropperModal';
+import { friendlyError } from '../../controllers/lib/utils';
+import { toast } from '../../services/toast';
+import { logger } from '../../services/loggerService';
+import { isAnyAdmin } from '../../models/types';
 
 export default function Programs() {
   const { role } = useAuth();
@@ -20,7 +24,7 @@ export default function Programs() {
     index?: number;
   } | null>(null);
 
-  const isAdmin = role === 'SUPER_ADMIN' || role === 'PRO' || role === 'CEO' || role === 'FINANCE_MANAGER';
+  const isAdmin = isAnyAdmin(role);
 
   useEffect(() => {
     const unsubscribe = workController.subscribeToWork((data) => {
@@ -62,10 +66,10 @@ export default function Programs() {
       await workController.updateWork(draft);
       setContent(draft);
       setIsEditing(false);
-      alert('Changes saved successfully!');
+      toast.success('Changes saved.');
     } catch (err) {
-      console.error('Save failed:', err);
-      alert('Failed to save changes.');
+      logger.error('Save failed:', err);
+      toast.error(friendlyError(err, 'Your changes could not be saved. Check your connection and try again.'));
     } finally {
       setSaving(false);
     }
@@ -103,8 +107,8 @@ export default function Programs() {
         }
       }
     } catch (err) {
-      console.error('Upload error:', err);
-      alert('Image upload failed.');
+      logger.error('Upload error:', err);
+      toast.error(friendlyError(err, 'The image could not be uploaded. Please try again.'));
     }
   };
 
@@ -117,27 +121,27 @@ export default function Programs() {
         <div className="max-w-4xl mx-auto relative z-10">
           {isEditing ? (
             <input 
-              className="w-full font-display font-bold uppercase tracking-[0.4em] text-bai-red text-center text-xs mb-4 bg-transparent outline-none border-b border-bai-red/30"
+              className="w-full font-display font-bold uppercase tracking-[0.18em] text-bai-red-soft text-center text-xs mb-4 bg-transparent outline-none border-b border-bai-red-soft/50"
               value={draft.hero.tagline}
               onChange={(e) => setDraft({ ...draft, hero: { ...draft.hero, tagline: e.target.value } })}
             />
           ) : (
-            <span className="font-display font-bold uppercase tracking-[0.4em] text-bai-red text-xs mb-4 block">{content.hero.tagline}</span>
+            <span className="font-display font-bold uppercase tracking-[0.18em] text-bai-red-soft text-sm mb-4 block">{content.hero.tagline}</span>
           )}
           
-          <h1 className="font-display font-extrabold text-4xl sm:text-5xl md:text-7xl text-white tracking-tighter mb-4 md:mb-8 leading-tight italic uppercase">
-            OUR <br /> <span className="text-bai-blue">WORK</span>
+          <h1 className="font-display font-bold text-4xl sm:text-5xl md:text-7xl text-white tracking-tighter mb-4 md:mb-8 leading-tight italic uppercase">
+            OUR <br /> <span className="text-bai-blue-soft">WORK</span>
           </h1>
           
           {isEditing ? (
             <textarea 
-              className="w-full text-white/50 text-lg md:text-2xl font-light leading-relaxed max-w-2xl mx-auto italic font-serif bg-transparent text-center outline-none border border-white/10 p-2"
+              className="w-full text-white/75 text-lg md:text-2xl font-light leading-relaxed max-w-2xl mx-auto italic font-serif bg-transparent text-center outline-none border border-white/10 p-2"
               rows={2}
               value={draft.hero.description}
               onChange={(e) => setDraft({ ...draft, hero: { ...draft.hero, description: e.target.value } })}
             />
           ) : (
-            <p className="text-white/50 text-lg md:text-2xl font-light leading-relaxed max-w-2xl mx-auto italic font-serif">
+            <p className="text-white/75 text-lg md:text-2xl font-light leading-relaxed max-w-2xl mx-auto italic font-serif">
               {content.hero.description}
             </p>
           )}
@@ -153,7 +157,7 @@ export default function Programs() {
               className={`${isEditing ? 'bg-bai-red' : 'bg-bai-black'} text-white px-6 py-3 rounded-full shadow-xl hover:scale-105 transition-all flex items-center space-x-3 border-2 border-white`}
             >
               {isEditing ? <X size={20} /> : <Edit2 size={20} />}
-              <span className="font-bold uppercase tracking-widest text-[10px]">{isEditing ? 'Cancel' : 'Edit Content'}</span>
+              <span className="font-bold uppercase tracking-widest text-xs">{isEditing ? 'Cancel' : 'Edit Content'}</span>
             </button>
             {isEditing && (
               <button
@@ -162,7 +166,7 @@ export default function Programs() {
                 className="mt-4 bg-green-600 text-white px-8 py-3 rounded-full shadow-xl hover:bg-green-700 transition-all flex items-center justify-center space-x-3 border-2 border-white"
               >
                 <Save size={20} />
-                <span className="font-bold uppercase tracking-widest text-[10px]">{saving ? 'Saving...' : 'Save All'}</span>
+                <span className="font-bold uppercase tracking-widest text-xs">{saving ? 'Saving...' : 'Save All'}</span>
               </button>
             )}
           </div>
@@ -192,7 +196,7 @@ export default function Programs() {
                     }}
                   />
                   <textarea 
-                    className="w-full text-bai-black/60 leading-relaxed bg-transparent border border-bai-black/10 p-2 outline-none"
+                    className="w-full text-bai-black/75 leading-relaxed bg-transparent border border-bai-black/10 p-2 outline-none"
                     rows={3}
                     value={pillar.desc}
                     onChange={(e) => {
@@ -203,7 +207,7 @@ export default function Programs() {
               ) : (
                 <>
                   <h3 className="font-display font-bold text-2xl mb-6 text-bai-black italic uppercase tracking-tight">{pillar.title}</h3>
-                  <p className="text-bai-black/60 leading-relaxed">
+                  <p className="text-bai-black/75 leading-relaxed">
                     {pillar.desc}
                   </p>
                 </>
@@ -218,9 +222,8 @@ export default function Programs() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
            <div className="flex justify-between items-end mb-20 gap-8">
               <div className="space-y-4">
-                 <span className="font-display font-bold uppercase tracking-[0.4em] text-bai-red text-[10px]">Project Archive</span>
-                 <h2 className="font-display font-black text-4xl md:text-7xl tracking-tighter uppercase italic leading-none">
-                    LIVING <br /> <span className="text-bai-blue">ENGAGEMENT</span>
+                 <h2 className="font-display font-bold text-4xl md:text-7xl tracking-tighter uppercase italic leading-none">
+                    LIVING <br /> <span className="text-bai-blue-soft">ENGAGEMENT</span>
                  </h2>
               </div>
               {isEditing && (
@@ -274,8 +277,7 @@ export default function Programs() {
                      <>
                         <div className="absolute inset-0 bg-gradient-to-t from-bai-black to-transparent opacity-80" />
                         <div className="absolute bottom-0 left-0 p-8 transform translate-y-4 group-hover:translate-y-0 transition-transform">
-                           <span className="text-[10px] text-bai-red font-bold uppercase tracking-widest">{(i+1).toString().padStart(2, '0')}</span>
-                           <h4 className="text-xl font-display font-black uppercase italic">{project.title}</h4>
+                           <h4 className="text-xl font-display font-bold uppercase italic">{project.title}</h4>
                         </div>
                      </>
                    )}
@@ -293,18 +295,18 @@ export default function Programs() {
               <div className="bg-bai-red w-12 h-12 flex items-center justify-center rounded-sm text-white">
                 <Users size={28} />
               </div>
-              <span className="font-display font-bold uppercase tracking-widest text-[10px]">Community Engagement</span>
+              <span className="font-display font-bold uppercase tracking-widest text-xs">Community Engagement</span>
             </div>
             
             {isEditing ? (
               <div className="space-y-6">
                 <input 
-                  className="w-full font-display font-black text-3xl sm:text-4xl md:text-6xl tracking-tighter mb-4 md:mb-8 leading-none italic uppercase bg-transparent border-b border-bai-black/10 outline-none"
+                  className="w-full font-display font-bold text-3xl sm:text-4xl md:text-6xl tracking-tighter mb-4 md:mb-8 leading-none italic uppercase bg-transparent border-b border-bai-black/10 outline-none"
                   value={draft.outreach.title}
                   onChange={(e) => setDraft({ ...draft, outreach: { ...draft.outreach, title: e.target.value } })}
                 />
                 <textarea 
-                  className="w-full text-bai-black/60 text-xl leading-relaxed mb-6 font-serif italic bg-transparent border border-bai-black/10 p-4 rounded-xl outline-none"
+                  className="w-full text-bai-black/75 text-xl leading-relaxed mb-6 font-serif italic bg-transparent border border-bai-black/10 p-4 rounded-xl outline-none"
                   rows={4}
                   value={draft.outreach.description}
                   onChange={(e) => setDraft({ ...draft, outreach: { ...draft.outreach, description: e.target.value } })}
@@ -312,10 +314,10 @@ export default function Programs() {
                 <div className="grid grid-cols-2 gap-8 md:gap-12 mb-12">
                    {draft.outreach.stats?.map((stat, i) => (
                      <div key={i}>
-                        <input className="font-display font-black text-4xl md:text-5xl text-bai-black italic bg-transparent w-full" value={stat.value} onChange={(e) => {
+                        <input className="font-display font-bold text-4xl md:text-5xl text-bai-black italic bg-transparent w-full" value={stat.value} onChange={(e) => {
                           const s = [...(draft.outreach.stats || [])]; s[i].value = e.target.value; setDraft({ ...draft, outreach: { ...draft.outreach, stats: s } });
                         }} />
-                        <input className="text-[10px] uppercase tracking-widest font-black text-bai-red mt-2 bg-transparent w-full" value={stat.label} onChange={(e) => {
+                        <input className="text-xs uppercase tracking-widest font-black text-bai-red mt-2 bg-transparent w-full" value={stat.label} onChange={(e) => {
                           const s = [...(draft.outreach.stats || [])]; s[i].label = e.target.value; setDraft({ ...draft, outreach: { ...draft.outreach, stats: s } });
                         }} />
                      </div>
@@ -324,17 +326,17 @@ export default function Programs() {
               </div>
             ) : (
               <>
-                <h2 className="font-display font-black text-3xl sm:text-4xl md:text-6xl tracking-tighter mb-4 md:mb-8 leading-none italic uppercase">
+                <h2 className="font-display font-bold text-3xl sm:text-4xl md:text-6xl tracking-tighter mb-4 md:mb-8 leading-none italic uppercase">
                   {content.outreach.title}
                 </h2>
-                <p className="text-bai-black/60 text-xl leading-relaxed mb-10 font-serif italic">
+                <p className="text-bai-black/75 text-xl leading-relaxed mb-10 font-serif italic">
                    {content.outreach.description}
                 </p>
                 <div className="grid grid-cols-2 gap-8 md:gap-12 mb-12">
                    {content.outreach.stats?.map((stat, i) => (
                      <div key={i}>
-                        <div className="font-display font-black text-4xl md:text-5xl text-bai-black italic">{stat.value}</div>
-                        <div className="text-[10px] uppercase tracking-widest font-black text-bai-red mt-2">{stat.label}</div>
+                        <div className="font-display font-bold text-4xl md:text-5xl text-bai-black italic">{stat.value}</div>
+                        <div className="text-xs uppercase tracking-widest font-black text-bai-red mt-2">{stat.label}</div>
                      </div>
                    ))}
                 </div>
@@ -357,7 +359,7 @@ export default function Programs() {
                )}
                <div className="absolute inset-0 piano-key-pattern opacity-10 pointer-events-none" />
                <div className="absolute bottom-0 left-0 p-10 bg-bai-red/90 text-white max-w-xs">
-                  <div className="font-display font-black uppercase text-xl leading-none">COMMUNITY IMPACT</div>
+                  <div className="font-display font-bold uppercase text-xl leading-none">COMMUNITY IMPACT</div>
                </div>
             </div>
           </div>

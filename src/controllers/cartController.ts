@@ -1,86 +1,79 @@
-import { 
-  doc, 
-  getDoc, 
-  setDoc, 
-  serverTimestamp 
-} from 'firebase/firestore';
+import { doc, getDoc, setDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from './lib/firebase';
-import { Cart, CartItem } from '../models/types';
+import { CartItem } from '../models/types';
 import { logger } from '../services/loggerService';
 
 const COLLECTION = 'cart';
+export const MAX_PER_EVENT = 10;
+const MAX_LINES = 25;
+
+/** Keeps only well-formed lines and drops anything bulky (older carts stored image data). */
+export function sanitizeCartItems(raw: unknown): CartItem[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter(i => i && typeof i.eventId === 'string' && i.eventId && Number.isFinite(Number(i.price)))
+    .slice(0, MAX_LINES)
+    .map(i => ({
+      eventId: i.eventId,
+      eventName: String(i.eventName || 'Event').slice(0, 200),
+      venue: String(i.venue || '').slice(0, 200),
+      date: i.date ?? null,
+      ticketType: String(i.ticketType || 'General Admission'),
+      price: Number(i.price),
+      quantity: Math.max(1, Math.min(MAX_PER_EVENT, Math.floor(Number(i.quantity) || 1))),
+    }));
+}
+
+const localKey = (userId: string | null) => (userId ? `cart_${userId}` : 'guest_cart');
+
+function readLocal(userId: string | null): CartItem[] {
+  try {
+    const raw = localStorage.getItem(localKey(userId));
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return sanitizeCartItems(Array.isArray(parsed) ? parsed : parsed?.items);
+  } catch {
+    return [];
+  }
+}
+
+function writeLocal(userId: string | null, items: CartItem[]) {
+  try {
+    localStorage.setItem(localKey(userId), JSON.stringify(items));
+  } catch {
+    // Storage can be full or blocked; the in-memory cart still works.
+  }
+}
 
 export const cartController = {
-  async getCart(userId: string): Promise<Cart | null> {
-    const docRef = doc(db, COLLECTION, userId);
-    const snap = await getDoc(docRef);
-    if (!snap.exists()) {
-       // Check localStorage as fallback
-       const local = localStorage.getItem(`cart_${userId}`);
-       if (local) return JSON.parse(local);
-       return null;
-    }
-    return snap.data() as Cart;
-  },
-
-  async updateCart(userId: string, items: CartItem[]) {
-    const total = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-    const cartData = {
-      userId,
-      items,
-      total,
-      updatedAt: serverTimestamp()
-    };
-
-    // Save to Firestore
+  async getCart(userId: string | null): Promise<CartItem[]> {
+    if (!userId) return readLocal(null);
     try {
-      await setDoc(doc(db, COLLECTION, userId), cartData);
+      const snap = await getDoc(doc(db, COLLECTION, userId));
+      if (snap.exists()) return sanitizeCartItems(snap.data().items);
     } catch (err) {
-      logger.error("Failed to save cart to Firestore", err);
+      logger.error('Could not load the saved cart', err);
     }
-    
-    // Fallback/Mirror to localStorage
-    localStorage.setItem(`cart_${userId}`, JSON.stringify(cartData));
-    return cartData;
+    return readLocal(userId);
   },
 
-  async checkout(userId: string) {
-    const { doc, getDoc, setDoc, deleteDoc, serverTimestamp } = await import('firebase/firestore');
-    const { db } = await import('./lib/firebase');
-
-    const cartRef = doc(db, COLLECTION, userId);
-    const cartSnap = await getDoc(cartRef);
-    if (!cartSnap.exists()) throw new Error("Cart not found");
-
-    const cart = cartSnap.data() as Cart;
-    const tickets = [];
-
-    // Assuming we have access to user info, but we can just use userId for now
-    const userDoc = await getDoc(doc(db, 'users', userId));
-    const userEmail = userDoc.exists() ? userDoc.data()?.email : 'customer@example.com';
-
-    for (const item of cart.items || []) {
-      for (let i = 0; i < item.quantity; i++) {
-        const ticketId = crypto.randomUUID();
-        const ticket = {
-          eventId: item.eventId,
-          ticketType: item.ticketType,
-          buyerEmail: userEmail,
-          buyerId: userId,
-          status: 'VALID',
-          price: item.price,
-          quantity: 1,
-          ticketImageUrl: item.ticketImageUrl,
-          createdAt: serverTimestamp()
-        };
-        await setDoc(doc(db, 'tickets', ticketId), ticket);
-        tickets.push({ id: ticketId, ...ticket });
+  async updateCart(userId: string | null, items: CartItem[]) {
+    const clean = sanitizeCartItems(items);
+    writeLocal(userId, clean);
+    if (!userId) return;
+    try {
+      if (clean.length === 0) {
+        await deleteDoc(doc(db, COLLECTION, userId));
+      } else {
+        await setDoc(doc(db, COLLECTION, userId), {
+          userId,
+          items: clean,
+          total: clean.reduce<number>((sum, item) => sum + item.price * item.quantity, 0),
+          updatedAt: serverTimestamp(),
+        });
       }
+    } catch (err) {
+      logger.error('Could not save the cart', err);
     }
-
-    await deleteDoc(cartRef);
-    localStorage.removeItem(`cart_${userId}`);
-    
-    return { success: true, tickets };
-  }
+  },
 };

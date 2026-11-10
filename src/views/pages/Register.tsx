@@ -1,9 +1,20 @@
 import React, { useState } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { Eye, EyeOff, UserPlus, Mail, Lock, User } from 'lucide-react';
-import { motion } from 'motion/react';
-import { ROUTES } from '../../controllers/navigation';
+import { ROUTES, safeReturnPath } from '../../controllers/navigation';
 import { authController } from '../../controllers/authController';
+import { friendlyError } from '../../controllers/lib/utils';
+
+const MIN_PASSWORD = 8;
+const input = 'w-full h-12 pl-12 bg-bai-bone border-2 border-bai-black/15 focus:border-bai-blue text-base transition-colors rounded-lg font-medium placeholder:text-bai-black/60';
+
+function passwordStrength(password: string) {
+  if (password.length < MIN_PASSWORD) return { label: `Too short: use at least ${MIN_PASSWORD} characters`, bar: 'bg-red-600', width: '25%' };
+  const variety = [/[a-z]/, /[A-Z]/, /\d/, /[^A-Za-z0-9]/].filter(r => r.test(password)).length;
+  if (password.length >= 12 && variety >= 3) return { label: 'Strong password', bar: 'bg-green-700', width: '100%' };
+  if (password.length >= 10 || variety >= 3) return { label: 'Good password', bar: 'bg-amber-600', width: '66%' };
+  return { label: 'Fair: longer is stronger', bar: 'bg-amber-600', width: '45%' };
+}
 
 export default function Register() {
   const [displayName, setDisplayName] = useState('');
@@ -15,141 +26,79 @@ export default function Register() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const getPasswordStrength = () => {
-    if (!password) return { label: 'None', color: 'bg-transparent', width: '0%' };
-    if (password.length < 6) return { label: 'Weak', color: 'bg-red-500', width: '33%' };
-    if (password.length < 10) return { label: 'Fair', color: 'bg-yellow-500', width: '66%' };
-    return { label: 'Strong', color: 'bg-green-500', width: '100%' };
-  };
-
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
     try {
       await authController.register(email, password, displayName);
-      
-      const fromPath = (location.state as any)?.from;
-      const from = typeof fromPath === 'string' ? fromPath : fromPath?.pathname || ROUTES.HOME;
-      const isPurchaseCheckpoint = from.includes(ROUTES.CART) || from.includes(ROUTES.CHECKOUT);
-
-      if (isPurchaseCheckpoint) {
-        navigate(from, { replace: true });
-      } else {
-        navigate(ROUTES.HOME, { replace: true });
-      }
-    } catch (err: any) {
-      if (err.message?.includes('auth/operation-not-allowed') || err.message?.includes('auth/email-password-not-enabled')) {
-        setError('Email/Password registration is not enabled in Firebase Console. Please ask the administrator to enable it or use Google Login.');
-      } else {
-        setError(err.message || 'Registration failed.');
-      }
+      navigate(safeReturnPath(location.state) || ROUTES.HOME, { replace: true });
+    } catch (err) {
+      setError(friendlyError(err, 'Your account could not be created. Please try again.'));
     } finally {
       setLoading(false);
     }
   };
 
-  const strength = getPasswordStrength();
+  const strength = passwordStrength(password);
 
   return (
     <div className="min-h-[90vh] flex items-center justify-center p-4 bg-bai-bone">
-      <motion.div 
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className="w-full max-w-sm"
-      >
-        <div className="bg-white rounded-2xl shadow-xl border-t-8 border-bai-blue overflow-hidden">
-          <div className="p-8 text-center border-b border-bai-bone">
-             <div className="w-12 h-12 bg-bai-black text-white flex items-center justify-center rounded-full mx-auto mb-4 border-2 border-bai-blue">
-                <span className="font-display font-black text-xs">BAI</span>
-             </div>
-             <h1 className="font-display font-black text-2xl uppercase tracking-tighter italic leading-none">
-                Join <br/> <span className="text-bai-blue">Bokamoso</span>
-             </h1>
-          </div>
-          
-          <div className="p-8">
-            {error && (
-              <div className="mb-6 p-4 bg-red-50 text-red-600 text-[10px] font-bold uppercase tracking-widest border-l-4 border-red-500 rounded-sm">
-                {error}
-              </div>
-            )}
+      <div className="w-full max-w-sm bg-white rounded-2xl shadow-[0_24px_60px_-28px_rgb(0_0_0/0.45)] border-t-8 border-bai-blue overflow-hidden">
+        <div className="px-8 pt-8 pb-6 text-center">
+          <h1 className="font-display font-bold text-3xl uppercase tracking-tighter italic leading-none">
+            Join <span className="text-bai-blue">Bokamoso</span>
+          </h1>
+          <p className="text-sm text-bai-black/70 mt-3">An account keeps your tickets in one place.</p>
+        </div>
 
-            <form onSubmit={handleRegister} className="space-y-5">
+        <div className="px-8 pb-8">
+          {error && <p role="alert" className="mb-5 p-4 bg-red-50 text-red-800 text-sm rounded-lg">{error}</p>}
+
+          <form onSubmit={handleRegister} className="space-y-4">
+            <div className="relative">
+              <label htmlFor="reg-name" className="sr-only">Full name</label>
+              <User className="absolute left-4 top-1/2 -translate-y-1/2 text-bai-black/60" size={18} aria-hidden="true" />
+              <input id="reg-name" type="text" required maxLength={100} autoComplete="name" value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder="Full name" className={`${input} pr-4`} />
+            </div>
+
+            <div className="relative">
+              <label htmlFor="reg-email" className="sr-only">Email address</label>
+              <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-bai-black/60" size={18} aria-hidden="true" />
+              <input id="reg-email" type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email address" className={`${input} pr-4`} />
+            </div>
+
+            <div>
               <div className="relative">
-                <User className="absolute left-4 top-1/2 -translate-y-1/2 text-bai-black/30" size={18} />
-                <input 
-                  type="text" 
-                  required
-                  value={displayName}
-                  onChange={(e) => setDisplayName(e.target.value)}
-                  placeholder="Full Name"
-                  className="w-full h-12 pl-12 pr-4 bg-bai-bone/50 border-2 border-transparent focus:border-bai-blue outline-none text-sm transition-all rounded-lg font-medium"
-                />
+                <label htmlFor="reg-password" className="sr-only">Password, at least {MIN_PASSWORD} characters</label>
+                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-bai-black/60" size={18} aria-hidden="true" />
+                <input id="reg-password" type={showPassword ? 'text' : 'password'} required minLength={MIN_PASSWORD} autoComplete="new-password" aria-describedby="reg-password-hint" value={password} onChange={(e) => setPassword(e.target.value)} placeholder={`Password (${MIN_PASSWORD}+ characters)`} className={`${input} pr-12`} />
+                <button type="button" onClick={() => setShowPassword(!showPassword)} aria-label={showPassword ? 'Hide password' : 'Show password'} aria-pressed={showPassword} className="absolute right-0.5 top-1/2 -translate-y-1/2 w-11 h-11 flex items-center justify-center text-bai-black/60 hover:text-bai-blue rounded-lg">
+                  {showPassword ? <EyeOff size={18} aria-hidden="true" /> : <Eye size={18} aria-hidden="true" />}
+                </button>
               </div>
-
-              <div className="relative">
-                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-bai-black/30" size={18} />
-                <input 
-                  type="email" 
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="Email Address"
-                  className="w-full h-12 pl-12 pr-4 bg-bai-bone/50 border-2 border-transparent focus:border-bai-blue outline-none text-sm transition-all rounded-lg font-medium"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <div className="relative">
-                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-bai-black/30" size={18} />
-                  <input 
-                    type={showPassword ? "text" : "password"} 
-                    required
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Password"
-                    className="w-full h-12 pl-12 pr-12 bg-bai-bone/50 border-2 border-transparent focus:border-bai-blue outline-none text-sm transition-all rounded-lg font-medium"
-                  />
-                  <button 
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-bai-black/30 hover:text-bai-blue"
-                  >
-                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                  </button>
-                </div>
-                
+              <div id="reg-password-hint" className="mt-2 px-1" aria-live="polite">
                 {password && (
-                  <div className="px-1">
-                    <div className="h-1 w-full bg-gray-100 rounded-full overflow-hidden">
-                       <div className={`h-full ${strength.color} transition-all duration-500`} style={{ width: strength.width }}></div>
+                  <>
+                    <div className="h-1 w-full bg-bai-black/10 rounded-full overflow-hidden" aria-hidden="true">
+                      <div className={`h-full ${strength.bar} transition-all duration-300`} style={{ width: strength.width }} />
                     </div>
-                    <div className="flex justify-between mt-1">
-                       <span className="text-[8px] font-black uppercase tracking-widest text-bai-black/30">Strength</span>
-                       <span className={`text-[8px] font-black uppercase tracking-widest ${strength.color.replace('bg-', 'text-')}`}>{strength.label}</span>
-                    </div>
-                  </div>
+                    <p className="text-xs text-bai-black/70 mt-1.5">{strength.label}</p>
+                  </>
                 )}
               </div>
+            </div>
 
-              <button 
-                type="submit" 
-                disabled={loading}
-                className="w-full h-14 bg-bai-black text-white font-display font-black uppercase tracking-[0.2em] hover:bg-bai-blue transition-all flex items-center justify-center space-x-3 disabled:opacity-50 rounded-lg shadow-lg active:scale-95"
-              >
-                {loading ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <><span>Sign Up</span> <UserPlus size={18} /></>}
-              </button>
-            </form>
-          </div>
-          
-          <div className="p-6 bg-bai-bone/50 text-center border-t border-bai-black/5">
-             <p className="text-[10px] font-bold uppercase tracking-widest text-bai-black/40">
-                Already have an account? <Link to={ROUTES.LOGIN} className="text-bai-blue hover:underline">Login</Link>
-             </p>
-          </div>
+            <button type="submit" disabled={loading} className="w-full h-14 bg-bai-black text-white font-display font-bold uppercase tracking-[0.18em] hover:bg-bai-blue transition-colors flex items-center justify-center gap-3 disabled:opacity-60 rounded-lg">
+              {loading ? <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" role="status" aria-label="Creating your account" /> : <><span>Create account</span> <UserPlus size={18} aria-hidden="true" /></>}
+            </button>
+          </form>
         </div>
-      </motion.div>
+
+        <p className="p-6 bg-bai-bone text-center border-t border-bai-black/10 text-sm text-bai-black/70">
+          Already have an account? <Link to={ROUTES.LOGIN} state={location.state} className="font-bold text-bai-blue underline">Sign in</Link>
+        </p>
+      </div>
     </div>
   );
 }
