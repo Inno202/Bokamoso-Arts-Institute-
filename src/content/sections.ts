@@ -54,7 +54,6 @@ export interface WorkContent {
 export interface TraditionsContent {
   hero: { label: string; quote: string };
   items: Array<{ title: string; tag: string; desc: string; when: string }>;
-  mailingList: { heading: string; text: string };
 }
 
 export interface ContentMap {
@@ -97,13 +96,13 @@ const statFields = (withDetail: boolean): Field[] => [
 const site: SectionDef<'site'> = {
   key: 'site',
   title: 'Contact, socials and partners',
-  shownOn: 'The footer of every page, the partners strip on the home page, and the mailing-list email.',
+  shownOn: 'The footer of every page and the partners strip on the home page.',
   preview: '/',
   fields: [
     { kind: 'group', key: 'contact', label: 'Contact details', fields: [
       text('address', 'Address', 200, required),
       { kind: 'tel', key: 'phone', label: 'Phone number', required: true },
-      { kind: 'email', key: 'email', label: 'Email address', required: true, help: 'Mailing-list requests are sent here.' },
+      { kind: 'email', key: 'email', label: 'Email address', required: true },
     ] },
     text('footerBlurb', 'Footer introduction', 200, long),
     text('copyrightLine', 'Line after the copyright notice', 100),
@@ -361,10 +360,6 @@ const traditions: SectionDef<'traditions'> = {
       text('desc', 'Description', 600, { ...required, ...long }),
       text('when', 'When it happens', 60, { help: 'For example Every February 14-15, or Annually.' }),
     ] },
-    { kind: 'group', key: 'mailingList', label: 'Mailing list invitation', fields: [
-      text('heading', 'Heading', 60, required),
-      text('text', 'Text', 300, long),
-    ] },
   ],
   defaults: {
     hero: {
@@ -376,10 +371,6 @@ const traditions: SectionDef<'traditions'> = {
       { title: 'Conductors Extravaganza', tag: 'Artistic Focus', desc: 'A week-long masterclass hosted by BAI, bringing together the finest choral conductors in Southern Africa to share techniques, arrangements, and the philosophy of African Excellence.', when: 'Annually' },
       { title: 'Concert Series', tag: 'Community Showcase', desc: 'Our highlight local performance for the residents. This is where we debut our international repertoire to the community before taking it across borders.', when: 'Annually' },
     ],
-    mailingList: {
-      heading: 'Join our mailing list.',
-      text: 'Most of our traditions are open to the people of Mabopane. Be the first to know about the First Kick and upcoming concert series.',
-    },
   },
 };
 

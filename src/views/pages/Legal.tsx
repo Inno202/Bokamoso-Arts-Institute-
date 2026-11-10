@@ -77,7 +77,7 @@ export default function Legal({ doc }: { doc: Doc }) {
               <li><strong>Account details:</strong> your name and email address when you create an account. If you sign in with Google, we receive your name and email address from Google. Your password is handled by Google Firebase Authentication; we never see or store it.</li>
               <li><strong>Tickets:</strong> which events you booked, how many tickets, the price, the time of booking, and when a ticket was scanned at the door and by which staff account.</li>
               <li><strong>Your bag:</strong> the tickets you have added but not yet booked, saved to your account and in your browser so they are still there when you come back.</li>
-              <li><strong>Emails you send us:</strong> a mailing-list request is an ordinary email sent from your own email app. We receive whatever you choose to send.</li>
+              <li><strong>Emails you send us:</strong> if you email us, we receive whatever you choose to send.</li>
               <li><strong>Staff activity:</strong> for staff accounts, your role and a record of which account last changed site content or scanned a ticket.</li>
             </UL>
             <P>We do not collect card or bank details on this site, and we do not use advertising or analytics trackers.</P>
