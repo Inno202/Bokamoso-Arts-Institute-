@@ -1,13 +1,15 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { User } from 'firebase/auth';
-import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
+import { onAuthStateChanged, signOut, type User } from 'firebase/auth';
+import { doc, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '../../controllers/lib/firebase';
-import { useAuthState } from 'react-firebase-hooks/auth';
-import { UserRole } from '../../models/types';
+import { ensureUserProfile } from '../../controllers/authController';
+import { UserProfile, UserRole } from '../../models/types';
+import { logger } from '../../services/loggerService';
+import { toast } from '../../services/toast';
 
 interface AuthContextType {
-  user: User | null | undefined;
-  userData: any | null;
+  user: User | null;
+  userData: Omit<UserProfile, 'uid'> | null;
   role: UserRole | null;
   loading: boolean;
 }
@@ -17,91 +19,56 @@ const AuthContext = createContext<AuthContextType>({ user: null, userData: null,
 export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, authLoading, _error] = useAuthState(auth);
-  const [userData, setUserData] = useState<any | null>(null);
-  const [role, setRole] = useState<UserRole | null>(null);
-  const [roleLoading, setRoleLoading] = useState(true);
+  const [user, setUser] = useState<User | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [userData, setUserData] = useState<AuthContextType['userData']>(null);
+  const [profileLoading, setProfileLoading] = useState(true);
+
+  useEffect(() => onAuthStateChanged(auth, (next) => {
+    setUser(next);
+    setProfileLoading(!!next);
+    if (!next) setUserData(null);
+    setAuthLoading(false);
+  }), []);
 
   useEffect(() => {
-    let unsubscribe = () => {};
+    if (!user) return;
+    let creating = false;
 
-    const setupUserRoleSubscription = async () => {
-      if (user) {
-        try {
-          const userDocRef = doc(db, 'users', user.uid);
-          
-          // First try to get it immediately (from cache if available)
-          const docSnap = await getDoc(userDocRef);
-          
-          if (!docSnap.exists()) {
-             const defaultRole = 'USER';
-             try {
-                const initialData = {
-                  email: user.email || '',
-                  displayName: user.displayName || user.email?.split('@')[0] || 'User',
-                  role: defaultRole,
-                  createdAt: new Date().toISOString()
-                };
-                await setDoc(userDocRef, initialData);
-                setUserData(initialData);
-                setRole(defaultRole as UserRole);
-             } catch (createErr) {
-                console.error("Error creating user profile", createErr);
-             }
-          } else {
-             setUserData(docSnap.data());
-             setRole(docSnap.data().role as UserRole);
-          }
-          
-          // Set up real-time listener
-          unsubscribe = onSnapshot(userDocRef, (snapshot) => {
-             if (snapshot.exists()) {
-                const data = snapshot.data();
-                setUserData(data);
-                setRole(data.role as UserRole);
-             } else {
-                setUserData(null);
-                setRole(null);
-             }
-             setRoleLoading(false);
-          }, (err) => {
-             console.error("Error in role snapshot", err);
-             setUserData(null);
-             setRole(null);
-             setRoleLoading(false);
+    return onSnapshot(doc(db, 'users', user.uid), (snapshot) => {
+      if (!snapshot.exists()) {
+        // First sign-in: create the profile once, then this listener fires again.
+        if (!creating) {
+          creating = true;
+          ensureUserProfile(user).catch((err) => {
+            logger.error('Could not create the user profile', err);
+            setProfileLoading(false);
           });
-          
-        } catch (err) {
-          console.error("Error setting up role listener", err);
-          setUserData(null);
-          setRole(null);
-          setRoleLoading(false);
         }
-      } else {
-        setUserData(null);
-        setRole(null);
-        setRoleLoading(false);
+        return;
       }
-    };
 
-    if (!authLoading) {
-      if (user) {
-        setupUserRoleSubscription();
-      } else {
-        setUserData(null);
-        setRole(null);
-        setRoleLoading(false);
+      const data = snapshot.data() as Omit<UserProfile, 'uid'>;
+      if (data.isActive === false) {
+        toast.error('This account has been deactivated. Contact the institute for help.');
+        void signOut(auth);
+        return;
       }
-    }
-    
-    return () => unsubscribe();
-  }, [user, authLoading]);
+      setUserData(data);
+      setProfileLoading(false);
+    }, (err) => {
+      logger.error('Could not load the user profile', err);
+      setUserData(null);
+      setProfileLoading(false);
+    });
+  }, [user]);
 
-  const loading = authLoading || roleLoading;
+  const value: AuthContextType = {
+    user,
+    userData,
+    role: userData?.role ?? null,
+    loading: authLoading || profileLoading,
+  };
 
-  return (
-    <AuthContext.Provider value={{ user, userData, role, loading }}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

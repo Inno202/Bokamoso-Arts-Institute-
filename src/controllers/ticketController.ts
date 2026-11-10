@@ -1,145 +1,161 @@
-import { 
-  collection, 
-  getDocs, 
-  getDoc, 
-  doc, 
-  query, 
-  where, 
+import {
+  collection,
+  getDocs,
+  doc,
+  query,
+  where,
   orderBy,
-  setDoc,
+  limit,
   serverTimestamp,
-  onSnapshot
+  onSnapshot,
+  runTransaction,
+  getAggregateFromServer,
+  count,
+  sum,
 } from 'firebase/firestore';
+import type { User } from 'firebase/auth';
 import { db } from './lib/firebase';
-import { Ticket, TicketScan } from '../models/types';
+import { BAIEvent, CartItem, Ticket, TicketScan } from '../models/types';
+import { AppError, toDate } from './lib/utils';
 import { cacheService } from '../services/cacheService';
+import { logger } from '../services/loggerService';
 
-const TICKETS_COLLECTION = 'tickets';
-const SCANS_COLLECTION = 'ticket_scanned';
+const TICKETS = 'tickets';
+const SCANS = 'ticket_scanned';
+const EVENTS = 'events';
+
+// No 0/O/1/I, so a reference can be read aloud at the door without mistakes.
+const ID_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+
+/** Unguessable ticket reference: 12 characters from a cryptographic source (~60 bits). */
+export function generateTicketId() {
+  const bytes = crypto.getRandomValues(new Uint8Array(12));
+  let id = 'BAI-';
+  for (const b of bytes) id += ID_ALPHABET[b % ID_ALPHABET.length];
+  return id;
+}
+
+/** Accepts a scanned or typed reference in any case, with or without the prefix. */
+export function normalizeTicketId(input: string) {
+  const cleaned = input.trim().toUpperCase().replace(/\s+/g, '');
+  return cleaned.startsWith('BAI-') ? cleaned : `BAI-${cleaned.replace(/^BAI/, '')}`;
+}
+
+const byNewest = (a: Ticket, b: Ticket) =>
+  (toDate(b.createdAt)?.getTime() || 0) - (toDate(a.createdAt)?.getTime() || 0);
 
 export const ticketController = {
-  async getUserTickets(userId: string) {
-    return this.getTicketsByUserId(userId);
-  },
+  /**
+   * Issues one ticket per seat and moves each event's sold counter in a single
+   * transaction, so two buyers can never take the last seat between them.
+   * Prices come from the event record, never from the cart.
+   */
+  async purchase(user: User, items: CartItem[]) {
+    if (items.length === 0) throw new AppError('Your bag is empty.');
 
-  async createTicket(ticketData: any) {
-    const id = ticketData.id;
-    const ticketRef = doc(db, TICKETS_COLLECTION, id);
-    const finalData = {
-      ...ticketData,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp()
-    };
-    await setDoc(ticketRef, finalData);
-    cacheService.clear(); // Clear cache to show new ticket
-    return { id, ...finalData };
-  },
+    const issued = await runTransaction(db, async (tx) => {
+      const wanted = new Map<string, number>();
+      for (const item of items) wanted.set(item.eventId, (wanted.get(item.eventId) || 0) + item.quantity);
 
-  async getTicketsByUserId(userId: string) {
-    const cacheKey = `${TICKETS_COLLECTION}:user:${userId}`;
-    const cached = cacheService.get(cacheKey);
-    if (cached) return cached;
+      const events = new Map<string, BAIEvent>();
+      for (const eventId of wanted.keys()) {
+        const snap = await tx.get(doc(db, EVENTS, eventId));
+        if (!snap.exists()) throw new AppError('One of the events in your bag is no longer available. Remove it and try again.');
+        events.set(eventId, { id: snap.id, ...snap.data() } as BAIEvent);
+      }
 
-    const q = query(
-      collection(db, TICKETS_COLLECTION), 
-      where('buyerId', '==', userId)
-    );
-    const snapshot = await getDocs(q);
-    const tickets = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Ticket[];
-    
-    // Sort manually if needed, or just return as is
-    const sortedTickets = tickets.sort((a: any, b: any) => {
-      const dateA = a.createdAt?.seconds || 0;
-      const dateB = b.createdAt?.seconds || 0;
-      return dateB - dateA;
+      const ids: string[] = [];
+      for (const [eventId, quantity] of wanted) {
+        const event = events.get(eventId)!;
+        if (event.status !== 'On Sale') throw new AppError(`Tickets for ${event.name} are no longer on sale.`);
+        const remaining = (event.capacity || 0) - (event.ticketsSold || 0);
+        if (quantity > remaining) {
+          throw new AppError(remaining > 0
+            ? `Only ${remaining} ${remaining === 1 ? 'ticket is' : 'tickets are'} left for ${event.name}. Lower the quantity and try again.`
+            : `${event.name} is sold out.`);
+        }
+        for (let i = 0; i < quantity; i++) {
+          const id = generateTicketId();
+          tx.set(doc(db, TICKETS, id), {
+            eventId,
+            eventName: event.name,
+            ticketType: 'General Admission',
+            buyerId: user.uid,
+            buyerEmail: user.email || '',
+            price: event.price,
+            quantity: 1,
+            status: 'VALID',
+            createdAt: serverTimestamp(),
+          });
+          ids.push(id);
+        }
+        tx.update(doc(db, EVENTS, eventId), { ticketsSold: (event.ticketsSold || 0) + quantity });
+      }
+      return ids;
     });
 
-    cacheService.set(cacheKey, sortedTickets);
-    return sortedTickets;
+    cacheService.invalidate(EVENTS);
+    return issued;
   },
 
-  subscribeToUserTickets(userId: string, callback: (tickets: Ticket[]) => void) {
-    const q = query(
-      collection(db, TICKETS_COLLECTION),
-      where('buyerId', '==', userId)
-    );
-
+  subscribeToUserTickets(userId: string, callback: (tickets: Ticket[]) => void, onError?: (error: unknown) => void) {
+    const q = query(collection(db, TICKETS), where('buyerId', '==', userId));
     return onSnapshot(q, (snapshot) => {
-      const tickets = snapshot.docs.map((doc: any) => ({
-        id: doc.id,
-        ...doc.data()
-      })) as Ticket[];
-      
-      const sortedTickets = tickets.sort((a: any, b: any) => {
-        const dateA = a.createdAt?.seconds || 0;
-        const dateB = b.createdAt?.seconds || 0;
-        return dateB - dateA;
+      const tickets = snapshot.docs.map(d => ({ id: d.id, ...d.data() })) as Ticket[];
+      callback(tickets.sort(byNewest));
+    }, (error) => {
+      logger.error('Could not load tickets', error);
+      onError?.(error);
+    });
+  },
+
+  /**
+   * Admits a ticket at the door. The check and the status change happen in one
+   * transaction, and the scan record is keyed by the ticket id, so a ticket can
+   * be admitted once only, even with two scanners on the same code.
+   */
+  async admit(rawTicketId: string, scannerId: string) {
+    const ticketId = normalizeTicketId(rawTicketId);
+    if (!/^BAI-[A-Z0-9]{6,20}$/.test(ticketId)) throw new AppError('That is not a Bokamoso ticket reference.');
+
+    const ticketRef = doc(db, TICKETS, ticketId);
+    const ticket = await runTransaction(db, async (tx) => {
+      const snap = await tx.get(ticketRef);
+      if (!snap.exists()) throw new AppError('No ticket matches that reference.');
+      const data = { id: snap.id, ...snap.data() } as Ticket;
+
+      if (data.status === 'SCANNED') {
+        const when = toDate(data.scannedAt);
+        throw new AppError(when ? `Already admitted at ${when.toLocaleString('en-ZA')}.` : 'This ticket has already been admitted.');
+      }
+      if (data.status !== 'VALID') throw new AppError('This ticket has been cancelled.');
+
+      tx.set(doc(db, SCANS, ticketId), {
+        ticketId,
+        eventId: data.eventId,
+        buyerEmail: data.buyerEmail || '',
+        scannedAt: serverTimestamp(),
+        scannedBy: scannerId,
       });
-
-      callback(sortedTickets);
-    }, (error: any) => {
-      console.error("Subscription error:", error);
-    });
-  },
-
-  async getTicketById(ticketId: string) {
-    const docRef = doc(db, TICKETS_COLLECTION, ticketId);
-    const snap = await getDoc(docRef);
-    if (!snap.exists()) return null;
-    return { id: snap.id, ...snap.data() } as Ticket;
-  },
-
-  async validateTicketOnServer(ticketId: string) {
-    const { doc, getDoc, setDoc, query, collection, where, orderBy, limit, getDocs, updateDoc, serverTimestamp } = await import('firebase/firestore');
-    const { db } = await import('./lib/firebase');
-    const { auth } = await import('./lib/firebase');
-    
-    // In a real app we would use a Firestore Transaction here.
-    const ticketRef = doc(db, TICKETS_COLLECTION, ticketId);
-    const ticketSnap = await getDoc(ticketRef);
-    if (!ticketSnap.exists()) throw new Error("Ticket not found");
-    const ticket = ticketSnap.data() as Ticket;
-
-    const scanSnap = await getDocs(query(
-      collection(db, SCANS_COLLECTION),
-      where('ticketId', '==', ticketId),
-      orderBy('scannedAt', 'desc'),
-      limit(1)
-    ));
-
-    if (!scanSnap.empty) {
-      const lastScan = scanSnap.docs[0].data();
-      // Throw specific error for Already Scanned
-      throw new Error(`Already scanned at ${lastScan.scannedAt?.toDate()?.toLocaleString()}`);
-    }
-
-    const scannerId = auth.currentUser?.uid || 'UNKNOWN_SCANNER';
-
-    // Log the scan
-    await setDoc(doc(collection(db, SCANS_COLLECTION)), {
-      ticketId,
-      scannedAt: serverTimestamp(),
-      scannedBy: scannerId,
-      eventId: ticket.eventId,
-      buyerEmail: ticket.buyerEmail,
-      status: 'SUCCESS'
+      tx.update(ticketRef, { status: 'SCANNED', scannedAt: serverTimestamp(), scannedBy: scannerId });
+      return data;
     });
 
-    // Update ticket
-    await updateDoc(ticketRef, { status: 'SCANNED' });
-
-    return { success: true, message: "Valid Ticket", ticket };
+    return ticket;
   },
 
-  async getRecentScans(limit = 10) {
-    const q = query(
-      collection(db, SCANS_COLLECTION),
-      orderBy('scannedAt', 'desc')
-      // limit(limit) - Firestore JS SDK limit is a function
-    );
-    // Actually limit in JS SDK is query(q, limit(10))
-    // I'll skip the limit function call directly for now or just slice
+  async getRecentScans(max = 10) {
+    const q = query(collection(db, SCANS), orderBy('scannedAt', 'desc'), limit(max));
     const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })).slice(0, limit) as TicketScan[];
-  }
+    return snapshot.docs.map(d => ({ id: d.id, ...d.data() })) as TicketScan[];
+  },
+
+  /** Server-side totals: one aggregation read instead of downloading every ticket. */
+  async getSalesTotals() {
+    const snap = await getAggregateFromServer(collection(db, TICKETS), {
+      totalTickets: count(),
+      revenue: sum('price'),
+    });
+    return { totalTickets: snap.data().totalTickets, revenue: snap.data().revenue || 0 };
+  },
 };

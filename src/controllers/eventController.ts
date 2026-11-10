@@ -1,87 +1,81 @@
-import { 
-  collection, 
-  getDocs, 
-  getDoc, 
-  doc, 
-  addDoc, 
-  updateDoc, 
-  deleteDoc, 
-  query, 
-  where, 
+import {
+  collection,
+  getDoc,
+  doc,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  query,
+  where,
   orderBy,
+  limit,
   serverTimestamp,
-  onSnapshot
+  onSnapshot,
 } from 'firebase/firestore';
 import { db } from './lib/firebase';
 import { BAIEvent } from '../models/types';
 import { cacheService } from '../services/cacheService';
+import { logger } from '../services/loggerService';
 
 const COLLECTION = 'events';
+const MAX_LISTED = 100;
+
+export type EventInput = Pick<BAIEvent, 'name' | 'venue' | 'city' | 'price' | 'capacity' | 'description' | 'status' | 'createdBy'> & {
+  date: Date;
+  bannerImageUrl?: string;
+  ticketImageUrl?: string;
+};
 
 export const eventController = {
-  subscribeToEvents(callback: (events: BAIEvent[]) => void, activeOnly = true) {
-    let q = query(collection(db, COLLECTION), orderBy('date', 'asc'));
-    if (activeOnly) {
-      q = query(q, where('status', '==', 'On Sale')); // Simple filter
-    }
+  subscribeToEvents(
+    callback: (events: BAIEvent[]) => void,
+    activeOnly = true,
+    onError?: (error: unknown) => void,
+  ) {
+    const constraints = activeOnly
+      ? [where('status', '==', 'On Sale'), orderBy('date', 'asc'), limit(MAX_LISTED)]
+      : [orderBy('date', 'asc'), limit(MAX_LISTED)];
 
-    return onSnapshot(q, (snapshot) => {
-      const events = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as BAIEvent[];
+    return onSnapshot(query(collection(db, COLLECTION), ...constraints), (snapshot) => {
+      const events = snapshot.docs.map(d => ({ id: d.id, ...d.data() })) as BAIEvent[];
+      events.forEach(e => cacheService.set(`${COLLECTION}:${e.id}`, e));
       callback(events);
+    }, (error) => {
+      logger.error('Could not load events', error);
+      onError?.(error);
     });
   },
 
-  async getAllEvents(activeOnly = true) {
-    const cacheKey = `${COLLECTION}:all:${activeOnly}`;
-    const cached = cacheService.get(cacheKey);
-    if (cached) return cached;
-
-    let q = query(collection(db, COLLECTION), orderBy('date', 'asc'));
-    if (activeOnly) {
-      q = query(q, where('status', '==', 'On Sale')); // Simple filter
-    }
-
-    const snapshot = await getDocs(q);
-    const events = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as BAIEvent[];
-    
-    cacheService.set(cacheKey, events);
-    return events;
-  },
-
-  async getEventById(eventId: string) {
+  async getEventById(eventId: string): Promise<BAIEvent | null> {
     if (!eventId) return null;
     const cacheKey = `${COLLECTION}:${eventId}`;
     const cached = cacheService.get(cacheKey);
     if (cached) return cached;
 
-    const docRef = doc(db, COLLECTION, eventId);
-    const snap = await getDoc(docRef);
-    
+    const snap = await getDoc(doc(db, COLLECTION, eventId));
     if (!snap.exists()) return null;
     const event = { id: snap.id, ...snap.data() } as BAIEvent;
-    
     cacheService.set(cacheKey, event);
     return event;
   },
 
-  async createEvent(data: Partial<BAIEvent>) {
+  async createEvent(data: EventInput) {
     const docRef = await addDoc(collection(db, COLLECTION), {
       ...data,
       ticketsSold: 0,
-      createdAt: serverTimestamp()
+      createdAt: serverTimestamp(),
     });
     cacheService.invalidate(COLLECTION);
     return docRef.id;
   },
 
-  async updateEvent(eventId: string, data: Partial<BAIEvent>) {
-    const docRef = doc(db, COLLECTION, eventId);
-    await updateDoc(docRef, { ...data, updatedAt: serverTimestamp() });
+  async updateEvent(eventId: string, data: Partial<EventInput>) {
+    await updateDoc(doc(db, COLLECTION, eventId), { ...data, updatedAt: serverTimestamp() });
     cacheService.invalidate(COLLECTION);
   },
 
   async deleteEvent(eventId: string) {
     await deleteDoc(doc(db, COLLECTION, eventId));
     cacheService.invalidate(COLLECTION);
-  }
+  },
 };

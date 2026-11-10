@@ -1,490 +1,279 @@
-import { useState, useEffect } from 'react';
-import { initializeApp } from 'firebase/app';
-import { getAuth, createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
-import firebaseConfig from '../../../firebase-applet-config.json';
-import { useNavigate, Link } from 'react-router-dom';
+import React, { useCallback, useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
+import type { QueryDocumentSnapshot } from 'firebase/firestore';
+import { ArrowRight, Ticket, UserX, UserCheck } from 'lucide-react';
 import { ROUTES } from '../../controllers/navigation';
-import { 
-  Users, 
-  Ticket, 
-  DollarSign, 
-  Activity, 
-  Calendar, 
-  TrendingUp, 
-  Clock, 
-  Shield, 
-  Settings,
-  ChevronRight,
-  Plus,
-  Trash2
-} from 'lucide-react';
-import { motion } from 'motion/react';
 import { useAuth } from '../components/AuthProvider';
+import { AdminShell } from '../admin/AdminShell';
 import { ticketController } from '../../controllers/ticketController';
 import { eventController } from '../../controllers/eventController';
-import { collection, getDocs, updateDoc } from 'firebase/firestore';
-import { db } from '../../controllers/lib/firebase';
+import { userController } from '../../controllers/userController';
 import { logger } from '../../services/loggerService';
-import { NewEventModal } from '../components/NewEventModal';
+import { toast } from '../../services/toast';
+import { formatCurrency, formatDateTime, friendlyError } from '../../controllers/lib/utils';
+import { isEventManager, isFinance, isScanner, isUserAdmin, ROLE_LABELS, TicketScan, UserProfile, UserRole } from '../../models/types';
 
-const secondaryApp = initializeApp(firebaseConfig, "SecondaryApp");
-const secondaryAuth = getAuth(secondaryApp);
+const ROLE_OPTIONS = Object.keys(ROLE_LABELS) as UserRole[];
+const EMPTY_USER = { displayName: '', email: '', password: '', role: 'USER' as UserRole };
 
 export default function Dashboard() {
-  const { user, userData, role, loading: authLoading } = useAuth();
-  const navigate = useNavigate();
+  const { user, role } = useAuth();
+  const canSeeUsers = isUserAdmin(role);
+  const canSeeSales = isFinance(role);
+  const canManageEvents = isEventManager(role);
+  const isSuper = role === 'SUPER_ADMIN';
+
+  const [stats, setStats] = useState<{ totalUsers?: number; totalTickets?: number; revenue?: number; activeEvents?: number }>({});
+  const [recentScans, setRecentScans] = useState<TicketScan[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const [showUsers, setShowUsers] = useState(false);
+  const [users, setUsers] = useState<UserProfile[]>([]);
+  const [cursor, setCursor] = useState<QueryDocumentSnapshot | undefined>();
+  const [usersLoading, setUsersLoading] = useState(false);
+  const [addingUser, setAddingUser] = useState(false);
+  const [newUser, setNewUser] = useState(EMPTY_USER);
 
   useEffect(() => {
-    if (authLoading) return;
-    const isAdmin = role === 'SUPER_ADMIN' || role === 'PRO' || role === 'CEO' || role === 'FINANCE_MANAGER';
-    if (!isAdmin) {
-      navigate(ROUTES.MY_TICKETS);
-    }
-  }, [role, authLoading, navigate]);
-
-  const [stats, setStats] = useState({
-    totalUsers: 0,
-    totalTickets: 0,
-    revenue: 0,
-    activeEvents: 0
-  });
-  const [recentScans, setRecentScans] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [isEventModalOpen, setIsEventModalOpen] = useState(false);
-  const [users, setUsers] = useState<any[]>([]);
-  const [showUsersAdmin, setShowUsersAdmin] = useState(false);
-
-  const [addingUser, setAddingUser] = useState(false);
-  const [newUser, setNewUser] = useState({ displayName: '', email: '', password: '', role: 'USER' });
-
-  const fetchUsers = async () => {
-    try {
-      const snap = await getDocs(collection(db, 'users'));
-      const fetchedUsers = snap.docs.map(d => ({ uid: d.id, ...d.data() }));
-      setUsers(fetchedUsers);
-      
-      // Update global stats too
+    let active = true;
+    const load = async () => {
+      // Each figure is fetched as a server-side total and fails on its own.
+      const [users, sales, scans] = await Promise.allSettled([
+        canSeeUsers ? userController.countUsers() : Promise.resolve(undefined),
+        canSeeSales ? ticketController.getSalesTotals() : Promise.resolve(undefined),
+        ticketController.getRecentScans(8),
+      ]);
+      if (!active) return;
       setStats(prev => ({
         ...prev,
-        totalUsers: fetchedUsers.length
+        totalUsers: users.status === 'fulfilled' ? users.value : undefined,
+        totalTickets: sales.status === 'fulfilled' ? sales.value?.totalTickets : undefined,
+        revenue: sales.status === 'fulfilled' ? sales.value?.revenue : undefined,
       }));
-    } catch (err) {
-      logger.error('Failed to fetch users', err);
-    }
-  };
+      if (scans.status === 'fulfilled') setRecentScans(scans.value);
+      [users, sales, scans].forEach(r => { if (r.status === 'rejected') logger.error('Dashboard figure failed to load', r.reason); });
+      setLoading(false);
+    };
+    void load();
 
-  const handleRoleChange = async (uid: string, newRole: string) => {
+    const unsubscribe = eventController.subscribeToEvents((events) => {
+      if (active) setStats(prev => ({ ...prev, activeEvents: events.length }));
+    }, true);
+
+    return () => { active = false; unsubscribe(); };
+  }, [canSeeUsers, canSeeSales]);
+
+  const loadUsers = useCallback(async (after?: QueryDocumentSnapshot) => {
+    setUsersLoading(true);
     try {
-      await updateDoc(doc(db, 'users', uid), { role: newRole });
-      fetchUsers(); // Refresh
+      const page = await userController.listUsers(after);
+      setUsers(prev => (after ? [...prev, ...page.users] : page.users));
+      setCursor(page.cursor);
+    } catch (err) {
+      logger.error('Failed to load users', err);
+      toast.error(friendlyError(err, 'The user list could not be loaded.'));
+    } finally {
+      setUsersLoading(false);
+    }
+  }, []);
+
+  const patchUser = (uid: string, patch: Partial<UserProfile>) =>
+    setUsers(prev => prev.map(u => (u.uid === uid ? { ...u, ...patch } : u)));
+
+  const handleRoleChange = async (target: UserProfile, newRole: UserRole) => {
+    if (newRole === target.role) return;
+    if (!window.confirm(`Change ${target.displayName || target.email} from ${ROLE_LABELS[target.role] || target.role} to ${ROLE_LABELS[newRole]}?`)) return;
+    try {
+      await userController.setRole(target.uid, newRole);
+      patchUser(target.uid, { role: newRole });
+      toast.success(`${target.displayName || target.email} is now ${ROLE_LABELS[newRole]}.`);
     } catch (err) {
       logger.error('Failed to update role', err);
-      alert('Failed to update role');
+      toast.error(friendlyError(err, 'The role could not be changed.'));
     }
   };
 
-  const handleAddUser = async () => {
-    if (!newUser.email || !newUser.password || !newUser.displayName) return;
-    
+  const handleToggleActive = async (target: UserProfile) => {
+    const next = target.isActive === false;
+    if (!next && !window.confirm(`Deactivate ${target.displayName || target.email}? They will be signed out and lose all staff access until reactivated.`)) return;
+    try {
+      await userController.setActive(target.uid, next);
+      patchUser(target.uid, { isActive: next });
+      toast.success(next ? 'Account reactivated.' : 'Account deactivated.');
+    } catch (err) {
+      logger.error('Failed to change account status', err);
+      toast.error(friendlyError(err, 'The account status could not be changed.'));
+    }
+  };
+
+  const handleAddUser = async (e: React.FormEvent) => {
+    e.preventDefault();
     setAddingUser(true);
     try {
-      // 1. Create user in Firebase Auth using secondary app
-      const userCredential = await createUserWithEmailAndPassword(secondaryAuth, newUser.email, newUser.password);
-      
-      // 2. Set display name
-      await updateProfile(userCredential.user, {
-        displayName: newUser.displayName
-      });
-
-      // 3. Add to Firestore users collection
-      await setDoc(doc(db, 'users', userCredential.user.uid), {
-        email: newUser.email,
-        displayName: newUser.displayName,
-        role: newUser.role,
-        isActive: true,
-        createdAt: serverTimestamp()
-      });
-
-      // 4. Sign out secondary app
-      await secondaryAuth.signOut();
-
-      setNewUser({ displayName: '', email: '', password: '', role: 'USER' });
-      fetchUsers();
-    } catch (err: any) {
+      await userController.createUser(newUser);
+      toast.success(`Account created for ${newUser.displayName}.`);
+      setNewUser(EMPTY_USER);
+      void loadUsers();
+      setStats(prev => ({ ...prev, totalUsers: prev.totalUsers === undefined ? undefined : prev.totalUsers + 1 }));
+    } catch (err) {
       logger.error('Failed to create user', err);
-      alert(`Failed to create user: ${err.message}`);
+      toast.error(friendlyError(err, 'The account could not be created.'));
     } finally {
       setAddingUser(false);
     }
   };
 
-  useEffect(() => {
-    if (authLoading) return;
-
-    let unsubscribeEvents: () => void;
-
-    const fetchData = async () => {
-      try {
-        let totalUsers = 0;
-        let totalTickets = 0;
-        let revenue = 0;
-        
-        const isAdmin = role === 'SUPER_ADMIN' || role === 'PRO' || role === 'CEO' || role === 'FINANCE_MANAGER';
-        
-        if (isAdmin) {
-          const [usersSnap, ticketsSnap] = await Promise.all([
-            getDocs(collection(db, 'users')),
-            getDocs(collection(db, 'tickets'))
-          ]);
-
-          totalUsers = usersSnap.size;
-          totalTickets = ticketsSnap.size;
-          revenue = ticketsSnap.docs.reduce((sum, doc) => sum + (doc.data().price || 0), 0);
-          
-          try {
-            const scans = await ticketController.getRecentScans(8);
-            setRecentScans(scans);
-          } catch (scanErr) {
-            logger.error(scanErr);
-          }
-        }
-
-        setStats(prev => ({ ...prev, totalUsers, totalTickets, revenue }));
-      } catch (err) {
-        logger.error(err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    unsubscribeEvents = eventController.subscribeToEvents((data) => {
-      setStats(prev => ({ ...prev, activeEvents: data.length }));
-    }, true);
-
-    fetchData();
-
-    return () => {
-      if (unsubscribeEvents) unsubscribeEvents();
-    };
-  }, [authLoading, role]);
-
-  const greetings = () => {
-    const hour = new Date().getHours();
-    if (hour < 12) return 'Good morning';
-    if (hour < 17) return 'Good afternoon';
-    return 'Good evening';
-  };
-
-  const Widget = ({ title, value, icon, color = 'bg-white' }: any) => (
-    <motion.div 
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      className={`${color} p-6 rounded-3xl shadow-sm border border-bai-black/5 hover:shadow-xl transition-all group`}
-    >
-       <div className="flex justify-between items-start mb-6">
-          <div className="p-3 bg-bai-bone rounded-2xl group-hover:bg-bai-red group-hover:text-white transition-all">
-             {icon}
-          </div>
-          <span className="text-[10px] font-black uppercase tracking-widest text-bai-black/20">Live Sync</span>
-       </div>
-       <div className="space-y-1">
-          <h3 className="text-bai-black/40 text-[10px] font-black uppercase tracking-widest">{title}</h3>
-          <p className="text-3xl font-display font-black tracking-tighter italic">{value}</p>
-       </div>
-    </motion.div>
-  );
+  const show = (value: number | undefined, format: (n: number) => string = String) => (value === undefined ? '—' : format(value));
+  // CEOs may add staff, but only a super admin can create another super admin.
+  const creatableRoles = ROLE_OPTIONS.filter(r => isSuper || r !== 'SUPER_ADMIN');
+  const links = [
+    { name: 'Events', detail: 'Add, edit and remove events', to: ROUTES.ADMIN_EVENTS, show: canManageEvents },
+    { name: 'Site content', detail: 'Edit the text and photos on the public pages', to: ROUTES.ADMIN_CONTENT, show: canManageEvents },
+    { name: 'Door scanner', detail: 'Check tickets at the door', to: ROUTES.SCANNER, show: isScanner(role) },
+  ].filter(link => link.show);
 
   return (
-    <div className="pb-24 bg-bai-bone min-h-screen">
-      {/* Hero Header */}
-      <section className="bg-bai-black text-white py-16 px-4 mb-2 relative overflow-hidden">
-         <div className="absolute inset-0 piano-key-pattern opacity-10" />
-         <div className="max-w-7xl mx-auto relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-8">
-            <div>
-               <p className="text-bai-red font-display font-bold uppercase tracking-[0.4em] text-[10px] mb-2">{greetings()},</p>
-               <h1 className="font-display font-black text-4xl md:text-6xl tracking-tighter uppercase italic leading-none">
-                  {userData?.displayName || user?.displayName || 'Admin'}
-               </h1>
-               <p className="text-white/40 text-[10px] font-bold uppercase tracking-widest mt-4 flex items-center space-x-2">
-                  <Shield size={12} className="text-bai-blue" />
-                  <span>Role: {role?.replace('_', ' ')}</span>
-               </p>
-            </div>
-            <div className="bg-white p-4 rounded-2xl flex items-center space-x-4 shadow-sm border border-white/10">
-               <div className="w-10 h-10 bg-bai-bone rounded-full flex items-center justify-center text-bai-black">
-                  <Calendar size={18} />
-               </div>
-               <div className="text-bai-black">
-                  <p className="text-[9px] font-black uppercase text-black/30 tracking-widest">Current Date</p>
-                  <p className="font-bold text-sm">{new Date().toLocaleDateString('en-ZA', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
-               </div>
-            </div>
-         </div>
-      </section>
+    <AdminShell title="Overview">
+        <dl className="grid grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-8 border-y border-bai-black/15 py-8" aria-busy={loading}>
+          {canSeeUsers && <Stat title="Registered users" value={loading ? null : show(stats.totalUsers)} />}
+          {canSeeSales && <Stat title="Tickets issued" value={loading ? null : show(stats.totalTickets)} />}
+          {canSeeSales && <Stat title="Ticket value" value={loading ? null : show(stats.revenue, formatCurrency)} />}
+          <Stat title="Events on sale" value={stats.activeEvents === undefined ? null : String(stats.activeEvents)} />
+        </dl>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8">
-         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-12 mt-12">
+          <section className="lg:col-span-2" aria-labelledby="scans-heading">
+            <h2 id="scans-heading" className="display text-2xl mb-5">Recent scans</h2>
             {loading ? (
-               [1,2,3,4].map(i => <div key={`stat-skeleton-${i}`} className="h-40 bg-white animate-pulse rounded-3xl" />)
+              <div className="space-y-3" role="status" aria-label="Loading scans">
+                {[1, 2, 3].map(i => <div key={i} className="h-14 bg-white animate-pulse rounded-lg" />)}
+              </div>
+            ) : recentScans.length > 0 ? (
+              <ul className="border-t border-bai-black/15">
+                {recentScans.map((scan) => (
+                  <li key={scan.id} className="py-4 border-b border-bai-black/15 flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-4 min-w-0">
+                      <Ticket size={20} className="text-green-800 shrink-0" aria-hidden="true" />
+                      <div className="min-w-0">
+                        <p className="font-bold truncate">{scan.buyerEmail || 'Unknown buyer'}</p>
+                        <p className="num text-sm text-bai-black/70">{scan.ticketId}</p>
+                      </div>
+                    </div>
+                    <p className="num text-sm text-bai-black/70 text-right shrink-0">{formatDateTime(scan.scannedAt) || 'Just now'}</p>
+                  </li>
+                ))}
+              </ul>
             ) : (
-               <>
-                  {(role === 'SUPER_ADMIN' || role === 'CEO') && <Widget key="stat-users" title="Total Users" value={stats.totalUsers} icon={<Users size={24} />} />}
-                  {(role === 'SUPER_ADMIN' || role === 'CEO' || role === 'FINANCE_MANAGER') && <Widget key="stat-tickets" title="Ticket Sales" value={stats.totalTickets} icon={<Ticket size={24} />} />}
-                  {(role === 'SUPER_ADMIN' || role === 'CEO' || role === 'FINANCE_MANAGER') && <Widget key="stat-revenue" title="Revenue" value={`R${stats.revenue.toLocaleString()}`} icon={<DollarSign size={24} />} />}
-                  <Widget key="stat-events" title="Active Events" value={stats.activeEvents} icon={<Activity size={24} />} />
-               </>
+              <p className="py-8 border-y border-bai-black/15 text-bai-black/75">No tickets have been scanned yet. Scans appear here as people arrive.</p>
             )}
-         </div>
+          </section>
 
-         <div className="grid grid-cols-1 lg:grid-cols-3 gap-12 mt-12">
-            {/* Recent Activity */}
-            <div className="lg:col-span-2 space-y-6">
-               <div className="flex items-center justify-between">
-                  <h2 className="font-display font-black text-2xl uppercase tracking-tighter italic flex items-center space-x-3">
-                     <Clock size={20} className="text-bai-red" />
-                     <span>Recent Scans</span>
-                  </h2>
-                  <button className="text-[10px] font-black uppercase tracking-widest text-bai-blue flex items-center">
-                     View All <ChevronRight size={14} />
+          <section aria-labelledby="manage-heading">
+            <h2 id="manage-heading" className="display text-2xl mb-5">Manage</h2>
+            <ul className="border-t border-bai-black/15">
+              {links.map(link => (
+                <li key={link.to} className="border-b border-bai-black/15">
+                  <Link to={link.to} className="group flex items-center justify-between gap-4 py-4 min-h-14">
+                    <span>
+                      <span className="block font-bold group-hover:text-bai-red transition-colors">{link.name}</span>
+                      <span className="block text-sm text-bai-black/70">{link.detail}</span>
+                    </span>
+                    <ArrowRight size={18} className="shrink-0 transition-transform duration-200 group-hover:translate-x-1" aria-hidden="true" />
+                  </Link>
+                </li>
+              ))}
+              {canSeeUsers && (
+                <li className="border-b border-bai-black/15">
+                  <button onClick={() => { setShowUsers(true); void loadUsers(); }} aria-expanded={showUsers} className="group w-full text-left flex items-center justify-between gap-4 py-4 min-h-14">
+                    <span>
+                      <span className="block font-bold group-hover:text-bai-red transition-colors">Users</span>
+                      <span className="block text-sm text-bai-black/70">Add staff, change roles, deactivate accounts</span>
+                    </span>
+                    <ArrowRight size={18} className="shrink-0 transition-transform duration-200 group-hover:translate-x-1" aria-hidden="true" />
                   </button>
-               </div>
+                </li>
+              )}
+            </ul>
+          </section>
+        </div>
 
-               <div className="bg-white rounded-[2rem] border border-bai-black/5 overflow-hidden">
-                  {loading ? (
-                    <div className="p-8 space-y-4">
-                       {[1,2,3].map(i => <div key={`scan-skeleton-${i}`} className="h-12 bg-bai-bone animate-pulse rounded-xl" />)}
-                    </div>
-                  ) : recentScans.length > 0 ? (
-                    <div className="divide-y divide-bai-black/5">
-                       {recentScans.map((scan) => (
-                          <div key={scan.id} className="p-6 flex items-center justify-between hover:bg-bai-bone transition-all">
-                             <div className="flex items-center space-x-4">
-                                <div className="w-10 h-10 bg-green-50 text-green-500 rounded-xl flex items-center justify-center">
-                                   <Ticket size={18} />
-                                </div>
-                                <div>
-                                   <p className="font-bold text-sm leading-tight mb-1 uppercase tracking-tight">{(scan.buyerEmail || 'User').split('@')[0]}</p>
-                                   <p className="text-[9px] font-bold text-bai-black/30 uppercase tracking-[0.2em]">{scan.scannedAt?.seconds ? new Date(scan.scannedAt.seconds * 1000).toLocaleString() : 'Just now'}</p>
-                                </div>
-                             </div>
-                             <div className="text-right">
-                                <span className="px-3 py-1 bg-green-500 text-white text-[9px] font-black uppercase rounded-full">Success</span>
-                             </div>
-                          </div>
-                       ))}
-                    </div>
-                  ) : (
-                    <div className="p-12 text-center">
-                       <p className="italic text-bai-black/30 text-sm">No recent scans logged.</p>
-                    </div>
-                  )}
-               </div>
+        {showUsers && canSeeUsers && (
+          <section className="mt-14" aria-labelledby="users-heading">
+            <div className="flex items-center justify-between mb-6">
+              <h2 id="users-heading" className="display text-2xl">Users</h2>
+              <button onClick={() => setShowUsers(false)} className="btn btn-outline">Close</button>
             </div>
 
-            {/* Quick Actions */}
-            <div className="space-y-6">
-               <h2 className="font-display font-black text-2xl uppercase tracking-tighter italic flex items-center space-x-3">
-                  <Settings size={20} className="text-bai-red" />
-                  <span>Management</span>
-               </h2>
-               <div className="grid grid-cols-1 gap-4">
-                  {(role === 'SUPER_ADMIN' || role === 'PRO' || role === 'CEO') && (
-                     <>
-                        <button onClick={() => setIsEventModalOpen(true)} className="flex items-center justify-between p-6 bg-white border border-bai-black/5 rounded-2xl group hover:border-bai-red transition-all">
-                           <div className="flex items-center space-x-4">
-                              <div className="w-10 h-10 bg-bai-bone text-bai-black rounded-xl flex items-center justify-center group-hover:bg-bai-red group-hover:text-white transition-all">
-                                 <Plus size={20} />
-                              </div>
-                              <span className="font-bold text-xs uppercase tracking-widest leading-none">New Event</span>
-                           </div>
-                           <ChevronRight size={18} className="text-bai-black/20" />
+            <form onSubmit={handleAddUser} className="mb-8 border-y border-bai-black/15 py-6">
+              <h3 className="font-bold mb-3">Add a staff account</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+                <input required type="text" aria-label="Full name" placeholder="Full name" maxLength={100} className="field" value={newUser.displayName} onChange={e => setNewUser({ ...newUser, displayName: e.target.value })} />
+                <input required type="email" aria-label="Email address" placeholder="Email address" autoComplete="off" className="field" value={newUser.email} onChange={e => setNewUser({ ...newUser, email: e.target.value })} />
+                <input required type="password" aria-label="Temporary password, at least 8 characters" placeholder="Temporary password (8+)" minLength={8} autoComplete="new-password" className="field" value={newUser.password} onChange={e => setNewUser({ ...newUser, password: e.target.value })} />
+                <select aria-label="Role" className="field" value={newUser.role} onChange={e => setNewUser({ ...newUser, role: e.target.value as UserRole })}>
+                  {creatableRoles.map(r => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
+                </select>
+                <button type="submit" disabled={addingUser} className="btn btn-primary">
+                  {addingUser ? 'Adding' : 'Add user'}
+                </button>
+              </div>
+            </form>
+
+            <ul className="divide-y divide-bai-black/10">
+              {users.map(u => {
+                const inactive = u.isActive === false;
+                const isSelf = u.uid === user?.uid;
+                const canToggle = !isSelf && (isSuper || u.role !== 'SUPER_ADMIN');
+                return (
+                  <li key={u.uid} className={`py-4 flex flex-col lg:flex-row lg:items-center gap-3 lg:gap-6 ${inactive ? 'opacity-70' : ''}`}>
+                    <div className="min-w-0 flex-grow">
+                      <p className="font-semibold text-sm truncate">{u.displayName || 'No name'}{isSelf && <span className="font-normal text-bai-black/70"> (you)</span>}</p>
+                      <p className="text-sm text-bai-black/70 truncate">{u.email}</p>
+                    </div>
+                    {inactive && <span className="self-start lg:self-auto text-xs font-bold uppercase tracking-widest bg-red-100 text-red-800 px-3 py-1 rounded-full">Deactivated</span>}
+                    <div className="flex items-center gap-2">
+                      <select
+                        aria-label={`Role for ${u.displayName || u.email}`}
+                        className="field w-auto flex-1 lg:flex-none disabled:opacity-70"
+                        value={u.role || 'USER'}
+                        onChange={e => handleRoleChange(u, e.target.value as UserRole)}
+                        disabled={!isSuper || isSelf}
+                        title={!isSuper ? 'Only a super admin can change roles' : isSelf ? 'You cannot change your own role' : undefined}
+                      >
+                        {ROLE_OPTIONS.map(r => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
+                      </select>
+                      {canToggle && (
+                        <button
+                          onClick={() => handleToggleActive(u)}
+                          className={`btn ${inactive ? 'btn-primary' : 'btn-danger'}`}
+                        >
+                          {inactive ? <UserCheck size={14} aria-hidden="true" /> : <UserX size={14} aria-hidden="true" />}
+                          <span>{inactive ? 'Reactivate' : 'Deactivate'}</span>
                         </button>
-                        <Link to={ROUTES.ABOUT} className="flex items-center justify-between p-6 bg-white border border-bai-black/5 rounded-2xl group hover:border-bai-red transition-all">
-                           <div className="flex items-center space-x-4">
-                              <div className="w-10 h-10 bg-bai-bone text-bai-black rounded-xl flex items-center justify-center group-hover:bg-bai-red group-hover:text-white transition-all">
-                                 <TrendingUp size={20} />
-                              </div>
-                              <span className="font-bold text-xs uppercase tracking-widest leading-none">Update About</span>
-                           </div>
-                           <ChevronRight size={18} className="text-bai-black/20" />
-                        </Link>
-                        {(role === 'SUPER_ADMIN' || role === 'CEO') && (
-                          <button 
-                            onClick={() => {
-                              setShowUsersAdmin(true);
-                              fetchUsers();
-                            }}
-                            className="flex items-center justify-between p-6 bg-white border border-bai-black/5 rounded-2xl group hover:border-bai-red transition-all"
-                          >
-                             <div className="flex items-center space-x-4">
-                                <div className="w-10 h-10 bg-bai-bone text-bai-black rounded-xl flex items-center justify-center group-hover:bg-bai-red group-hover:text-white transition-all">
-                                   <Users size={20} />
-                                </div>
-                                <span className="font-bold text-xs uppercase tracking-widest leading-none">Manage Users</span>
-                             </div>
-                             <ChevronRight size={18} className="text-bai-black/20" />
-                          </button>
-                        )}
-                     </>
-                  )}
-               </div>
-            </div>
-         </div>
-         
-         {/* Manage Users section */}
-         {showUsersAdmin && (
-             <div className="mt-8 lg:mt-12 bg-white rounded-2xl lg:rounded-3xl p-4 lg:p-8 border border-bai-black/5">
-              <div className="flex items-center justify-between mb-4 lg:mb-6">
-                <h2 className="font-display font-black text-xl lg:text-2xl uppercase tracking-tighter italic">Manage <span className="text-bai-red">Users</span></h2>
-                <div className="flex items-center space-x-4">
-                  <button onClick={() => setShowUsersAdmin(false)} className="text-xs lg:text-sm font-bold text-bai-black/40 hover:text-bai-red">Close</button>
-                </div>
-              </div>
+                      )}
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+            {usersLoading && <p className="py-6 text-center text-sm text-bai-black/70" role="status">Loading users</p>}
+            {!usersLoading && users.length === 0 && <p className="py-6 text-center text-sm text-bai-black/70">No users found.</p>}
+            {cursor && !usersLoading && (
+              <button onClick={() => loadUsers(cursor)} className="btn btn-outline btn-block mt-4">Load more users</button>
+            )}
+          </section>
+        )}
+    </AdminShell>
+  );
+}
 
-              {/* Add User Form - Stacks on mobile */}
-              <div className="w-full mb-6 lg:mb-8 bg-bai-bone p-3 lg:p-4 rounded-xl lg:rounded-2xl">
-                <div className="flex flex-col lg:flex-row items-stretch lg:items-center gap-2 lg:gap-3">
-                 <input 
-                   type="text"
-                   placeholder="Full Name"
-                   className="w-full lg:flex-1 h-12 lg:h-10 px-4 bg-white border border-bai-black/5 rounded-lg outline-none text-sm focus:border-bai-red focus:ring-1 focus:ring-bai-red placeholder:text-bai-black/30 transition-all font-medium"
-                   value={newUser.displayName}
-                   onChange={e => setNewUser({...newUser, displayName: e.target.value})}
-                 />
-                 <input 
-                   type="email"
-                   placeholder="Email Address"
-                   className="w-full lg:flex-1 h-12 lg:h-10 px-4 bg-white border border-bai-black/5 rounded-lg outline-none text-sm focus:border-bai-red focus:ring-1 focus:ring-bai-red placeholder:text-bai-black/30 transition-all font-medium"
-                   value={newUser.email}
-                   onChange={e => setNewUser({...newUser, email: e.target.value})}
-                 />
-                 <input 
-                   type="password"
-                   placeholder="Password (Min 6)"
-                   className="w-full lg:flex-1 h-12 lg:h-10 px-4 bg-white border border-bai-black/5 rounded-lg outline-none text-sm focus:border-bai-red focus:ring-1 focus:ring-bai-red placeholder:text-bai-black/30 transition-all font-medium"
-                   value={newUser.password}
-                   onChange={e => setNewUser({...newUser, password: e.target.value})}
-                 />
-                 <select 
-                   className="w-full lg:flex-1 h-12 lg:h-10 px-4 bg-white border border-bai-black/5 rounded-lg outline-none text-sm lg:text-[10px] focus:border-bai-red focus:ring-1 focus:ring-bai-red text-bai-black transition-all cursor-pointer font-bold uppercase tracking-widest"
-                   value={newUser.role}
-                   onChange={e => setNewUser({...newUser, role: e.target.value})}
-                 >
-                    <option value="USER">User (Standard)</option>
-                    <option value="PRO">PRO / PR Officer</option>
-                    <option value="TICKET_SCANNER">Ticket Scanner</option>
-                    <option value="FINANCE_MANAGER">Finance Manager</option>
-                    <option value="CEO">CEO</option>
-                    <option value="SUPER_ADMIN">Super Admin</option>
-                 </select>
-                 <button 
-                   onClick={handleAddUser}
-                   disabled={addingUser || !newUser.email || !newUser.password || !newUser.displayName}
-                   className="w-full lg:w-auto h-12 lg:h-10 px-6 bg-bai-black text-white rounded-lg text-xs font-bold uppercase tracking-widest hover:bg-bai-red transition-all whitespace-nowrap disabled:opacity-50 disabled:hover:bg-bai-black mt-2 lg:mt-0"
-                 >
-                   {addingUser ? 'Adding...' : 'Add New'}
-                 </button>
-                </div>
-              </div>
-
-              <div className="overflow-x-auto lg:overflow-visible">
-                <table className="w-full text-left border-collapse block lg:table">
-                  <thead className="hidden lg:table-header-group">
-                    <tr className="border-b border-bai-black/5">
-                      <th className="py-4 font-bold text-[10px] uppercase tracking-widest text-bai-black/40">Email</th>
-                      <th className="py-4 font-bold text-[10px] uppercase tracking-widest text-bai-black/40">Name</th>
-                      <th className="py-4 font-bold text-[10px] uppercase tracking-widest text-bai-black/40">Role</th>
-                      <th className="py-4 font-bold text-[10px] uppercase tracking-widest text-bai-black/40 text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="block lg:table-row-group divide-y lg:divide-y-0 divide-bai-black/5">
-                    {users.map(u => (
-                      <tr key={u.uid} className="block lg:table-row py-4 lg:py-0 border-b border-bai-black/5 last:border-0 hover:bg-bai-bone/50 transition-colors">
-                        <td className="block lg:table-cell py-1 lg:py-4 font-medium text-sm">
-                           <span className="inline-block w-20 text-[10px] uppercase tracking-widest text-bai-black/40 font-bold lg:hidden">Email</span>
-                           {u.email}
-                        </td>
-                        <td className="block lg:table-cell py-1 lg:py-4 text-sm">
-                           <span className="inline-block w-20 text-[10px] uppercase tracking-widest text-bai-black/40 font-bold lg:hidden">Name</span>
-                           {u.displayName}
-                        </td>
-                        <td className="block lg:table-cell py-1 lg:py-4">
-                           <span className="inline-block w-20 text-[10px] uppercase tracking-widest text-bai-black/40 font-bold lg:hidden">Role</span>
-                           <span className="text-[10px] font-black uppercase tracking-widest bg-bai-black text-white px-3 py-1 rounded-full">{u.role}</span>
-                        </td>
-                        <td className="block lg:table-cell py-3 lg:py-4 lg:text-right mt-2 lg:mt-0 border-t border-bai-black/5 lg:border-t-0">
-                          <div className="flex items-center lg:justify-end space-x-2">
-                             <select 
-                               className="bg-bai-bone text-xs px-3 py-2 rounded-lg outline-none flex-1 lg:flex-none"
-                               value={u.role || 'USER'}
-                               onChange={e => handleRoleChange(u.uid, e.target.value)}
-                               disabled={role !== 'SUPER_ADMIN'}
-                             >
-                               <option value="USER">User</option>
-                               <option value="PRO">PRO / PR Officer</option>
-                               <option value="SUPER_ADMIN">Super Admin</option>
-                               <option value="CEO">CEO</option>
-                               <option value="FINANCE_MANAGER">Finance</option>
-                               <option value="TICKET_SCANNER">Scanner</option>
-                             </select>
-                             {(role === 'SUPER_ADMIN' || role === 'CEO' || role === 'PRO' || role === 'FINANCE_MANAGER') && (
-                               <button 
-                                 onClick={async () => {
-                                   if (u.uid === user?.uid) {
-                                     alert("You cannot delete your own account from the dashboard.");
-                                     return;
-                                   }
-                                   
-                                   const confirmDelete = window.confirm(`Are you sure you want to delete ${u.displayName || 'this user'}?`);
-                                   if (confirmDelete) {
-                                      try {
-                                         logger.info(`Attempting to delete user ${u.uid}`);
-                                         
-                                         const response = await fetch(`/api/users/${u.uid}`, {
-                                           method: 'DELETE',
-                                           headers: {
-                                             'Content-Type': 'application/json'
-                                           }
-                                         });
-
-                                         if (!response.ok) {
-                                           const errorData = await response.json().catch(() => ({}));
-                                           throw new Error(errorData.message || `Server error: ${response.status}`);
-                                         }
-
-                                         setUsers(prev => prev.filter(userItem => userItem.uid !== u.uid));
-                                         
-                                         await fetchUsers();
-                                         alert('User deleted successfully from system.');
-                                      } catch (err: any) {
-                                         logger.error('Failed to delete user', err);
-                                         alert(`Failed to delete user: ${err.message}`);
-                                      }
-                                   }
-                                 }}
-                                 className="bg-bai-red text-white text-xs px-3 py-2 rounded-lg hover:bg-black transition-all flex items-center space-x-1"
-                               >
-                                 <Trash2 size={12} />
-                                 <span>Delete</span>
-                               </button>
-                             )}
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-         )}
-      </div>
-
-      <NewEventModal 
-        isOpen={isEventModalOpen} 
-        onClose={() => setIsEventModalOpen(false)} 
-        onCreated={() => setIsEventModalOpen(false)}
-      />
+function Stat({ title, value }: { title: string; value: string | null }) {
+  return (
+    <div className="flex flex-col-reverse">
+      <dt className="text-bai-black/75 font-semibold mt-1">{title}</dt>
+      <dd className="num text-3xl sm:text-4xl font-display font-bold tracking-tight break-words">
+        {value === null ? <span className="inline-block h-8 w-20 bg-bai-black/10 animate-pulse rounded" aria-label="Loading" /> : value}
+      </dd>
     </div>
   );
 }

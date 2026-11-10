@@ -1,11 +1,14 @@
 import React, { useState } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { Eye, EyeOff, LogIn, Mail, Lock } from 'lucide-react';
-import { motion } from 'motion/react';
-import { ROUTES } from '../../controllers/navigation';
-import { authController } from '../../controllers/authController';
 import { doc, getDoc } from 'firebase/firestore';
+import { ROUTES, safeReturnPath } from '../../controllers/navigation';
+import { authController } from '../../controllers/authController';
 import { db } from '../../controllers/lib/firebase';
+import { friendlyError } from '../../controllers/lib/utils';
+import { GoogleMark } from '../components/GoogleMark';
+
+const input = 'field pl-12';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -13,174 +16,116 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
 
-  const handlePostLoginRedirect = async (uid: string) => {
+  const redirectAfterLogin = async (uid: string) => {
+    const returnTo = safeReturnPath(location.state);
+    if (returnTo) return navigate(returnTo, { replace: true });
     try {
-      const userDoc = await getDoc(doc(db, 'users', uid));
-      const role = userDoc.exists() ? userDoc.data().role : 'USER';
-      
-      // Determine source path from state
-      const fromPath = (location.state as any)?.from;
-      // location.state.from might be a string (from navigate(..., {state: {from: 'path'}}))
-      // or an object (from ProtectedRoute)
-      const from = typeof fromPath === 'string' ? fromPath : fromPath?.pathname || ROUTES.HOME;
-      
-      // Define what counts as a "purchase checkpoint"
-      const isPurchaseCheckpoint = from.includes(ROUTES.CART) || from.includes(ROUTES.CHECKOUT);
-
-      if (role === 'USER') {
-        if (isPurchaseCheckpoint) {
-          navigate(from, { replace: true });
-        } else {
-          // Regular users always go to Home by default as requested
-          navigate(ROUTES.HOME, { replace: true });
-        }
-      } else {
-        // Staff/Admin go to Dashboard
-        navigate(ROUTES.DASHBOARD, { replace: true });
-      }
-    } catch (err) {
+      const snap = await getDoc(doc(db, 'users', uid));
+      const role = snap.exists() ? snap.data().role : 'USER';
+      navigate(role && role !== 'USER' ? (role === 'TICKET_SCANNER' ? ROUTES.SCANNER : ROUTES.DASHBOARD) : ROUTES.HOME, { replace: true });
+    } catch {
       navigate(ROUTES.HOME, { replace: true });
     }
   };
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const run = async (action: () => Promise<{ uid: string }>) => {
     setLoading(true);
     setError(null);
+    setNotice(null);
     try {
-      const user = await authController.login(email, password);
-      if (user) {
-        await handlePostLoginRedirect(user.uid);
-      }
-    } catch (err: any) {
-      if (err.message?.includes('auth/operation-not-allowed') || err.message?.includes('auth/email-password-not-enabled')) {
-        setError('Email/Password login is not enabled. Please use Google Login or enable it in the Firebase Console.');
-      } else {
-        setError(err.message || 'Login failed. Please check your credentials.');
-      }
+      const user = await action();
+      await redirectAfterLogin(user.uid);
+    } catch (err) {
+      setError(friendlyError(err, 'Sign-in failed. Please try again.'));
     } finally {
       setLoading(false);
     }
   };
 
-  const handleGoogleLogin = async () => {
-    setLoading(true);
-    try {
-      const user = await authController.loginWithGoogle();
-      if (user) {
-        await handlePostLoginRedirect(user.uid);
-      }
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    void run(() => authController.login(email, password));
+  };
+
+  const handleForgot = async () => {
+    setError(null);
+    setNotice(null);
+    if (!email.trim()) {
+      setError('Enter your email address above first, then choose "Forgot password".');
+      return;
     }
+    try {
+      await authController.forgotPassword(email);
+    } catch (err) {
+      const code = (err as { code?: string })?.code;
+      if (code === 'auth/invalid-email' || code === 'auth/network-request-failed' || code === 'auth/too-many-requests') {
+        setError(friendlyError(err));
+        return;
+      }
+      // Any other outcome reads the same, so this form cannot reveal who has an account.
+    }
+    setNotice(`If an account exists for ${email.trim()}, a password reset link is on its way.`);
   };
 
   return (
     <div className="min-h-[90vh] flex items-center justify-center p-4 bg-bai-bone">
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-sm"
-      >
-        <div className="bg-white rounded-2xl shadow-xl border-t-8 border-bai-red overflow-hidden">
-          <div className="p-8 text-center border-b border-bai-bone">
-             <div className="w-12 h-12 bg-bai-black text-white flex items-center justify-center rounded-full mx-auto mb-4 border-2 border-bai-red">
-                <span className="font-display font-black text-xs">BAI</span>
-             </div>
-             <h1 className="font-display font-black text-2xl uppercase tracking-tighter italic leading-none">
-                Bokamoso <br/> <span className="text-bai-red">Login</span>
-             </h1>
-          </div>
-          
-          <div className="p-8">
-            {error && (
-              <div className="mb-6 p-4 bg-red-50 text-red-600 text-[10px] font-bold uppercase tracking-widest border-l-4 border-red-500 rounded-sm">
-                {error}
-              </div>
-            )}
+      <div className="w-full max-w-sm bg-white rounded-2xl shadow-[0_24px_60px_-28px_rgb(0_0_0/0.45)] border-t-8 border-bai-red overflow-hidden">
+        <div className="px-8 pt-8 pb-6 text-center">
+          <h1 className="display text-3xl ">
+            Sign <span className="text-bai-red">in</span>
+          </h1>
+          <p className="text-sm text-bai-black/70 mt-3">Book tickets and see the ones you have.</p>
+        </div>
 
-            <form onSubmit={handleLogin} className="space-y-5">
-              <div className="relative">
-                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-bai-black/30" size={18} />
-                <input 
-                  type="email" 
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="Email Address"
-                  className="w-full h-12 pl-12 pr-4 bg-bai-bone/50 border-2 border-transparent focus:border-bai-red outline-none text-sm transition-all rounded-lg font-medium"
-                />
-              </div>
+        <div className="px-8 pb-8">
+          {error && <p role="alert" className="mb-5 p-4 bg-red-50 text-red-800 text-sm rounded-lg">{error}</p>}
+          {notice && <p role="status" className="mb-5 p-4 bg-green-50 text-green-900 text-sm rounded-lg">{notice}</p>}
 
-              <div className="relative">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-bai-black/30" size={18} />
-                <input 
-                  type={showPassword ? "text" : "password"} 
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Password"
-                  className="w-full h-12 pl-12 pr-12 bg-bai-bone/50 border-2 border-transparent focus:border-bai-red outline-none text-sm transition-all rounded-lg font-medium"
-                />
-                <button 
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-bai-black/30 hover:text-bai-red"
-                >
-                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
-              </div>
-
-              <div className="flex justify-end">
-                <button 
-                  type="button" 
-                  onClick={() => authController.forgotPassword(email)}
-                  className="text-[10px] font-bold uppercase tracking-widest text-bai-blue hover:text-bai-red transition-colors"
-                >
-                  Forgot Password?
-                </button>
-              </div>
-
-              <button 
-                type="submit" 
-                disabled={loading}
-                className="w-full h-14 bg-bai-black text-white font-display font-black uppercase tracking-[0.2em] hover:bg-bai-red transition-all flex items-center justify-center space-x-3 disabled:opacity-50 rounded-lg shadow-lg active:scale-95"
-              >
-                {loading ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <><span>Enter</span> <LogIn size={18} /></>}
-              </button>
-            </form>
-
-            <div className="mt-8 relative">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-bai-black/5"></div>
-              </div>
-              <div className="relative flex justify-center text-[8px] uppercase font-black bg-white px-4 tracking-[0.4em] text-bai-black/20">
-                OR
-              </div>
+          <form onSubmit={handleLogin} className="space-y-4">
+            <div className="relative">
+              <label htmlFor="login-email" className="sr-only">Email address</label>
+              <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-bai-black/60" size={18} aria-hidden="true" />
+              <input id="login-email" type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email address" className={`${input} pr-4`} />
             </div>
 
-            <button 
-              onClick={handleGoogleLogin}
-              disabled={loading}
-              className="mt-8 w-full h-12 bg-white border-2 border-bai-black/5 hover:border-bai-black transition-all flex items-center justify-center space-x-4 rounded-lg font-bold text-xs uppercase tracking-widest group"
-            >
-              <img src="https://www.google.com/favicon.ico" alt="Google" className="w-4 h-4 grayscale group-hover:grayscale-0 transition-all" />
-              <span>Sing in with Google</span>
+            <div className="relative">
+              <label htmlFor="login-password" className="sr-only">Password</label>
+              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-bai-black/60" size={18} aria-hidden="true" />
+              <input id="login-password" type={showPassword ? 'text' : 'password'} required autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password" className={`${input} pr-12`} />
+              <button type="button" onClick={() => setShowPassword(!showPassword)} aria-label={showPassword ? 'Hide password' : 'Show password'} aria-pressed={showPassword} className="icon-btn absolute right-0.5 top-1/2 -translate-y-1/2 text-bai-black/70 hover:text-bai-red">
+                {showPassword ? <EyeOff size={18} aria-hidden="true" /> : <Eye size={18} aria-hidden="true" />}
+              </button>
+            </div>
+
+            <div className="flex justify-end">
+              <button type="button" onClick={handleForgot} className="link py-1">
+                Forgot password?
+              </button>
+            </div>
+
+            <button type="submit" disabled={loading} className="btn btn-lg btn-primary btn-block">
+              {loading ? <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" role="status" aria-label="Signing in" /> : <><span>Sign in</span> <LogIn size={18} aria-hidden="true" /></>}
             </button>
+          </form>
+
+          <div className="my-6 flex items-center gap-4 text-xs uppercase font-bold tracking-widest text-bai-black/60" aria-hidden="true">
+            <span className="h-px flex-grow bg-bai-black/15" />or<span className="h-px flex-grow bg-bai-black/15" />
           </div>
-          
-          <div className="p-6 bg-bai-bone/50 text-center border-t border-bai-black/5">
-             <p className="text-[10px] font-bold uppercase tracking-widest text-bai-black/40">
-                Don't have an account? <Link to={ROUTES.REGISTER} state={location.state} className="text-bai-red hover:underline">Register</Link>
-             </p>
-          </div>
+
+          <button onClick={() => run(() => authController.loginWithGoogle())} disabled={loading} className="btn btn-outline btn-block">
+            <GoogleMark className="w-5 h-5" />
+            <span>Sign in with Google</span>
+          </button>
         </div>
-      </motion.div>
+
+        <p className="p-6 bg-bai-bone text-center border-t border-bai-black/10 text-sm text-bai-black/70">
+          New here? <Link to={ROUTES.REGISTER} state={location.state} className="link">Create an account</Link>
+        </p>
+      </div>
     </div>
   );
 }

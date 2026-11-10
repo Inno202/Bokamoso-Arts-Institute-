@@ -1,101 +1,237 @@
 rules_version = '2';
+
+// Bokamoso Arts Institute — Firestore security rules.
+//
+// Deploy with:  npx firebase-tools deploy --only firestore
+// Test with:    npm run test:rules
+//
+// Anything not matched below is denied.
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // Default deny
-    match /{document=**} {
-      allow read, write: if false;
-    }
 
-    // Helper functions
+    // ---------- helpers ----------
+
     function isSignedIn() {
       return request.auth != null;
     }
-    
-    function getUserData() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
     }
 
-    function hasRole(role) {
-      return isSignedIn() && getUserData().role == role;
+    function profilePath() {
+      return /databases/$(database)/documents/users/$(request.auth.uid);
     }
 
-    function isAnyAdmin() {
-      return hasRole('SUPER_ADMIN') || hasRole('PRO') || hasRole('CEO') || hasRole('FINANCE_MANAGER');
+    // A role only counts while the account is active.
+    function hasAnyRole(roles) {
+      return isSignedIn()
+        && exists(profilePath())
+        && get(profilePath()).data.get('isActive', true) == true
+        && get(profilePath()).data.role in roles;
     }
 
-    function isOwner(userId) {
-      return isSignedIn() && request.auth.uid == userId;
+    function isSuperAdmin()   { return hasAnyRole(['SUPER_ADMIN']); }
+    function isUserAdmin()    { return hasAnyRole(['SUPER_ADMIN', 'CEO']); }
+    function isAnyAdmin()     { return hasAnyRole(['SUPER_ADMIN', 'PRO', 'CEO', 'FINANCE_MANAGER']); }
+    function isEventManager() { return hasAnyRole(['SUPER_ADMIN', 'PRO', 'CEO']); }
+    function isScanner()      { return hasAnyRole(['SUPER_ADMIN', 'PRO', 'TICKET_SCANNER']); }
+    function isStaff()        { return hasAnyRole(['SUPER_ADMIN', 'PRO', 'CEO', 'FINANCE_MANAGER', 'TICKET_SCANNER']); }
+
+    function validRole(role) {
+      return role in ['SUPER_ADMIN', 'PRO', 'CEO', 'FINANCE_MANAGER', 'TICKET_SCANNER', 'USER'];
     }
 
-    // Users collection
+    function tokenEmail() {
+      return request.auth.token.get('email', '');
+    }
+
+    // ---------- users ----------
+
+    function validNewProfile(data) {
+      return data.keys().hasOnly(['email', 'displayName', 'role', 'isActive', 'photoURL', 'createdAt'])
+        && data.keys().hasAll(['email', 'displayName', 'role', 'isActive', 'createdAt'])
+        && data.email is string && data.email.size() <= 320
+        && data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 100
+        && validRole(data.role)
+        && data.isActive is bool
+        && data.createdAt == request.time;
+    }
+
     match /users/{uid} {
-      allow read: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update: if isOwner(uid) || isAnyAdmin();
-      allow delete: if isAnyAdmin();
+      allow get: if isOwner(uid) || isUserAdmin();
+      allow list: if isUserAdmin();
+
+      // Self sign-up is always a plain, active USER. Only admins hand out roles.
+      allow create: if validNewProfile(request.resource.data) && (
+        (isOwner(uid)
+          && request.resource.data.role == 'USER'
+          && request.resource.data.isActive == true
+          && request.resource.data.email == tokenEmail())
+        || isSuperAdmin()
+        || (hasAnyRole(['CEO']) && request.resource.data.role != 'SUPER_ADMIN')
+      );
+
+      allow update: if
+        // Owners may edit their own display details, never role or status.
+        (isOwner(uid)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName', 'photoURL', 'lastLogin'])
+          && request.resource.data.displayName is string
+          && request.resource.data.displayName.size() >= 1
+          && request.resource.data.displayName.size() <= 100)
+        // Super admins manage roles and status, but not their own (no self lock-out).
+        || (isSuperAdmin()
+          && request.auth.uid != uid
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['role', 'isActive', 'displayName'])
+          && validRole(request.resource.data.role)
+          && request.resource.data.get('isActive', true) is bool)
+        // CEOs may deactivate or reactivate anyone below super admin.
+        || (hasAnyRole(['CEO'])
+          && request.auth.uid != uid
+          && resource.data.role != 'SUPER_ADMIN'
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isActive'])
+          && request.resource.data.isActive is bool);
+
+      allow delete: if isSuperAdmin() && request.auth.uid != uid;
     }
 
-    // Tickets collection
-    match /tickets/{ticketId} {
-      allow read: if isSignedIn(); // Allow reading tickets for demo stats
-      allow create: if isSignedIn(); // Allow client side checkout checkout
-      allow update: if isSignedIn(); // Allow client side scanner to update ticket status
-      allow delete: if hasRole('SUPER_ADMIN');
+    // ---------- events ----------
+
+    function validEvent(data) {
+      return data.name is string && data.name.size() >= 1 && data.name.size() <= 200
+        && data.venue is string && data.venue.size() <= 200
+        && data.city is string && data.city.size() <= 100
+        && data.date is timestamp
+        && data.price is number && data.price >= 0 && data.price <= 100000
+        && data.capacity is int && data.capacity >= 1 && data.capacity <= 1000000
+        && data.ticketsSold is int && data.ticketsSold >= 0
+        && data.status is string && data.status.size() <= 40
+        && data.get('description', '') is string && data.get('description', '').size() <= 5000;
     }
 
-    // Ticket scans
-    match /ticket_scanned/{scanId} {
-      allow read: if isSignedIn();
-      allow create: if isSignedIn(); // Allow scanner to log scans
-      allow update: if hasRole('SUPER_ADMIN');
-      allow delete: if hasRole('SUPER_ADMIN');
-    }
-
-    // Events collection
     match /events/{eventId} {
       allow read: if true;
-      allow write: if hasRole('SUPER_ADMIN') || hasRole('PRO') || hasRole('CEO');
+      allow create: if isEventManager()
+        && validEvent(request.resource.data)
+        && request.resource.data.ticketsSold == 0;
+      allow update: if
+        (isEventManager() && validEvent(request.resource.data))
+        // A buyer's checkout may only move the sold counter, upward, within capacity.
+        || (isSignedIn()
+          && resource.data.status == 'On Sale'
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['ticketsSold'])
+          && request.resource.data.ticketsSold is int
+          && request.resource.data.ticketsSold > resource.data.ticketsSold
+          && request.resource.data.ticketsSold <= resource.data.ticketsSold + 10
+          && request.resource.data.ticketsSold <= resource.data.capacity);
+      allow delete: if isEventManager();
     }
 
-    // Team collection
-    match /team/{memberId} {
+    // ---------- tickets ----------
+
+    function eventPath(eventId) {
+      return /databases/$(database)/documents/events/$(eventId);
+    }
+
+    match /tickets/{ticketId} {
+      allow get: if isSignedIn()
+        && ((resource != null && resource.data.buyerId == request.auth.uid) || isStaff());
+      // Buyers can only query their own tickets; admins can report on all of them.
+      allow list: if isSignedIn()
+        && (resource.data.buyerId == request.auth.uid || isAnyAdmin());
+
+      // A ticket is issued to the signed-in buyer, at the event's real price, while the
+      // event is on sale, and only in the same write that moves the event's sold counter.
+      allow create: if isSignedIn()
+        && ticketId.matches('^BAI-[A-HJ-NP-Z2-9]{12}$')
+        && request.resource.data.keys().hasOnly(['eventId', 'eventName', 'ticketType', 'buyerId', 'buyerEmail', 'price', 'quantity', 'status', 'createdAt'])
+        && request.resource.data.keys().hasAll(['eventId', 'ticketType', 'buyerId', 'buyerEmail', 'price', 'quantity', 'status', 'createdAt'])
+        && request.resource.data.buyerId == request.auth.uid
+        && request.resource.data.buyerEmail == tokenEmail()
+        && request.resource.data.status == 'VALID'
+        && request.resource.data.quantity == 1
+        && request.resource.data.ticketType == 'General Admission'
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.eventId is string
+        && exists(eventPath(request.resource.data.eventId))
+        && get(eventPath(request.resource.data.eventId)).data.status == 'On Sale'
+        && request.resource.data.price == get(eventPath(request.resource.data.eventId)).data.price
+        && request.resource.data.get('eventName', '') is string
+        && request.resource.data.get('eventName', '').size() <= 200
+        && getAfter(eventPath(request.resource.data.eventId)).data.ticketsSold
+             > get(eventPath(request.resource.data.eventId)).data.ticketsSold;
+
+      allow update: if
+        // Door staff admit a valid ticket exactly once, together with its scan record.
+        (isScanner()
+          && resource.data.status == 'VALID'
+          && request.resource.data.status == 'SCANNED'
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'scannedAt', 'scannedBy'])
+          && request.resource.data.scannedBy == request.auth.uid
+          && request.resource.data.scannedAt == request.time
+          && existsAfter(/databases/$(database)/documents/ticket_scanned/$(ticketId)))
+        // Super admins may cancel or restore a ticket.
+        || (isSuperAdmin()
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt'])
+          && request.resource.data.status in ['VALID', 'CANCELLED']);
+
+      allow delete: if isSuperAdmin();
+    }
+
+    // ---------- ticket scans (one per ticket, keyed by ticket id) ----------
+
+    match /ticket_scanned/{scanId} {
+      allow read: if isStaff();
+      allow create: if isScanner()
+        && request.resource.data.keys().hasOnly(['ticketId', 'eventId', 'buyerEmail', 'scannedAt', 'scannedBy'])
+        && request.resource.data.ticketId == scanId
+        && request.resource.data.scannedBy == request.auth.uid
+        && request.resource.data.scannedAt == request.time
+        && get(/databases/$(database)/documents/tickets/$(scanId)).data.status == 'VALID'
+        && getAfter(/databases/$(database)/documents/tickets/$(scanId)).data.status == 'SCANNED';
+      allow update: if false;
+      allow delete: if isSuperAdmin();
+    }
+
+    // ---------- site content ----------
+    //
+    // One document per section of the site. Everyone can read it; only content
+    // editors can change it, and every save records who made it and when.
+
+    function isContentEditor() { return hasAnyRole(['SUPER_ADMIN', 'PRO', 'CEO']); }
+
+    match /content/{section} {
       allow read: if true;
-      allow write: if hasRole('SUPER_ADMIN') || hasRole('CEO') || hasRole('PRO');
+      allow create, update: if isContentEditor()
+        && section in ['site', 'home', 'about', 'work', 'traditions']
+        && request.resource.data.keys().hasOnly(['data', 'updatedAt', 'updatedBy'])
+        && request.resource.data.data is map
+        && request.resource.data.updatedAt == request.time
+        && request.resource.data.updatedBy == request.auth.uid;
+      allow delete: if isSuperAdmin();
     }
 
-    // Content collection
-    match /content/{docId} {
-      allow read: if true;
-      allow write: if hasRole('SUPER_ADMIN') || hasRole('CEO') || hasRole('PRO');
-    }
-
-    // About collection
+    // Where the About and Our Work pages kept their content before the content
+    // store existed. Still readable as a fallback, no longer writable.
     match /about/{docId} {
       allow read: if true;
-      allow write: if isAnyAdmin();
-    }
-    match /about {
-      allow read: if true;
+      allow write: if false;
     }
 
-    // Work collection
     match /work/{docId} {
       allow read: if true;
-      allow write: if isAnyAdmin();
-    }
-    match /work {
-      allow read: if true;
+      allow write: if false;
     }
 
-    // Sessions collection
-    match /sessions/{sessionId} {
-      allow read, write: if false; // Server only
-    }
+    // ---------- carts ----------
 
-    // Cart collection
     match /cart/{cartId} {
-      allow read, write: if isSignedIn() && request.auth.uid == cartId;
+      allow read, delete: if isOwner(cartId);
+      allow create, update: if isOwner(cartId)
+        && request.resource.data.keys().hasOnly(['userId', 'items', 'total', 'updatedAt'])
+        && request.resource.data.userId == cartId
+        && request.resource.data.items is list
+        && request.resource.data.items.size() <= 25;
     }
   }
 }

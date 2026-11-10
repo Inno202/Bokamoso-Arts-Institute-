@@ -1,4 +1,27 @@
+import type { Timestamp } from 'firebase/firestore';
+
 export type UserRole = 'SUPER_ADMIN' | 'PRO' | 'CEO' | 'FINANCE_MANAGER' | 'TICKET_SCANNER' | 'USER';
+
+export const ROLE_LABELS: Record<UserRole, string> = {
+  USER: 'User',
+  PRO: 'PR Officer',
+  TICKET_SCANNER: 'Ticket Scanner',
+  FINANCE_MANAGER: 'Finance Manager',
+  CEO: 'CEO',
+  SUPER_ADMIN: 'Super Admin',
+};
+
+// These mirror the role groups in firestore.rules. The rules are what actually
+// enforce access; the helpers below only decide what the interface offers.
+const inRoles = (roles: UserRole[]) => (role: UserRole | null | undefined) => !!role && roles.includes(role);
+export const isAnyAdmin = inRoles(['SUPER_ADMIN', 'PRO', 'CEO', 'FINANCE_MANAGER']);
+export const isUserAdmin = inRoles(['SUPER_ADMIN', 'CEO']);
+export const isEventManager = inRoles(['SUPER_ADMIN', 'PRO', 'CEO']);
+export const isScanner = inRoles(['SUPER_ADMIN', 'PRO', 'TICKET_SCANNER']);
+export const isFinance = inRoles(['SUPER_ADMIN', 'CEO', 'FINANCE_MANAGER']);
+
+/** Firestore timestamps arrive as Timestamp objects; older records may hold ISO strings. */
+export type DateLike = Timestamp | { seconds: number } | string | Date | null | undefined;
 
 export interface UserProfile {
   uid: string;
@@ -7,8 +30,8 @@ export interface UserProfile {
   role: UserRole;
   isActive: boolean;
   photoURL?: string;
-  createdAt: any;
-  lastLogin?: any;
+  createdAt: DateLike;
+  lastLogin?: DateLike;
 }
 
 export interface BAIEvent {
@@ -16,7 +39,7 @@ export interface BAIEvent {
   name: string;
   venue: string;
   city: string;
-  date: any;
+  date: DateLike;
   price: number;
   status: string;
   capacity: number;
@@ -24,39 +47,34 @@ export interface BAIEvent {
   description: string;
   ticketImageUrl?: string;
   bannerImageUrl?: string;
-  createdAt: any;
+  createdAt: DateLike;
   createdBy: string;
 }
 
-export interface TicketStatus {
-  status: 'VALID' | 'SCANNED' | 'CANCELLED';
-}
+export type TicketStatus = 'VALID' | 'SCANNED' | 'CANCELLED';
 
 export interface Ticket {
   id: string;
   eventId: string;
+  eventName?: string;
   ticketType: string;
   buyerEmail: string;
   buyerId: string;
-  status: 'VALID' | 'SCANNED' | 'CANCELLED';
-  createdAt: any;
-  qrCode: string;
-  downloadUrl?: string;
+  status: TicketStatus;
+  createdAt: DateLike;
   price: number;
-  seatInfo?: string;
   quantity: number;
-  ticketImageUrl?: string;
+  scannedAt?: DateLike;
+  scannedBy?: string;
 }
 
 export interface TicketScan {
   id: string;
   ticketId: string;
-  scannedAt: any;
+  scannedAt: DateLike;
   scannedBy: string;
   eventId: string;
   buyerEmail: string;
-  deviceInfo?: string;
-  location?: string;
 }
 
 export interface TeamMember {
@@ -74,7 +92,7 @@ export interface ContentDoc {
   slug: string;
   title: string;
   body: string;
-  updatedAt: any;
+  updatedAt: DateLike;
   updatedBy: string;
 }
 
@@ -82,16 +100,15 @@ export interface CartItem {
   eventId: string;
   eventName: string;
   venue: string;
-  date: any;
+  date: DateLike;
   ticketType: string;
   price: number;
   quantity: number;
-  ticketImageUrl?: string;
 }
 
 export interface Cart {
   userId: string;
   items: CartItem[];
   total: number;
-  updatedAt: any;
+  updatedAt: DateLike;
 }
