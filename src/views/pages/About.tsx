@@ -58,7 +58,7 @@ export default function About() {
                     <img src={contentImage(member.image, 700)} alt={member.name} loading="lazy" decoding="async" className="w-full h-full object-cover" />
                   )}
                 </div>
-                <h3 className="font-display font-bold text-2xl uppercase leading-tight">{member.name}</h3>
+                <h3 className="font-display font-bold text-2xl leading-tight">{member.name}</h3>
                 <p className="font-display font-bold text-bai-red mt-1">{member.role}</p>
                 {member.desc && <p className="text-bai-black/75 leading-relaxed mt-3">{member.desc}</p>}
               </li>

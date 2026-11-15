@@ -76,7 +76,7 @@ function SectionEditor({ sectionKey }: { sectionKey: SectionKey }) {
     try {
       await saveSection(sectionKey, draft, user.uid);
       setErrors({});
-      toast.success(`${def.title} saved. The site now shows your changes.`);
+      toast.success(`${def.title} saved and confirmed. Every visitor now sees your changes.`);
     } catch (err) {
       if (err instanceof ContentValidationError) {
         setErrors(err.errors);
@@ -123,6 +123,7 @@ function SectionEditor({ sectionKey }: { sectionKey: SectionKey }) {
           <h2 className="display text-2xl md:text-3xl">{def.title}</h2>
           <p className="text-bai-black/75 mt-2">Shown on: {def.shownOn}</p>
           <p className="text-bai-black/75 mt-1">{status}</p>
+          <p className="text-bai-black/75 mt-1">Headings and titles are shown in capital letters on the site, so a change to capitalisation alone will not be visible there.</p>
         </div>
         <Link to={def.preview} target="_blank" rel="noopener" className="btn btn-outline">
           <span>View page</span>
@@ -162,7 +163,9 @@ function SectionEditor({ sectionKey }: { sectionKey: SectionKey }) {
           <RotateCcw size={16} aria-hidden="true" />
           <span>Load defaults</span>
         </button>
-        <p className="text-sm text-bai-black/75 ml-auto" role="status">{dirty ? 'You have unsaved changes.' : 'Everything is saved.'}</p>
+        <p className="text-sm text-bai-black/75 ml-auto" role="status">
+          {dirty ? 'You have unsaved changes.' : state.pending ? 'Sending to the database. Not live yet.' : 'Everything is saved and live.'}
+        </p>
       </div>
     </form>
   );

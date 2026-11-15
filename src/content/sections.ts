@@ -245,7 +245,7 @@ const about: SectionDef<'about'> = {
       text('desc', 'Description', 240, { ...required, ...long }),
     ] },
     { kind: 'list', key: 'management', label: 'Management team', itemLabel: 'Team member', titleKey: 'name', max: 30, fields: [
-      text('name', 'Name', 80, required),
+      text('name', 'Name', 80, { ...required, help: 'Shown exactly as typed, including capital letters.' }),
       text('role', 'Role', 80, required),
       text('desc', 'About them', 400, long),
       { kind: 'image', key: 'image', label: 'Photo', help: 'A square photo works best.' },

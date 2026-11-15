@@ -247,3 +247,12 @@ describe('validating events', () => {
     expect(validateEvent({ ...good, description: 'x'.repeat(5001) }).description).toBeDefined();
   });
 });
+
+describe('confirming a save', () => {
+  it('treats the same content as equal whatever order its fields come back in', async () => {
+    const { stable } = await import('../src/content/stable');
+    expect(stable({ b: 1, a: { d: [2, { z: 1, y: 2 }], c: 'x' } })).toBe(stable({ a: { c: 'x', d: [2, { y: 2, z: 1 }] }, b: 1 }));
+    expect(stable({ a: [1, 2] })).not.toBe(stable({ a: [2, 1] }));
+    expect(stable({ a: 'x' })).not.toBe(stable({ a: 'y' }));
+  });
+});
