@@ -10,7 +10,7 @@ import { logger } from '../../services/loggerService';
 import { PAYMENTS_LIVE } from '../../config';
 
 export default function Checkout() {
-  const { items, subtotal, clearCart, loading: cartLoading } = useCart();
+  const { items, subtotal, clearCart, removeFromCart, loading: cartLoading } = useCart();
   const { user } = useAuth();
   const navigate = useNavigate();
   const [submitting, setSubmitting] = useState(false);
@@ -33,9 +33,18 @@ export default function Checkout() {
     setSubmitting(true);
     setError(null);
     try {
-      const ids = await ticketController.purchase(user, items);
-      setIssued(ids.length);
-      clearCart();
+      const result = await ticketController.purchase(user, items);
+      const failed = 'Your tickets could not be issued. Nothing was charged. Please try again.';
+      if (!result.error) {
+        setIssued(result.ticketIds.length);
+        clearCart();
+      } else if (result.ticketIds.length > 0) {
+        // Some events were booked before one failed: keep only the unbooked lines in the bag.
+        items.filter(i => result.purchasedEventIds.includes(i.eventId)).forEach(i => removeFromCart(i.eventId, i.ticketType));
+        setError(`${result.ticketIds.length} ${result.ticketIds.length === 1 ? 'ticket was' : 'tickets were'} issued and ${result.ticketIds.length === 1 ? 'is' : 'are'} in My Tickets. The rest of your bag was not booked: ${friendlyError(result.error, failed)}`);
+      } else {
+        setError(friendlyError(result.error, failed));
+      }
     } catch (err) {
       logger.error('Checkout failed', err);
       setError(friendlyError(err, 'Your tickets could not be issued. Nothing was charged. Please try again.'));

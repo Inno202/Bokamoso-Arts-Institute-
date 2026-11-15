@@ -11,10 +11,20 @@ import { userController } from '../../controllers/userController';
 import { logger } from '../../services/loggerService';
 import { toast } from '../../services/toast';
 import { formatCurrency, formatDateTime, friendlyError } from '../../controllers/lib/utils';
+import { RECENT_SIGN_IN_HOURS } from '../../config';
 import { isEventManager, isFinance, isScanner, isUserAdmin, ROLE_LABELS, TicketScan, UserProfile, UserRole } from '../../models/types';
 
 const ROLE_OPTIONS = Object.keys(ROLE_LABELS) as UserRole[];
 const EMPTY_USER = { displayName: '', email: '', password: '', role: 'USER' as UserRole };
+
+/** Role and account changes need a fresh sign-in (enforced in firestore.rules); say so plainly when that is the reason. */
+function accountChangeError(err: unknown, signedInAt: string | undefined, fallback: string) {
+  const age = signedInAt ? Date.now() - new Date(signedInAt).getTime() : 0;
+  if ((err as { code?: string })?.code === 'permission-denied' && age > RECENT_SIGN_IN_HOURS * 3_600_000) {
+    return `For security, changing roles or accounts needs a sign-in from the last ${RECENT_SIGN_IN_HOURS} hours. Sign out, sign in again, and repeat the change.`;
+  }
+  return friendlyError(err, fallback);
+}
 
 export default function Dashboard() {
   const { user, role } = useAuth();
@@ -89,7 +99,7 @@ export default function Dashboard() {
       toast.success(`${target.displayName || target.email} is now ${ROLE_LABELS[newRole]}.`);
     } catch (err) {
       logger.error('Failed to update role', err);
-      toast.error(friendlyError(err, 'The role could not be changed.'));
+      toast.error(accountChangeError(err, user?.metadata.lastSignInTime, 'The role could not be changed.'));
     }
   };
 
@@ -102,7 +112,7 @@ export default function Dashboard() {
       toast.success(next ? 'Account reactivated.' : 'Account deactivated.');
     } catch (err) {
       logger.error('Failed to change account status', err);
-      toast.error(friendlyError(err, 'The account status could not be changed.'));
+      toast.error(accountChangeError(err, user?.metadata.lastSignInTime, 'The account status could not be changed.'));
     }
   };
 
@@ -117,7 +127,7 @@ export default function Dashboard() {
       setStats(prev => ({ ...prev, totalUsers: prev.totalUsers === undefined ? undefined : prev.totalUsers + 1 }));
     } catch (err) {
       logger.error('Failed to create user', err);
-      toast.error(friendlyError(err, 'The account could not be created.'));
+      toast.error(accountChangeError(err, user?.metadata.lastSignInTime, 'The account could not be created.'));
     } finally {
       setAddingUser(false);
     }

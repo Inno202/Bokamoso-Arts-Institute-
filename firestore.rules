@@ -46,6 +46,14 @@ service cloud.firestore {
       return request.auth.token.get('email', '');
     }
 
+    // True only if the person typed their password (or used Google) within the last
+    // 8 hours. A stolen, long-lived session cannot renew this, so the most damaging
+    // actions (handing out roles, removing accounts) need a fresh sign-in.
+    function recentSignIn() {
+      return request.auth.token.auth_time is number
+        && request.time < timestamp.value(request.auth.token.auth_time * 1000) + duration.value(8, 'h');
+    }
+
     // ---------- users ----------
 
     function validNewProfile(data) {
@@ -68,8 +76,8 @@ service cloud.firestore {
           && request.resource.data.role == 'USER'
           && request.resource.data.isActive == true
           && request.resource.data.email == tokenEmail())
-        || isSuperAdmin()
-        || (hasAnyRole(['CEO']) && request.resource.data.role != 'SUPER_ADMIN')
+        || (recentSignIn() && isSuperAdmin())
+        || (recentSignIn() && hasAnyRole(['CEO']) && request.resource.data.role != 'SUPER_ADMIN')
       );
 
       allow update: if
@@ -80,19 +88,21 @@ service cloud.firestore {
           && request.resource.data.displayName.size() >= 1
           && request.resource.data.displayName.size() <= 100)
         // Super admins manage roles and status, but not their own (no self lock-out).
-        || (isSuperAdmin()
+        || (recentSignIn()
+          && isSuperAdmin()
           && request.auth.uid != uid
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['role', 'isActive', 'displayName'])
           && validRole(request.resource.data.role)
           && request.resource.data.get('isActive', true) is bool)
         // CEOs may deactivate or reactivate anyone below super admin.
-        || (hasAnyRole(['CEO'])
+        || (recentSignIn()
+          && hasAnyRole(['CEO'])
           && request.auth.uid != uid
           && resource.data.role != 'SUPER_ADMIN'
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isActive'])
           && request.resource.data.isActive is bool);
 
-      allow delete: if isSuperAdmin() && request.auth.uid != uid;
+      allow delete: if recentSignIn() && isSuperAdmin() && request.auth.uid != uid;
     }
 
     // ---------- events ----------
@@ -109,28 +119,110 @@ service cloud.firestore {
         && data.get('description', '') is string && data.get('description', '').size() <= 5000;
     }
 
+    function eventPath(eventId) {
+      return /databases/$(database)/documents/events/$(eventId);
+    }
+
+    // How many tickets one account holds for one event.
+    function holdingPath(uid, eventId) {
+      return /databases/$(database)/documents/ticket_holdings/$(uid + '_' + eventId);
+    }
+
+    function orderPath(orderId) {
+      return /databases/$(database)/documents/orders/$(orderId);
+    }
+
     match /events/{eventId} {
       allow read: if true;
       allow create: if isEventManager()
         && validEvent(request.resource.data)
         && request.resource.data.ticketsSold == 0;
       allow update: if
-        (isEventManager() && validEvent(request.resource.data))
-        // A buyer's checkout may only move the sold counter, upward, within capacity.
-        || (isSignedIn()
+        // A buyer's checkout may only move the sold counter, upward, within capacity,
+        // and only in the same write that records what this account now holds.
+        // (Checked first, so an ordinary checkout costs no staff-profile lookups.)
+        (isSignedIn()
           && resource.data.status == 'On Sale'
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['ticketsSold'])
           && request.resource.data.ticketsSold is int
           && request.resource.data.ticketsSold > resource.data.ticketsSold
           && request.resource.data.ticketsSold <= resource.data.ticketsSold + 10
-          && request.resource.data.ticketsSold <= resource.data.capacity);
+          && request.resource.data.ticketsSold <= resource.data.capacity
+          && getAfter(holdingPath(request.auth.uid, eventId)).data.updatedAt == request.time)
+        || (isEventManager() && validEvent(request.resource.data));
       allow delete: if isEventManager();
+    }
+
+    // ---------- checkout ----------
+    //
+    // One checkout for one event writes four things together, and each is only
+    // accepted if the others agree with it:
+    //   events/{id}.ticketsSold      goes up by N
+    //   ticket_holdings/{uid}_{id}   goes up by the same N, and never above 10
+    //   orders/{uid}_{id}_{holding}  records N ticket references at the event's price
+    //   tickets/{ref}                one per reference listed in that order
+    // So tickets can never outnumber the sold counter, an event cannot be oversold,
+    // and one account cannot hold more than 10 tickets for an event.
+
+    match /ticket_holdings/{holdingId} {
+      allow get: if isSignedIn() && (holdingId.matches('^' + request.auth.uid + '_.*') || isAnyAdmin());
+      allow list: if isAnyAdmin();
+      allow create, update: if isSignedIn()
+        && request.resource.data.keys().hasOnly(['buyerId', 'eventId', 'count', 'updatedAt'])
+        && request.resource.data.buyerId == request.auth.uid
+        && request.resource.data.eventId is string
+        && holdingId == request.auth.uid + '_' + request.resource.data.eventId
+        && request.resource.data.updatedAt == request.time
+        && request.resource.data.count is int
+        && request.resource.data.count <= 10
+        && request.resource.data.count ==
+             (resource == null ? 0 : resource.data.count)
+             + getAfter(eventPath(request.resource.data.eventId)).data.ticketsSold
+             - get(eventPath(request.resource.data.eventId)).data.ticketsSold;
+      allow delete: if isSuperAdmin();
+    }
+
+    match /orders/{orderId} {
+      allow get: if isSignedIn() && ((resource != null && resource.data.buyerId == request.auth.uid) || isAnyAdmin());
+      allow list: if isSignedIn() && (resource.data.buyerId == request.auth.uid || isAnyAdmin());
+      // Orders are a permanent record: created once at checkout, never edited.
+      allow create: if isSignedIn()
+        && request.resource.data.keys().hasOnly(['buyerId', 'buyerEmail', 'eventId', 'eventName', 'unitPrice', 'quantity', 'ticketIds', 'createdAt'])
+        && request.resource.data.buyerId == request.auth.uid
+        && request.resource.data.buyerEmail == tokenEmail()
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.eventId is string
+        && request.resource.data.quantity is int
+        && request.resource.data.quantity >= 1
+        && request.resource.data.quantity <= 10
+        && request.resource.data.ticketIds is list
+        && request.resource.data.ticketIds.size() == request.resource.data.quantity
+        && request.resource.data.ticketIds.toSet().size() == request.resource.data.quantity
+        && request.resource.data.eventName is string
+        && request.resource.data.eventName.size() <= 200
+        && get(eventPath(request.resource.data.eventId)).data.status == 'On Sale'
+        && request.resource.data.unitPrice == get(eventPath(request.resource.data.eventId)).data.price
+        && getAfter(eventPath(request.resource.data.eventId)).data.ticketsSold
+             == get(eventPath(request.resource.data.eventId)).data.ticketsSold + request.resource.data.quantity
+        // The order's id is fixed by the account's new holding, so one checkout
+        // can never be recorded as two orders.
+        && orderId == request.auth.uid + '_' + request.resource.data.eventId + '_'
+             + string(getAfter(holdingPath(request.auth.uid, request.resource.data.eventId)).data.count);
+      allow update: if false;
+      allow delete: if isSuperAdmin();
     }
 
     // ---------- tickets ----------
 
-    function eventPath(eventId) {
-      return /databases/$(database)/documents/events/$(eventId);
+    function ticketMatchesOrder(ticketId, ticket, order) {
+      return ticketId in order.ticketIds
+        && order.createdAt == request.time
+        && order.buyerId == request.auth.uid
+        && ticket.buyerId == order.buyerId
+        && ticket.buyerEmail == order.buyerEmail
+        && ticket.eventId == order.eventId
+        && ticket.eventName == order.eventName
+        && ticket.price == order.unitPrice;
     }
 
     match /tickets/{ticketId} {
@@ -140,40 +232,36 @@ service cloud.firestore {
       allow list: if isSignedIn()
         && (resource.data.buyerId == request.auth.uid || isAnyAdmin());
 
-      // A ticket is issued to the signed-in buyer, at the event's real price, while the
-      // event is on sale, and only in the same write that moves the event's sold counter.
+      // A ticket exists only as one of the references listed in the buyer's order,
+      // copying that order's event, price and buyer. The order rule has already
+      // checked those against the event, so this check stays small: a single write
+      // may only evaluate a limited amount of rule logic, and a full order has 10 tickets.
       allow create: if isSignedIn()
         && ticketId.matches('^BAI-[A-HJ-NP-Z2-9]{12}$')
-        && request.resource.data.keys().hasOnly(['eventId', 'eventName', 'ticketType', 'buyerId', 'buyerEmail', 'price', 'quantity', 'status', 'createdAt'])
-        && request.resource.data.keys().hasAll(['eventId', 'ticketType', 'buyerId', 'buyerEmail', 'price', 'quantity', 'status', 'createdAt'])
-        && request.resource.data.buyerId == request.auth.uid
-        && request.resource.data.buyerEmail == tokenEmail()
+        && request.resource.data.keys().hasOnly(['orderId', 'eventId', 'eventName', 'ticketType', 'buyerId', 'buyerEmail', 'price', 'quantity', 'status', 'createdAt'])
         && request.resource.data.status == 'VALID'
         && request.resource.data.quantity == 1
         && request.resource.data.ticketType == 'General Admission'
         && request.resource.data.createdAt == request.time
-        && request.resource.data.eventId is string
-        && exists(eventPath(request.resource.data.eventId))
-        && get(eventPath(request.resource.data.eventId)).data.status == 'On Sale'
-        && request.resource.data.price == get(eventPath(request.resource.data.eventId)).data.price
-        && request.resource.data.get('eventName', '') is string
-        && request.resource.data.get('eventName', '').size() <= 200
-        && getAfter(eventPath(request.resource.data.eventId)).data.ticketsSold
-             > get(eventPath(request.resource.data.eventId)).data.ticketsSold;
+        && ticketMatchesOrder(ticketId, request.resource.data, getAfter(orderPath(request.resource.data.orderId)).data);
 
       allow update: if
         // Door staff admit a valid ticket exactly once, together with its scan record.
-        (isScanner()
+        // (The cheap checks come first: this rule is also consulted while tickets are
+        // being created, and staff-profile lookups there would use up the write's budget.)
+        (resource != null
           && resource.data.status == 'VALID'
           && request.resource.data.status == 'SCANNED'
+          && isScanner()
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'scannedAt', 'scannedBy'])
           && request.resource.data.scannedBy == request.auth.uid
           && request.resource.data.scannedAt == request.time
           && existsAfter(/databases/$(database)/documents/ticket_scanned/$(ticketId)))
         // Super admins may cancel or restore a ticket.
-        || (isSuperAdmin()
+        || (resource != null
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt'])
-          && request.resource.data.status in ['VALID', 'CANCELLED']);
+          && request.resource.data.status in ['VALID', 'CANCELLED']
+          && isSuperAdmin());
 
       allow delete: if isSuperAdmin();
     }

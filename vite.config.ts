@@ -11,17 +11,19 @@ import firebaseConfig from './firebase-applet-config.json';
 // wherever the host allows custom headers.)
 const csp = [
   "default-src 'self'",
-  "script-src 'self' https://apis.google.com https://www.gstatic.com",
+  // google.com/recaptcha and gstatic.com/recaptcha are used by App Check.
+  "script-src 'self' https://apis.google.com https://www.gstatic.com https://www.google.com/recaptcha/",
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "font-src 'self' https://fonts.gstatic.com",
   "img-src 'self' data: blob: https:",
   "media-src 'self' blob:",
   "connect-src 'self' https://*.googleapis.com https://api.cloudinary.com",
-  `frame-src https://${firebaseConfig.authDomain}`,
+  `frame-src https://${firebaseConfig.authDomain} https://www.google.com/recaptcha/ https://recaptcha.google.com/recaptcha/`,
   "worker-src 'self' blob:",
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'self'",
+  'upgrade-insecure-requests',
 ].join('; ');
 
 const cspPlugin = (): Plugin => ({

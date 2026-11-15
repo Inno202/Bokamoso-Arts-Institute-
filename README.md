@@ -74,6 +74,33 @@ VITE_USE_EMULATORS=true npx vite
 
 `src/views/pages/Legal.tsx` holds the three policies. Update it, and its "last updated" date, in the same change as anything that alters what is charged, collected, stored or promised.
 
+## Security
+
+What protects the system, and where each protection lives.
+
+| Threat | Protection | Where |
+| --- | --- | --- |
+| Flooding the website (DDoS) | The site is static files served from GitHub's global network; there is no server of ours to overload | GitHub Pages |
+| Flooding or scraping the database, mass fake sign-ups | **Firebase App Check**: requests without proof they come from this site in a real browser are refused | Console setup below |
+| Someone using another person's account or data | Every read and write is checked against the signed-in person and their role | `firestore.rules` |
+| Stolen or abandoned staff session | Staff are signed out after 30 idle minutes; role and account changes need a sign-in from the last 8 hours; a deactivated account loses access at once | `AuthProvider.tsx`, `firestore.rules` |
+| Forged, free-minted or hoarded tickets | A ticket only exists as part of an order that matches the event's price and sold count; 10 tickets per account per event | `firestore.rules` |
+| Malicious script injected into a page (XSS) | Content-Security-Policy limits where scripts can come from; admin input is validated; links must be https | `vite.config.ts`, `src/content` |
+| The site hidden inside a hostile page (clickjacking) | The app refuses to start inside another site's frame | `src/main.tsx` |
+| Forged requests from another site (CSRF) | Sign-in uses tokens the browser never sends automatically, not cookies | Firebase Auth |
+
+No setup makes a system immune to every attack. These settings are not in the code and must be switched on once in the consoles:
+
+1. **App Check** (the main defence against scripted floods):
+   - Create a reCAPTCHA v3 key for your site's domain at google.com/recaptcha/admin.
+   - Firebase console → App Check → register the web app with that key.
+   - Put the site key in `.env` as `VITE_RECAPTCHA_SITE_KEY`, rebuild and deploy.
+   - After a day of traffic shows as verified, press **Enforce** for Cloud Firestore and Authentication.
+2. **Authentication settings** (Firebase console → Authentication → Settings): turn on email enumeration protection, set a password policy (minimum length 8), and remove any authorised domain you do not use.
+3. **Budget alert** (Google Cloud console → Billing → Budgets): get an email if usage ever spikes.
+4. **API key restriction** (Google Cloud console → Credentials → Browser key): restrict to your site's address under HTTP referrers.
+5. **Staff accounts**: use strong unique passwords, and prefer Google sign-in with 2-step verification for anyone with a role.
+
 ## Images
 
 Set `VITE_CLOUDINARY_CLOUD_NAME` and `VITE_CLOUDINARY_UPLOAD_PRESET` (see `.env.example`) so uploads go to Cloudinary. Without them, uploaded images are compressed and stored inside Firestore documents, which caps each page at roughly 1 MB of images.

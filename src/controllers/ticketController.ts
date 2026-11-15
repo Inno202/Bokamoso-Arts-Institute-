@@ -17,12 +17,24 @@ import type { User } from 'firebase/auth';
 import { db } from './lib/firebase';
 import { BAIEvent, CartItem, Ticket, TicketScan } from '../models/types';
 import { AppError, toDate } from './lib/utils';
+import { MAX_PER_EVENT } from './cartController';
 import { cacheService } from '../services/cacheService';
 import { logger } from '../services/loggerService';
 
 const TICKETS = 'tickets';
 const SCANS = 'ticket_scanned';
 const EVENTS = 'events';
+const ORDERS = 'orders';
+const HOLDINGS = 'ticket_holdings';
+
+export interface PurchaseResult {
+  /** References of every ticket issued. */
+  ticketIds: string[];
+  /** Events whose tickets were issued (their lines can leave the bag). */
+  purchasedEventIds: string[];
+  /** Set when an event in the bag could not be booked. */
+  error?: unknown;
+}
 
 // No 0/O/1/I, so a reference can be read aloud at the door without mistakes.
 const ID_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -46,56 +58,89 @@ const byNewest = (a: Ticket, b: Ticket) =>
 
 export const ticketController = {
   /**
-   * Issues one ticket per seat and moves each event's sold counter in a single
-   * transaction, so two buyers can never take the last seat between them.
-   * Prices come from the event record, never from the cart.
+   * Checks out the bag, one event at a time. For each event a single transaction
+   * records the order, issues one ticket per seat, moves the event's sold counter
+   * and updates how many tickets this account holds, so two buyers can never take
+   * the last seat between them and no account can exceed the per-event limit.
+   * firestore.rules refuses the write unless all four agree.
+   * Prices come from the event record, never from the bag.
    */
-  async purchase(user: User, items: CartItem[]) {
+  async purchase(user: User, items: CartItem[]): Promise<PurchaseResult> {
     if (items.length === 0) throw new AppError('Your bag is empty.');
 
-    const issued = await runTransaction(db, async (tx) => {
-      const wanted = new Map<string, number>();
-      for (const item of items) wanted.set(item.eventId, (wanted.get(item.eventId) || 0) + item.quantity);
+    const wanted = new Map<string, number>();
+    for (const item of items) wanted.set(item.eventId, (wanted.get(item.eventId) || 0) + item.quantity);
 
-      const events = new Map<string, BAIEvent>();
-      for (const eventId of wanted.keys()) {
-        const snap = await tx.get(doc(db, EVENTS, eventId));
-        if (!snap.exists()) throw new AppError('One of the events in your bag is no longer available. Remove it and try again.');
-        events.set(eventId, { id: snap.id, ...snap.data() } as BAIEvent);
-      }
+    const result: PurchaseResult = { ticketIds: [], purchasedEventIds: [] };
+    for (const [eventId, quantity] of wanted) {
+      try {
+        const ids = await runTransaction(db, async (tx) => {
+          const eventRef = doc(db, EVENTS, eventId);
+          const holdingRef = doc(db, HOLDINGS, `${user.uid}_${eventId}`);
+          const [eventSnap, holdingSnap] = [await tx.get(eventRef), await tx.get(holdingRef)];
 
-      const ids: string[] = [];
-      for (const [eventId, quantity] of wanted) {
-        const event = events.get(eventId)!;
-        if (event.status !== 'On Sale') throw new AppError(`Tickets for ${event.name} are no longer on sale.`);
-        const remaining = (event.capacity || 0) - (event.ticketsSold || 0);
-        if (quantity > remaining) {
-          throw new AppError(remaining > 0
-            ? `Only ${remaining} ${remaining === 1 ? 'ticket is' : 'tickets are'} left for ${event.name}. Lower the quantity and try again.`
-            : `${event.name} is sold out.`);
-        }
-        for (let i = 0; i < quantity; i++) {
-          const id = generateTicketId();
-          tx.set(doc(db, TICKETS, id), {
+          if (!eventSnap.exists()) throw new AppError('One of the events in your bag is no longer available. Remove it and try again.');
+          const event = { id: eventSnap.id, ...eventSnap.data() } as BAIEvent;
+          if (event.status !== 'On Sale') throw new AppError(`Tickets for ${event.name} are no longer on sale.`);
+
+          const remaining = (event.capacity || 0) - (event.ticketsSold || 0);
+          if (quantity > remaining) {
+            throw new AppError(remaining > 0
+              ? `Only ${remaining} ${remaining === 1 ? 'ticket is' : 'tickets are'} left for ${event.name}. Lower the quantity and try again.`
+              : `${event.name} is sold out.`);
+          }
+
+          const held = holdingSnap.exists() ? Number(holdingSnap.data().count) || 0 : 0;
+          if (held + quantity > MAX_PER_EVENT) {
+            const room = MAX_PER_EVENT - held;
+            throw new AppError(room > 0
+              ? `You already have ${held} ${held === 1 ? 'ticket' : 'tickets'} for ${event.name}. One account can hold ${MAX_PER_EVENT}, so you can add ${room} more.`
+              : `You already have ${MAX_PER_EVENT} tickets for ${event.name}, which is the most one account can hold.`);
+          }
+
+          const ticketIds = Array.from({ length: quantity }, generateTicketId);
+          const orderId = `${user.uid}_${eventId}_${held + quantity}`;
+          const buyerEmail = user.email || '';
+
+          tx.set(doc(db, ORDERS, orderId), {
+            buyerId: user.uid,
+            buyerEmail,
             eventId,
             eventName: event.name,
-            ticketType: 'General Admission',
-            buyerId: user.uid,
-            buyerEmail: user.email || '',
-            price: event.price,
-            quantity: 1,
-            status: 'VALID',
+            unitPrice: event.price,
+            quantity,
+            ticketIds,
             createdAt: serverTimestamp(),
           });
-          ids.push(id);
-        }
-        tx.update(doc(db, EVENTS, eventId), { ticketsSold: (event.ticketsSold || 0) + quantity });
+          for (const id of ticketIds) {
+            tx.set(doc(db, TICKETS, id), {
+              orderId,
+              eventId,
+              eventName: event.name,
+              ticketType: 'General Admission',
+              buyerId: user.uid,
+              buyerEmail,
+              price: event.price,
+              quantity: 1,
+              status: 'VALID',
+              createdAt: serverTimestamp(),
+            });
+          }
+          tx.update(eventRef, { ticketsSold: (event.ticketsSold || 0) + quantity });
+          tx.set(holdingRef, { buyerId: user.uid, eventId, count: held + quantity, updatedAt: serverTimestamp() });
+          return ticketIds;
+        });
+        result.ticketIds.push(...ids);
+        result.purchasedEventIds.push(eventId);
+      } catch (error) {
+        // Earlier events in the bag are already booked; report those along with the problem.
+        result.error = error;
+        break;
       }
-      return ids;
-    });
+    }
 
     cacheService.invalidate(EVENTS);
-    return issued;
+    return result;
   },
 
   subscribeToUserTickets(userId: string, callback: (tickets: Ticket[]) => void, onError?: (error: unknown) => void) {

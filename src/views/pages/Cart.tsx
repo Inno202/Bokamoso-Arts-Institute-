@@ -105,7 +105,7 @@ export default function Cart() {
                         <p className="num font-display font-bold text-lg text-bai-red">{formatCurrency(item.price * item.quantity)}</p>
                       </div>
                     </div>
-                    {item.quantity >= MAX_PER_EVENT && <p className="text-xs text-bai-black/70 mt-2">{MAX_PER_EVENT} tickets is the most one order can hold for an event.</p>}
+                    {item.quantity >= MAX_PER_EVENT && <p className="text-xs text-bai-black/70 mt-2">{MAX_PER_EVENT} tickets is the most one account can hold for an event.</p>}
                   </div>
                 </li>
               ))}

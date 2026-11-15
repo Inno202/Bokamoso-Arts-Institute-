@@ -17,8 +17,9 @@ let env;
 const TICKET = 'BAI-ABCDEFGH2345';
 const TICKET2 = 'BAI-ZZZZZZZZ9999';
 
-const as = (uid, email = `${uid}@example.com`) =>
-  env.authenticatedContext(uid, { email }).firestore();
+const nowSeconds = () => Math.floor(Date.now() / 1000);
+const as = (uid, email = `${uid}@example.com`, signedInSecondsAgo = 60) =>
+  env.authenticatedContext(uid, { email, auth_time: nowSeconds() - signedInSecondsAgo }).firestore();
 const guest = () => env.unauthenticatedContext().firestore();
 
 const profile = (role, extra = {}) => ({
@@ -29,7 +30,7 @@ const eventDoc = (extra = {}) => ({
   capacity: 2, ticketsSold: 0, status: 'On Sale', description: '', ...extra,
 });
 const ticketDoc = (uid, extra = {}) => ({
-  eventId: 'e1', eventName: 'Gala', ticketType: 'General Admission', buyerId: uid,
+  orderId: `${uid}_e1_1`, eventId: 'e1', eventName: 'Gala', ticketType: 'General Admission', buyerId: uid,
   buyerEmail: `${uid}@example.com`, price: 150, quantity: 1, status: 'VALID',
   createdAt: serverTimestamp(), ...extra,
 });
@@ -60,10 +61,35 @@ beforeEach(async () => {
   });
 });
 
-const buy = (db, uid, id = TICKET, ticketExtra = {}, bump = 1) => {
+// Ticket references avoid 0, 1, I and O, so test ids are built from letters that are allowed.
+const ticketIds = (n, prefix = 'A') => Array.from({ length: n }, (_, i) => `BAI-${prefix}BCDEFGH${'ABCDEFGHJK'[i]}234`);
+
+/**
+ * One checkout: N tickets, their order, the event's sold counter and the buyer's
+ * holding, in a single write. Each option breaks exactly one part, for the forgery tests.
+ */
+const buy = (db, uid, o = {}) => {
+  const n = o.n ?? 1;
+  const eventId = o.eventId ?? 'e1';
+  const held = o.held ?? 0;
+  const ids = o.ids ?? ticketIds(n, o.prefix);
+  const orderId = o.orderId ?? `${uid}_${eventId}_${held + n}`;
   const b = writeBatch(db);
-  b.set(doc(db, 'tickets', id), ticketDoc(uid, ticketExtra));
-  if (bump) b.update(doc(db, 'events/e1'), { ticketsSold: increment(bump) });
+  if (o.order !== false) {
+    b.set(doc(db, 'orders', orderId), {
+      buyerId: uid, buyerEmail: `${uid}@example.com`, eventId, eventName: 'Gala', unitPrice: 150,
+      quantity: n, ticketIds: ids, createdAt: serverTimestamp(), ...(o.order || {}),
+    });
+  }
+  for (const id of (o.createIds ?? ids)) {
+    b.set(doc(db, 'tickets', id), { ...ticketDoc(uid), orderId, eventId, ...(o.ticket || {}) });
+  }
+  if (o.bump !== 0) b.update(doc(db, 'events', eventId), { ticketsSold: increment(o.bump ?? n) });
+  if (o.holding !== false) {
+    b.set(doc(db, 'ticket_holdings', `${uid}_${eventId}`), {
+      buyerId: uid, eventId, count: held + n, updatedAt: serverTimestamp(), ...(o.holding || {}),
+    });
+  }
   return b.commit();
 };
 
@@ -155,27 +181,92 @@ test('a buyer can purchase a ticket at the real price', async () => {
 
 test('ticket purchases cannot be forged', async () => {
   const db = as('alice');
-  await assertFails(buy(db, 'alice', TICKET, { price: 1 }), 'wrong price');
-  await assertFails(buy(db, 'alice', TICKET, { buyerId: 'bob' }), 'someone else as buyer');
-  await assertFails(buy(db, 'alice', TICKET, { buyerEmail: 'vip@example.com' }), 'spoofed email');
-  await assertFails(buy(db, 'alice', TICKET, { status: 'SCANNED' }), 'pre-scanned');
-  await assertFails(buy(db, 'alice', TICKET, { quantity: 50 }), 'bulk quantity');
-  await assertFails(buy(db, 'alice', TICKET, { eventId: 'closed' }), 'event not on sale');
-  await assertFails(buy(db, 'alice', TICKET, { eventId: 'nope' }), 'missing event');
-  await assertFails(buy(db, 'alice', TICKET, { vip: true }), 'extra fields');
-  await assertFails(buy(db, 'alice', 'my-own-id'), 'non-standard ticket id');
-  await assertFails(buy(db, 'alice', TICKET, {}, 0), 'no sold-counter update');
+  await assertFails(buy(db, 'alice', { order: { unitPrice: 1 }, ticket: { price: 1 } }), 'wrong price');
+  await assertFails(buy(db, 'alice', { ticket: { price: 1 } }), 'ticket cheaper than its order');
+  await assertFails(buy(db, 'alice', { ticket: { buyerId: 'bob' } }), 'someone else as ticket holder');
+  await assertFails(buy(db, 'alice', { order: { buyerId: 'bob' } }), 'someone else as buyer');
+  await assertFails(buy(db, 'alice', { ticket: { buyerEmail: 'vip@example.com' } }), 'spoofed email');
+  await assertFails(buy(db, 'alice', { ticket: { status: 'SCANNED' } }), 'pre-scanned');
+  await assertFails(buy(db, 'alice', { ticket: { quantity: 50 } }), 'bulk quantity on one ticket');
+  await assertFails(buy(db, 'alice', { eventId: 'closed' }), 'event not on sale');
+  await assertFails(buy(db, 'alice', { eventId: 'nope' }), 'missing event');
+  await assertFails(buy(db, 'alice', { ticket: { vip: true } }), 'extra fields');
+  await assertFails(buy(db, 'alice', { ids: ['my-own-id'] }), 'non-standard ticket id');
+  await assertFails(buy(db, 'alice', { bump: 0 }), 'no sold-counter update');
+  await assertFails(buy(db, 'alice', { order: false }), 'no order');
+  await assertFails(buy(db, 'alice', { holding: false }), 'no holding update');
   await assertFails(buy(guest(), 'alice'), 'signed out');
 });
 
-test('an event cannot be oversold', async () => {
+test('tickets cannot outnumber what the order and the sold counter record', async () => {
   const db = as('alice');
+  // Two tickets, but the order and the counter only account for one.
+  await assertFails(buy(db, 'alice', { n: 1, createIds: [TICKET, TICKET2], ids: [TICKET] }), 'extra ticket not listed in the order');
+  await assertFails(buy(db, 'alice', { n: 2, bump: 1 }), 'counter moved by less than the order');
+  await assertFails(buy(db, 'alice', { n: 2, holding: { count: 1 } }), 'holding moved by less than the order');
+  await assertFails(buy(db, 'alice', { n: 2, ids: [TICKET, TICKET] }), 'same ticket listed twice');
+  await assertFails(buy(db, 'alice', { orderId: 'alice_e1_99' }), 'order id not tied to the holding');
+
+  // A second order in the same write would need the same id as the first.
   const b = writeBatch(db);
-  b.set(doc(db, 'tickets', TICKET), ticketDoc('alice'));
-  b.set(doc(db, 'tickets', TICKET2), ticketDoc('alice'));
-  b.update(doc(db, 'events/e1'), { ticketsSold: increment(2) });
-  await assertSucceeds(b.commit());
-  await assertFails(buy(db, 'alice', 'BAI-YYYYYYYY2222'));
+  const order = { buyerId: 'alice', buyerEmail: 'alice@example.com', eventId: 'e1', eventName: 'Gala', unitPrice: 150, quantity: 1, createdAt: serverTimestamp() };
+  b.set(doc(db, 'orders/alice_e1_1'), { ...order, ticketIds: [TICKET] });
+  b.set(doc(db, 'orders/alice_e1_2'), { ...order, ticketIds: [TICKET2] });
+  b.set(doc(db, 'tickets', TICKET), { ...ticketDoc('alice'), orderId: 'alice_e1_1' });
+  b.set(doc(db, 'tickets', TICKET2), { ...ticketDoc('alice'), orderId: 'alice_e1_2' });
+  b.update(doc(db, 'events/e1'), { ticketsSold: increment(1) });
+  b.set(doc(db, 'ticket_holdings/alice_e1'), { buyerId: 'alice', eventId: 'e1', count: 1, updatedAt: serverTimestamp() });
+  await assertFails(b.commit(), 'two orders for one checkout');
+
+  // A ticket cannot be added to an order after the fact.
+  await assertSucceeds(buy(db, 'alice'));
+  await assertFails(setDoc(doc(db, 'tickets', 'BAI-LATERADD2345'), { ...ticketDoc('alice'), orderId: 'alice_e1_1' }), 'ticket added to an old order');
+  await assertFails(updateDoc(doc(db, 'orders/alice_e1_1'), { quantity: 5 }), 'order edited afterwards');
+  await assertFails(updateDoc(doc(db, 'events/e1'), { ticketsSold: increment(1) }), 'counter moved without a checkout');
+});
+
+test('an event cannot be oversold', async () => {
+  await assertSucceeds(buy(as('alice'), 'alice', { n: 2 }));
+  await assertFails(buy(as('bob'), 'bob', { n: 1, prefix: 'B' }));
+});
+
+test('a full order of 10 tickets goes through in one write', async () => {
+  await env.withSecurityRulesDisabled(ctx => setDoc(doc(ctx.firestore(), 'events/e1'), eventDoc({ capacity: 500 })));
+  await assertSucceeds(buy(as('alice'), 'alice', { n: 10 }));
+});
+
+test('one account cannot hold more than 10 tickets for an event', async () => {
+  await env.withSecurityRulesDisabled(ctx => setDoc(doc(ctx.firestore(), 'events/e1'), eventDoc({ capacity: 500 })));
+  const db = as('alice');
+  await assertSucceeds(buy(db, 'alice', { n: 6 }));
+  await assertFails(buy(db, 'alice', { n: 5, held: 6, prefix: 'C' }), '6 + 5 is over the limit');
+  await assertFails(buy(db, 'alice', { n: 5, held: 0, prefix: 'D' }), 'pretending to hold none');
+  await assertSucceeds(buy(db, 'alice', { n: 4, held: 6, prefix: 'E' }));
+  await assertFails(buy(db, 'alice', { n: 1, held: 10, prefix: 'F' }), 'already at the limit');
+  // Another account is unaffected, and cannot touch the first one's holding.
+  await assertSucceeds(buy(as('bob'), 'bob', { n: 10, prefix: 'G' }));
+  await assertFails(setDoc(doc(as('bob'), 'ticket_holdings/alice_e1'), { buyerId: 'alice', eventId: 'e1', count: 0, updatedAt: serverTimestamp() }));
+  await assertFails(deleteDoc(doc(db, 'ticket_holdings/alice_e1')), 'resetting own holding');
+});
+
+test('orders and holdings are private to the buyer and admins', async () => {
+  await assertSucceeds(buy(as('alice'), 'alice'));
+  await assertSucceeds(getDoc(doc(as('alice'), 'orders/alice_e1_1')));
+  await assertSucceeds(getDoc(doc(as('alice'), 'ticket_holdings/alice_e1')));
+  await assertFails(getDoc(doc(as('bob'), 'orders/alice_e1_1')));
+  await assertFails(getDoc(doc(as('bob'), 'ticket_holdings/alice_e1')));
+  await assertFails(getDocs(collection(as('bob'), 'orders')));
+  await assertSucceeds(getDocs(collection(as('fin'), 'orders')));
+});
+
+test('handing out roles needs a recent sign-in', async () => {
+  const stale = as('root', 'root@example.com', 9 * 3600);
+  await assertFails(updateDoc(doc(stale, 'users/alice'), { role: 'CEO' }), 'session older than 8 hours');
+  await assertFails(deleteDoc(doc(stale, 'users/alice')));
+  await assertFails(updateDoc(doc(as('ceo', 'ceo@example.com', 9 * 3600), 'users/alice'), { isActive: false }));
+  await assertSucceeds(updateDoc(doc(as('root'), 'users/alice'), { role: 'CEO' }));
+  // An old session can still do everyday work.
+  await assertSucceeds(setDoc(doc(as('pro', 'pro@example.com', 9 * 3600), 'content/home'), { data: { a: 1 }, updatedAt: serverTimestamp(), updatedBy: 'pro' }));
 });
 
 test('tickets are visible to their buyer and staff only', async () => {
