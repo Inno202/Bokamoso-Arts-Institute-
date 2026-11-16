@@ -54,7 +54,7 @@ export function HeroSlideshow({ images, children }: { images: string[]; children
             />
           </div>
         ))}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-black/10" aria-hidden="true" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-black/45" aria-hidden="true" />
         <div className="absolute inset-0 bg-gradient-to-r from-black/50 via-black/10 to-transparent" aria-hidden="true" />
 
         <div className="relative w-full max-w-7xl mx-auto px-5 sm:px-6 lg:px-8 pb-24 md:pb-28 pt-28">

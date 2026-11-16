@@ -126,7 +126,7 @@ const site: SectionDef<'site'> = {
       phone: '+27 12 702 4455',
       email: 'info@bokamosoarts.org',
     },
-    eventsHeroImage: 'assets/photos/choir-red.jpg',
+    eventsHeroImage: 'assets/photos/soloist-lost-in-music.jpg',
     footerBlurb: 'Bula Pelo. Open your heart. We nurture the voices of Mabopane to resonate across the globe.',
     copyrightLine: 'Cultural excellence from Mabopane.',
     socials: [
@@ -188,7 +188,7 @@ const home: SectionDef<'home'> = {
   defaults: {
     hero: {
       tagline: 'Bula Pelo. Open your heart.',
-      images: ['assets/photos/choir-stage.jpg', 'assets/photos/choir-red.jpg', 'assets/photos/choir-black.jpg'],
+      images: ['assets/photos/choir-stage.jpg', 'assets/photos/choir-blue.jpg', 'assets/photos/conductor-lost-in-music.jpg', 'assets/photos/orchestra-lost-in-music.jpg', 'assets/photos/choir-black.jpg'],
     },
     stats: [
       { value: '2', label: 'WCG World Titles', detail: 'Gold Medals in South Korea 2023' },
@@ -245,7 +245,7 @@ const about: SectionDef<'about'> = {
     { kind: 'images', key: 'choirPictures', label: 'Choir photos', max: 24, help: 'The first photo also appears beside the story.' },
   ],
   defaults: {
-    heroImage: 'assets/photos/choir-stage.jpg',
+    heroImage: 'assets/photos/choir-blue.jpg',
     story: {
       title: 'Our Story',
       description: "Founded deep within the industrial heart of Mabopane, BAI was a response to the lack of artistic sanctuaries for marginalized youth. We believe that discipline in music translates to discipline in life. Our choristers don't just gain vocal skills; they gain a spiritual compass and an artistic drive.",
@@ -295,7 +295,7 @@ const work: SectionDef<'work'> = {
     ] },
   ],
   defaults: {
-    heroImage: 'assets/photos/choir-red.jpg',
+    heroImage: 'assets/photos/orchestra-lost-in-music.jpg',
     pillars: [
       { title: 'Choral Mastery', desc: 'Intensive vocal training focusing on indigenous South African rhythms, hymns, and contemporary choral arrangements.' },
       { title: 'Professional Coaching', desc: 'Developing stage presence, emotional connectivity, and technical precision through professional workshops.' },

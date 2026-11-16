@@ -114,8 +114,8 @@ test('the home slideshow can be paused and switched by hand', async ({ page }) =
   await expect(pause).toBeVisible();
   await pause.click();
   await expect(page.getByRole('button', { name: 'Play slideshow' })).toBeVisible();
-  await page.getByRole('button', { name: 'Show photo 2 of 3' }).click();
-  await expect(page.getByRole('button', { name: 'Show photo 2 of 3' })).toHaveAttribute('aria-current', 'true');
+  await page.getByRole('button', { name: /^Show photo 2 of / }).click();
+  await expect(page.getByRole('button', { name: /^Show photo 2 of / })).toHaveAttribute('aria-current', 'true');
 });
 
 test('the site refuses to run inside another website\'s frame', async ({ page }) => {
