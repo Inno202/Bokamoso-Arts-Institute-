@@ -9,6 +9,7 @@ import { renderToString } from 'react-dom/server';
 import { StaticRouter } from 'react-router';
 import App, { PRERENDERED_ROUTES } from './App';
 import { seedContent } from './content/store';
+import { pickUpcoming, seedUpcoming } from './content/upcoming';
 import { resolveSection, SECTION_KEYS, type SectionKey } from './content/sections';
 
 export { PRERENDERED_ROUTES };
@@ -19,6 +20,13 @@ export function prepareContent(raw: Partial<Record<SectionKey, unknown>>) {
   for (const key of SECTION_KEYS) if (raw[key] !== undefined) clean[key] = resolveSection(key, raw[key]);
   seedContent(clean);
   return clean;
+}
+
+/** Picks and loads the next events on sale (validated the same way as in the browser). */
+export function prepareUpcoming(events: unknown[]) {
+  const list = pickUpcoming(events as never);
+  seedUpcoming(list);
+  return list;
 }
 
 export async function render(url: string, basename: string): Promise<string> {

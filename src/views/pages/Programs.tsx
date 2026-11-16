@@ -75,9 +75,6 @@ export default function Programs() {
               {outreach.imageUrl && (
                 <img src={contentImage(outreach.imageUrl, 1000)} alt="The choir performing for the community" loading="lazy" decoding="async" className="w-full h-full object-cover" />
               )}
-              {outreach.badge && (
-                <p className="absolute bottom-5 left-5 px-4 py-2 rounded-full bg-white text-bai-black font-semibold">{outreach.badge}</p>
-              )}
             </div>
           </div>
         </div>

@@ -81,15 +81,40 @@ try {
   console.warn(`prerender: could not read live content (${err.message}); using built-in defaults`);
 }
 
+// The next events on sale, for the home page's Upcoming events section.
+let events = [];
+try {
+  const res = await fetch(`${DOCS}:runQuery`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    signal: AbortSignal.timeout(15000),
+    body: JSON.stringify({ structuredQuery: {
+      from: [{ collectionId: 'events' }],
+      where: { fieldFilter: { field: { fieldPath: 'status' }, op: 'EQUAL', value: { stringValue: 'On Sale' } } },
+      orderBy: [{ field: { fieldPath: 'date' }, direction: 'ASCENDING' }],
+      limit: 50,
+    } }),
+  });
+  if (!res.ok) throw new Error(`events: HTTP ${res.status}`);
+  events = (await res.json()).filter(r => r.document).map(r => ({
+    id: r.document.name.split('/').pop(),
+    ...Object.fromEntries(Object.entries(r.document.fields || {}).map(([k, v]) => [k, decode(v)])),
+  }));
+} catch (err) {
+  console.warn(`prerender: could not read events (${err.message}); the home page will load them in the browser`);
+}
+
 // ---------- 2 & 3. render ----------
 
 const server = await import(pathToFileURL(join(process.cwd(), 'build/ssr/entry-server.js')).href);
 const content = server.prepareContent(raw);
+const upcomingEvents = server.prepareUpcoming(events);
+console.log(`prerender: ${upcomingEvents.length} upcoming event(s) on the home page`);
 const template = await readFile(join(DIST, 'index.html'), 'utf8');
 if (!template.includes('<div id="root"></div>')) throw new Error('dist/index.html has no empty #root to fill');
 
 // JSON inside a non-executing script tag; "<" escaped so content can never close the tag.
-const seed = JSON.stringify(content).replace(/</g, '\\u003c');
+const seed = JSON.stringify({ ...content, upcomingEvents }).replace(/</g, '\\u003c');
 const seedTag = `<script type="application/json" id="bai-content">${seed}</script>`;
 
 const setTitle = (html, title) => html.replace(/<title>[^<]*<\/title>/, `<title>${title.replace(/</g, '&lt;')}</title>`);

@@ -3,7 +3,7 @@ import { contentImage } from '../../content/image';
 import { PageHero } from '../components/PageHero';
 
 export default function About() {
-  const { heroImage, badge, story, valuesHeading, values, management, choirPictures } = useContent('about');
+  const { heroImage, story, valuesHeading, values, management, choirPictures } = useContent('about');
   const storyImage = choirPictures[0] || 'assets/philosophy.jpg';
 
   return (
@@ -13,7 +13,6 @@ export default function About() {
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 md:py-28 grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center">
         <div>
           <h2 className="display text-5xl md:text-7xl">{story.title}</h2>
-          {badge && <p className="inline-block mt-4 px-3.5 py-1 rounded-full bg-bai-red/10 text-bai-red-deep font-semibold">{badge}</p>}
           <p className="text-bai-ink-soft text-lg md:text-xl leading-relaxed mt-8 max-w-[62ch] whitespace-pre-line">{story.description}</p>
           {story.stats.length > 0 && (
             <dl className="flex flex-wrap gap-x-12 gap-y-6 pt-8 mt-10 border-t border-bai-black/15">

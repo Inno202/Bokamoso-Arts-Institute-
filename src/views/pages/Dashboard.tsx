@@ -137,9 +137,9 @@ export default function Dashboard() {
   // CEOs may add staff, but only a super admin can create another super admin.
   const creatableRoles = ROLE_OPTIONS.filter(r => isSuper || r !== 'SUPER_ADMIN');
   const links = [
-    { name: 'Events', detail: 'Add, edit and remove events', to: ROUTES.ADMIN_EVENTS, show: canManageEvents },
-    { name: 'Site content', detail: 'Edit the text and photos on the public pages', to: ROUTES.ADMIN_CONTENT, show: canManageEvents },
-    { name: 'Door scanner', detail: 'Check tickets at the door', to: ROUTES.SCANNER, show: isScanner(role) },
+    { name: 'Events', to: ROUTES.ADMIN_EVENTS, show: canManageEvents },
+    { name: 'Site content', to: ROUTES.ADMIN_CONTENT, show: canManageEvents },
+    { name: 'Door scanner', to: ROUTES.SCANNER, show: isScanner(role) },
   ].filter(link => link.show);
 
   return (
@@ -186,7 +186,6 @@ export default function Dashboard() {
                   <Link to={link.to} className="group flex items-center justify-between gap-4 py-4 min-h-14">
                     <span>
                       <span className="block font-bold group-hover:text-bai-red transition-colors">{link.name}</span>
-                      <span className="block text-sm text-bai-black/70">{link.detail}</span>
                     </span>
                     <ArrowRight size={18} className="shrink-0 transition-transform duration-200 group-hover:translate-x-1" aria-hidden="true" />
                   </Link>
@@ -197,7 +196,6 @@ export default function Dashboard() {
                   <button onClick={() => { setShowUsers(true); void loadUsers(); }} aria-expanded={showUsers} className="group w-full text-left flex items-center justify-between gap-4 py-4 min-h-14">
                     <span>
                       <span className="block font-bold group-hover:text-bai-red transition-colors">Users</span>
-                      <span className="block text-sm text-bai-black/70">Add staff, change roles, deactivate accounts</span>
                     </span>
                     <ArrowRight size={18} className="shrink-0 transition-transform duration-200 group-hover:translate-x-1" aria-hidden="true" />
                   </button>

@@ -50,7 +50,6 @@ export default function Register() {
           <h1 className="display text-4xl">
             Join <span className="text-bai-blue">Bokamoso</span>
           </h1>
-          <p className="text-sm text-bai-black/70 mt-3">An account keeps your tickets in one place.</p>
         </div>
 
         <div className="px-8 pb-8">
