@@ -37,10 +37,12 @@ Run `npm run test:rules` first. The tests cover the cases that matter most: nobo
 | --- | --- |
 | `USER` | Book tickets, see their own tickets |
 | `TICKET_SCANNER` | Scan tickets at the door |
-| `PRO` | Manage events and page content, scan tickets |
-| `FINANCE_MANAGER` | See ticket totals, edit page content |
-| `CEO` | Everything above except scanning, plus add staff and deactivate accounts |
+| `PRO` | Manage events, scan tickets; edit page content only while a super admin or the CEO has approved a request |
+| `FINANCE_MANAGER` | See ticket totals |
+| `CEO` | Everything above except scanning, plus edit page content directly, add staff, deactivate accounts and approve PRO content access |
 | `SUPER_ADMIN` | Everything, including changing roles |
+
+PRO staff who open Site content see a "Request access" screen. Super admins and the CEO approve (for 1 hour, 1 day or 1 week), decline or end access from the Users page. The rules enforce it: a PRO's content save is refused unless `content_access/{uid}` is approved and unexpired, approvals last at most 7 days, and nobody can approve their own request.
 
 Everyone who signs up is a `USER`. Roles are changed by a super admin in Dashboard > Manage users. The very first super admin has to be set by hand in the Firebase console (Firestore > `users` > that person's document > `role: "SUPER_ADMIN"`).
 
