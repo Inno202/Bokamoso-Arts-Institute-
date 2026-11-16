@@ -103,7 +103,10 @@ export const ticketController = {
           const ticketIds = Array.from({ length: quantity }, generateTicketId);
           const orderId = `${user.uid}_${eventId}_${held + quantity}`;
           const buyerEmail = user.email || '';
+          // Rand is the default and is left unstated, so rand orders also pass the
+          // rules from before per-event currencies (safe in either deploy order).
           const currency = currencyOf(event.currency);
+          const currencyField = currency === DEFAULT_CURRENCY ? {} : { currency };
 
           tx.set(doc(db, ORDERS, orderId), {
             buyerId: user.uid,
@@ -111,7 +114,7 @@ export const ticketController = {
             eventId,
             eventName: event.name,
             unitPrice: event.price,
-            currency,
+            ...currencyField,
             quantity,
             ticketIds,
             createdAt: serverTimestamp(),
@@ -125,7 +128,7 @@ export const ticketController = {
               buyerId: user.uid,
               buyerEmail,
               price: event.price,
-              currency,
+              ...currencyField,
               quantity: 1,
               status: 'VALID',
               createdAt: serverTimestamp(),
