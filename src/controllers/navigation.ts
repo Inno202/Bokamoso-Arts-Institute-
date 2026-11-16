@@ -13,6 +13,7 @@ export const ROUTES = {
   MY_TICKETS: '/my-tickets',
   ADMIN_EVENTS: '/admin/events',
   ADMIN_CONTENT: '/admin/content',
+  ADMIN_USERS: '/admin/users',
   TERMS: '/terms',
   PRIVACY: '/privacy',
   COOKIES: '/cookies',
