@@ -84,18 +84,18 @@ export default function Cart() {
                         <h2 className="font-serif font-semibold text-base md:text-xl leading-tight break-words">{item.eventName}</h2>
                         <p className="text-bai-black/70 text-sm mt-1">{[item.venue, formatDate(item.date)].filter(Boolean).join(' · ')}</p>
                       </div>
-                      <button onClick={() => removeFromCart(item.eventId, item.ticketType)} aria-label={`Remove ${item.eventName} from your bag`} className="w-11 h-11 -mt-2 -mr-2 shrink-0 flex items-center justify-center text-bai-black/60 hover:text-bai-red transition-colors rounded-full">
+                      <button onClick={() => removeFromCart(item.eventId, item.ticketType)} aria-label={`Remove ${item.eventName} from your bag`} className="icon-btn -mt-2 -mr-2 text-bai-black/60 hover:text-bai-red-deep">
                         <Trash2 size={18} aria-hidden="true" />
                       </button>
                     </div>
 
                     <div className="flex items-center justify-between mt-3 gap-4">
                       <div className="flex items-center bg-bai-bone rounded-lg border border-bai-black/10" role="group" aria-label={`Quantity for ${item.eventName}`}>
-                        <button onClick={() => updateQuantity(item.eventId, item.ticketType, -1)} disabled={item.quantity <= 1} aria-label="One ticket fewer" className="w-11 h-11 flex items-center justify-center hover:bg-white rounded-md transition-colors disabled:opacity-40">
+                        <button onClick={() => updateQuantity(item.eventId, item.ticketType, -1)} disabled={item.quantity <= 1} aria-label="One ticket fewer" className="icon-btn hover:bg-white disabled:opacity-40">
                           <Minus size={16} aria-hidden="true" />
                         </button>
                         <span className="num w-8 text-center font-display font-bold" aria-live="polite">{item.quantity}</span>
-                        <button onClick={() => updateQuantity(item.eventId, item.ticketType, 1)} disabled={item.quantity >= MAX_PER_EVENT} aria-label="One ticket more" className="w-11 h-11 flex items-center justify-center hover:bg-white rounded-md transition-colors disabled:opacity-40">
+                        <button onClick={() => updateQuantity(item.eventId, item.ticketType, 1)} disabled={item.quantity >= MAX_PER_EVENT} aria-label="One ticket more" className="icon-btn hover:bg-white disabled:opacity-40">
                           <Plus size={16} aria-hidden="true" />
                         </button>
                       </div>

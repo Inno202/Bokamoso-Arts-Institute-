@@ -125,7 +125,7 @@ export default function MyTickets() {
           </div>
         ) : tickets.length === 0 ? (
           <div className="panel py-20 px-6 text-center">
-            <TicketIcon size={48} className="mx-auto text-bai-red mb-5" strokeWidth={1.5} aria-hidden="true" />
+            <TicketIcon size={48} className="mx-auto text-bai-red-deep mb-5" strokeWidth={1.5} aria-hidden="true" />
             <h2 className="display text-3xl">No tickets yet</h2>
             <p className="text-bai-ink-soft mt-3 mb-8 max-w-xs mx-auto">Tickets you book appear here, ready to show at the door.</p>
             <Link to={ROUTES.EVENTS} className="btn btn-primary">See upcoming events</Link>
@@ -152,7 +152,7 @@ export default function MyTickets() {
                       <h3 className="font-serif font-semibold text-2xl leading-tight mt-2 line-clamp-1">{eventName(ticket)}</h3>
                       <p className="num text-sm text-bai-ink-soft mt-1 truncate">{when(ticket)}</p>
                       <p className="text-sm text-bai-ink-soft truncate">{ticket.event?.venue || 'Venue to be confirmed'}</p>
-                      <p className="num text-xs font-semibold text-bai-red mt-auto truncate">{ticket.id}</p>
+                      <p className="num text-xs font-semibold text-bai-red-deep mt-auto truncate">{ticket.id}</p>
                     </div>
 
                     {/* Perforation, with the two half-circle notches of a paper ticket */}
@@ -228,7 +228,7 @@ export default function MyTickets() {
 
             <div className="px-5 pt-5 pb-5 flex flex-col items-center">
               <TicketQR value={selected.id} size={400} className={`w-44 h-44 ${selected.status === 'VALID' ? '' : 'opacity-30'}`} />
-              <p className="num font-semibold text-bai-red mt-2">{selected.id}</p>
+              <p className="num font-semibold text-bai-red-deep mt-2">{selected.id}</p>
               {selected.status !== 'VALID' && (
                 <p className="mt-1 text-sm font-semibold text-red-700">{selected.status === 'SCANNED' ? 'Already used at the door' : 'This ticket was cancelled'}</p>
               )}

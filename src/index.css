@@ -12,6 +12,8 @@
   --color-bai-blue: #1D4ED8;
   /* Lighter steps of the same hues, for small text on dark surfaces (AA contrast). */
   --color-bai-red-soft: #FB7189;
+  /* The same red, one step deeper, for text on light backgrounds (AA contrast). */
+  --color-bai-red-deep: #BE123C;
   --color-bai-blue-soft: #8FB0FF;
   /* Neutrals carry a trace of the brand red's warmth instead of pure grey. */
   --color-bai-black: #0B0B0C;
@@ -45,7 +47,7 @@
   em, i { font-style: normal; }
   /* The serif's default figures sit low (old-style); use full-height figures everywhere. */
   .font-serif, .display { font-variant-numeric: lining-nums; }
-  p {
+  p, li, dd {
     text-wrap: pretty;
   }
   ::selection {
@@ -66,7 +68,7 @@
 @layer components {
   /* ---- Buttons: one pill shape, a few colours. Every button on the site uses these. ---- */
   .btn {
-    @apply inline-flex items-center justify-center gap-2.5 min-h-12 px-6 py-3 rounded-full font-sans font-medium text-[0.95rem] text-center select-none;
+    @apply inline-flex items-center justify-center gap-2.5 min-h-[48px] px-6 py-3 rounded-full font-sans font-medium text-[0.95rem] text-center select-none;
     transition: background-color 0.2s var(--ease-out), color 0.2s var(--ease-out), border-color 0.2s var(--ease-out), box-shadow 0.2s var(--ease-out), transform 0.16s var(--ease-out);
   }
   .btn:active:not(:disabled) { transform: scale(0.97); }
@@ -76,7 +78,7 @@
   @media (hover: hover) and (pointer: fine) {
     .btn:hover:not(:disabled) > .btn-arrow { transform: translateX(3px); }
   }
-  .btn-lg { @apply min-h-14 px-7 text-base; }
+  .btn-lg { @apply min-h-[54px] px-7 text-base; }
   .btn-block { @apply w-full; }
   .btn-primary { @apply bg-bai-black text-white hover:bg-bai-red; }
   .btn-accent { @apply bg-bai-red text-white hover:bg-bai-black; }
@@ -89,7 +91,8 @@
 
   /* Round icon-only control, always at least 44px. */
   .icon-btn {
-    @apply inline-flex items-center justify-center w-11 h-11 rounded-full shrink-0;
+    /* In px, not rem: the root font shrinks a little on phones, but a finger does not. */
+    @apply inline-flex items-center justify-center w-[44px] h-[44px] rounded-full shrink-0;
     transition: background-color 0.2s var(--ease-out), color 0.2s var(--ease-out), transform 0.16s var(--ease-out);
   }
   .icon-btn:active:not(:disabled) { transform: scale(0.94); }
@@ -101,7 +104,7 @@
 
   /* ---- Form fields ---- */
   .field {
-    @apply w-full min-h-12 px-4 py-2.5 bg-white border border-bai-black/25 rounded-xl text-base placeholder:text-bai-black/55;
+    @apply w-full min-h-[48px] px-4 py-2.5 bg-white border border-bai-black/25 rounded-xl text-base placeholder:text-bai-black/65;
     transition: border-color 0.2s var(--ease-out);
   }
   .field:focus { border-color: var(--color-bai-black); }

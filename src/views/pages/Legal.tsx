@@ -37,7 +37,7 @@ export default function Legal({ doc }: { doc: Doc }) {
   return (
     <div className="pb-20 md:pb-28">
       <PageHero title={TITLES[doc][0]} accent={TITLES[doc][1]} />
-      <article className="max-w-[70ch] mx-auto px-4 sm:px-6 py-12 md:py-16 text-lg leading-relaxed text-bai-black/85">
+      <article className="max-w-[38rem] mx-auto px-4 sm:px-6 py-12 md:py-16 text-lg leading-relaxed text-bai-black/85">
         <p className="text-bai-black/70 mb-8">Last updated {LAST_UPDATED}</p>
 
         {doc === 'terms' && (

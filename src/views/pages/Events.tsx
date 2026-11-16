@@ -124,7 +124,7 @@ export default function Events() {
                   </div>
 
                   <div className="p-6 flex flex-col flex-grow">
-                    <p className="num flex items-center gap-2 text-bai-red font-semibold">
+                    <p className="num flex items-center gap-2 text-bai-red-deep font-semibold">
                       <Calendar size={16} aria-hidden="true" />
                       <span>{when}{formatTime(event.date) ? ` · ${formatTime(event.date)}` : ''}</span>
                     </p>
@@ -137,7 +137,7 @@ export default function Events() {
 
                     <div className="mt-auto pt-6">
                       {!soldOut && remaining <= 20 && (
-                        <p className="num text-sm font-semibold text-bai-red mb-3">Only {remaining} {remaining === 1 ? 'seat' : 'seats'} left</p>
+                        <p className="num text-sm font-semibold text-bai-red-deep mb-3">Only {remaining} {remaining === 1 ? 'seat' : 'seats'} left</p>
                       )}
                       <button
                         onClick={() => handleAddToCart(event)}

@@ -18,7 +18,7 @@ interface PageHeroProps {
 export function PageHero({ title, accent, image, children }: PageHeroProps) {
   const heading = (
     <h1 className="display text-5xl sm:text-6xl md:text-7xl">
-      {title}{accent && <> <span className={image ? 'text-bai-red-soft' : 'text-bai-red'}>{accent}</span></>}
+      {title}{accent && <> <span className={image ? 'text-bai-red-soft' : 'text-bai-red-deep'}>{accent}</span></>}
     </h1>
   );
 

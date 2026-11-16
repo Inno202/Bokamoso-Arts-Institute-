@@ -14,7 +14,7 @@ export default function Traditions() {
             <li key={item.title} className="grid grid-cols-1 lg:grid-cols-12 gap-x-12 gap-y-5 py-12 md:py-16 border-b border-bai-black/10 last:border-b-0">
               <div className="lg:col-span-5">
                 <h2 className="display text-4xl sm:text-5xl md:text-6xl">{item.title}</h2>
-                {item.tag && <p className="font-semibold text-bai-red text-lg mt-3">{item.tag}</p>}
+                {item.tag && <p className="font-semibold text-bai-red-deep text-lg mt-3">{item.tag}</p>}
               </div>
               <div className="lg:col-span-7">
                 <p className="text-bai-ink-soft text-lg md:text-xl leading-relaxed max-w-[62ch]">{item.desc}</p>

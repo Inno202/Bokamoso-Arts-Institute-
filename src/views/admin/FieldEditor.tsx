@@ -200,7 +200,7 @@ export function FieldEditor({ field, value, path, errors, onChange }: EditorProp
                     <button type="button" className="icon-btn hover:bg-bai-black/10 disabled:opacity-30" disabled={i === 0} aria-label={`Move photo ${i + 1} earlier`} onClick={() => move(i, i - 1)}>
                       <ArrowUp size={18} aria-hidden="true" />
                     </button>
-                    <button type="button" className="icon-btn text-bai-red hover:bg-bai-red hover:text-white" aria-label={`Remove photo ${i + 1}`} onClick={() => onChange(list.filter((_, n) => n !== i))}>
+                    <button type="button" className="icon-btn text-bai-red-deep hover:bg-bai-red hover:text-white" aria-label={`Remove photo ${i + 1}`} onClick={() => onChange(list.filter((_, n) => n !== i))}>
                       <Trash2 size={18} aria-hidden="true" />
                     </button>
                   </div>
@@ -279,7 +279,7 @@ function ListEditor({ field, value, path, errors, onChange }: EditorProps & { fi
                 <button type="button" className="icon-btn hover:bg-bai-black/10 disabled:opacity-30" disabled={i === list.length - 1} aria-label={`Move ${titleOf(item, i)} down`} onClick={() => move(i, i + 1)}>
                   <ArrowDown size={18} aria-hidden="true" />
                 </button>
-                <button type="button" className="icon-btn text-bai-red hover:bg-bai-red hover:text-white" aria-label={`Remove ${titleOf(item, i)}`} onClick={() => remove(i)}>
+                <button type="button" className="icon-btn text-bai-red-deep hover:bg-bai-red hover:text-white" aria-label={`Remove ${titleOf(item, i)}`} onClick={() => remove(i)}>
                   <Trash2 size={18} aria-hidden="true" />
                 </button>
               </div>
