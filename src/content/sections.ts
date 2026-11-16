@@ -24,7 +24,7 @@ export interface HomeContent {
   hero: { tagline: string; images: string[] };
   stats: Stat[];
   philosophy: { headingLine1: string; headingLine2: string; quote: string; image: string; buttonLabel: string };
-  community: { headingLine1: string; headingLine2: string; caption: string; images: string[] };
+  community: { headingLine1: string; headingLine2: string; images: string[] };
   highlights: {
     headingLine1: string; headingLine2: string; intro: string;
     items: Array<{ date: string; title: string; text: string; linkLabel: string; linkTo: 'traditions' | 'events' | 'about' | 'programs' }>;
@@ -167,7 +167,6 @@ const home: SectionDef<'home'> = {
     { kind: 'group', key: 'community', label: 'Community', fields: [
       text('headingLine1', 'Heading, first word', 40, required),
       text('headingLine2', 'Heading, second word', 40),
-      text('caption', 'Line under the photos', 200),
       { kind: 'images', key: 'images', label: 'Photos', max: 6, help: 'Three photos fit best.' },
     ] },
     { kind: 'group', key: 'highlights', label: 'Highlights', fields: [
@@ -208,7 +207,6 @@ const home: SectionDef<'home'> = {
     community: {
       headingLine1: 'Community',
       headingLine2: 'Impact',
-      caption: 'Nurturing talent in the heart of Mabopane.',
       images: ['assets/community/community-1.jpg', 'assets/community/community-2.jpg', 'assets/community/community-3.jpg'],
     },
     highlights: {

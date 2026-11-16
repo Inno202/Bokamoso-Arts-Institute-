@@ -92,7 +92,6 @@ export default function Home() {
               <h2 className="display text-5xl md:text-7xl">
                 {community.headingLine1}{community.headingLine2 && <> <span className="text-bai-red">{community.headingLine2}</span></>}
               </h2>
-              {community.caption && <p className="text-bai-ink-soft text-lg md:text-xl mt-4">{community.caption}</p>}
             </div>
             <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
               {community.images.map((image, i) => (
