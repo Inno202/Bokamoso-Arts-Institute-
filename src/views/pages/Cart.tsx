@@ -9,10 +9,15 @@ import { cloudinaryService } from '../../services/cloudinaryService';
 import { eventController } from '../../controllers/eventController';
 import { MAX_PER_EVENT } from '../../controllers/cartController';
 import { formatCurrency, formatDate } from '../../controllers/lib/utils';
+import { CURRENCIES, type CurrencyCode } from '../../models/currency';
+import { confirmAction } from '../../services/confirm';
 import { FALLBACK_EVENT_IMAGE, PAYMENTS_LIVE } from '../../config';
 
+// Reads as "Total in Botswana pula"; the euro is the one name that is not capitalised mid-sentence.
+const CURRENCY_NAME = (code: CurrencyCode) => (code === 'EUR' ? 'euros' : CURRENCIES.find(c => c.code === code)!.name);
+
 export default function Cart() {
-  const { items, updateQuantity, removeFromCart, clearCart, totalItems, subtotal, loading } = useCart();
+  const { items, updateQuantity, removeFromCart, clearCart, totalItems, totals, loading } = useCart();
   const { user } = useAuth();
   const navigate = useNavigate();
   const [images, setImages] = useState<Record<string, string>>({});
@@ -29,15 +34,14 @@ export default function Cart() {
   }, [eventIds]);
 
   const fee = items.length > 0 && PAYMENTS_LIVE ? TICKETING_FEE : 0;
-  const total = subtotal + fee;
 
   const handleCheckout = () => {
     if (!user) navigate(ROUTES.LOGIN, { state: { from: ROUTES.CHECKOUT } });
     else navigate(ROUTES.CHECKOUT);
   };
 
-  const handleClear = () => {
-    if (window.confirm('Remove every ticket from your bag?')) clearCart();
+  const handleClear = async () => {
+    if (await confirmAction({ title: 'Empty your bag?', message: 'Every ticket will be removed from your bag.', confirmLabel: 'Empty bag', tone: 'danger' })) clearCart();
   };
 
   if (loading) {
@@ -100,8 +104,8 @@ export default function Cart() {
                         </button>
                       </div>
                       <div className="text-right">
-                        <p className="num text-xs text-bai-black/70">{formatCurrency(item.price)} each</p>
-                        <p className="num font-display font-bold text-lg text-bai-red">{formatCurrency(item.price * item.quantity)}</p>
+                        <p className="num text-xs text-bai-black/70">{formatCurrency(item.price, item.currency)} each</p>
+                        <p className="num font-display font-bold text-lg text-bai-red">{formatCurrency(item.price * item.quantity, item.currency)}</p>
                       </div>
                     </div>
                     {item.quantity >= MAX_PER_EVENT && <p className="text-xs text-bai-black/70 mt-2">{MAX_PER_EVENT} tickets is the most one account can hold for an event.</p>}
@@ -125,20 +129,22 @@ export default function Cart() {
             <div className="bg-white rounded-2xl p-6 sm:p-8 border border-bai-black/[0.07] sticky top-28">
               <h2 id="bag-summary" className="display text-2xl mb-6">Summary</h2>
               <dl className="space-y-3 mb-8 text-sm">
-                <div className="flex justify-between">
-                  <dt className="text-bai-black/70">Subtotal</dt>
-                  <dd className="num font-display font-bold">{formatCurrency(subtotal)}</dd>
-                </div>
                 {fee > 0 && (
                   <div className="flex justify-between">
                     <dt className="text-bai-black/70">Ticketing fee</dt>
                     <dd className="num font-display font-bold">{formatCurrency(fee)}</dd>
                   </div>
                 )}
-                <div className="pt-4 border-t border-bai-black/10 flex justify-between items-baseline">
-                  <dt className="font-display font-bold text-xs">Total</dt>
-                  <dd className="num font-display font-bold text-3xl text-bai-red">{formatCurrency(total)}</dd>
-                </div>
+                {totals.map(({ currency, total }, i) => {
+                  // The ticketing fee (only once card payments are live) is charged in rand.
+                  const withFee = total + (currency === 'ZAR' ? fee : 0);
+                  return (
+                    <div key={currency} className={`flex justify-between items-baseline ${i === 0 ? 'pt-4 border-t border-bai-black/10' : ''}`}>
+                      <dt className="font-semibold">{totals.length > 1 ? `Total in ${CURRENCY_NAME(currency)}` : 'Total'}</dt>
+                      <dd className="num font-display font-bold text-3xl text-bai-red-deep">{formatCurrency(withFee, currency)}</dd>
+                    </div>
+                  );
+                })}
               </dl>
               <button onClick={handleCheckout} className="btn btn-lg btn-primary btn-block">
                 <span>{user ? 'Checkout' : 'Sign in to checkout'}</span>

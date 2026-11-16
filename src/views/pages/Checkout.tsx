@@ -7,11 +7,15 @@ import { PageHero } from '../components/PageHero';
 import { ROUTES } from '../../controllers/navigation';
 import { ticketController } from '../../controllers/ticketController';
 import { formatCurrency, friendlyError } from '../../controllers/lib/utils';
+import { CURRENCIES, type CurrencyCode } from '../../models/currency';
 import { logger } from '../../services/loggerService';
 import { PAYMENTS_LIVE } from '../../config';
 
+// Reads as "Total in Botswana pula"; the euro is the one name that is not capitalised mid-sentence.
+const CURRENCY_NAME = (code: CurrencyCode) => (code === 'EUR' ? 'euros' : CURRENCIES.find(c => c.code === code)!.name);
+
 export default function Checkout() {
-  const { items, subtotal, clearCart, removeFromCart, loading: cartLoading } = useCart();
+  const { items, totals, clearCart, removeFromCart, loading: cartLoading } = useCart();
   const { user } = useAuth();
   const navigate = useNavigate();
   const [submitting, setSubmitting] = useState(false);
@@ -19,7 +23,6 @@ export default function Checkout() {
   const [error, setError] = useState<string | null>(null);
 
   const fee = items.length > 0 && PAYMENTS_LIVE ? TICKETING_FEE : 0;
-  const total = subtotal + fee;
 
   useEffect(() => {
     if (!issued) return;
@@ -95,25 +98,27 @@ export default function Checkout() {
                     <p className="font-bold">{item.eventName}</p>
                     <p className="text-sm text-bai-black/70">{item.quantity} × {item.ticketType}</p>
                   </div>
-                  <span className="num font-display font-bold whitespace-nowrap">{formatCurrency(item.price * item.quantity)}</span>
+                  <span className="num font-display font-bold whitespace-nowrap">{formatCurrency(item.price * item.quantity, item.currency)}</span>
                 </li>
               ))}
             </ul>
             <dl className="mt-6 space-y-2 text-sm">
-              <div className="flex justify-between text-bai-black/70">
-                <dt>Subtotal</dt>
-                <dd className="num">{formatCurrency(subtotal)}</dd>
-              </div>
               {fee > 0 && (
                 <div className="flex justify-between text-bai-black/70">
                   <dt>Ticketing fee</dt>
                   <dd className="num">{formatCurrency(fee)}</dd>
                 </div>
               )}
-              <div className="flex justify-between items-baseline pt-4 mt-2 border-t border-bai-black/10">
-                <dt className="font-display font-bold text-xs">Total</dt>
-                <dd className="num font-display font-bold text-3xl text-bai-red">{formatCurrency(total)}</dd>
-              </div>
+              {totals.map(({ currency, total }, i) => {
+                // The ticketing fee (only once card payments are live) is charged in rand.
+                const withFee = total + (currency === 'ZAR' ? fee : 0);
+                return (
+                  <div key={currency} className={`flex justify-between items-baseline ${i === 0 ? 'pt-4 border-t border-bai-black/10' : ''}`}>
+                    <dt className="font-semibold">{totals.length > 1 ? `Total in ${CURRENCY_NAME(currency)}` : 'Total'}</dt>
+                    <dd className="num font-display font-bold text-3xl text-bai-red-deep">{formatCurrency(withFee, currency)}</dd>
+                  </div>
+                );
+              })}
             </dl>
           </section>
 

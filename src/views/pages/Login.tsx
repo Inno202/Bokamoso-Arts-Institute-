@@ -11,14 +11,18 @@ import { GoogleMark } from '../components/GoogleMark';
 const input = 'field pl-12';
 
 export default function Login() {
-  const [email, setEmail] = useState('');
+  const location = useLocation();
+  // Arriving straight from "Create account": fill in the new email and say what to do next.
+  const registered = typeof (location.state as { registered?: unknown } | null)?.registered === 'string'
+    ? (location.state as { registered: string }).registered.slice(0, 320)
+    : '';
+  const [email, setEmail] = useState(registered);
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(registered ? 'Your account has been created. Sign in to continue.' : null);
   const navigate = useNavigate();
-  const location = useLocation();
 
   const redirectAfterLogin = async (uid: string) => {
     const returnTo = safeReturnPath(location.state);
@@ -95,7 +99,7 @@ export default function Login() {
             <div className="relative">
               <label htmlFor="login-password" className="sr-only">Password</label>
               <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-bai-black/60" size={18} aria-hidden="true" />
-              <input id="login-password" type={showPassword ? 'text' : 'password'} required autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password" className={`${input} pr-12`} />
+              <input id="login-password" autoFocus={!!registered} type={showPassword ? 'text' : 'password'} required autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password" className={`${input} pr-12`} />
               <button type="button" onClick={() => setShowPassword(!showPassword)} aria-label={showPassword ? 'Hide password' : 'Show password'} aria-pressed={showPassword} className="icon-btn absolute right-0.5 top-1/2 -translate-y-1/2 text-bai-black/70 hover:text-bai-red">
                 {showPassword ? <EyeOff size={18} aria-hidden="true" /> : <Eye size={18} aria-hidden="true" />}
               </button>

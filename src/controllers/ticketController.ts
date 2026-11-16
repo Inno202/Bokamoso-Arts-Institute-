@@ -18,6 +18,7 @@ import { db } from './lib/firebase';
 import { BAIEvent, CartItem, Ticket, TicketScan } from '../models/types';
 import { AppError, toDate } from './lib/utils';
 import { MAX_PER_EVENT } from './cartController';
+import { CURRENCIES, DEFAULT_CURRENCY, currencyOf, sellsElsewhere, type CurrencyCode } from '../models/currency';
 import { cacheService } from '../services/cacheService';
 import { logger } from '../services/loggerService';
 
@@ -82,6 +83,7 @@ export const ticketController = {
           if (!eventSnap.exists()) throw new AppError('One of the events in your bag is no longer available. Remove it and try again.');
           const event = { id: eventSnap.id, ...eventSnap.data() } as BAIEvent;
           if (event.status !== 'On Sale') throw new AppError(`Tickets for ${event.name} are no longer on sale.`);
+          if (sellsElsewhere(event)) throw new AppError(`Tickets for ${event.name} are sold by ${event.ticketProvider || 'the venue'}, not on this site. Remove it from your bag and use the link on the Events page.`);
 
           const remaining = (event.capacity || 0) - (event.ticketsSold || 0);
           if (quantity > remaining) {
@@ -101,6 +103,10 @@ export const ticketController = {
           const ticketIds = Array.from({ length: quantity }, generateTicketId);
           const orderId = `${user.uid}_${eventId}_${held + quantity}`;
           const buyerEmail = user.email || '';
+          // Rand is the default and is left unstated, so rand orders also pass the
+          // rules from before per-event currencies (safe in either deploy order).
+          const currency = currencyOf(event.currency);
+          const currencyField = currency === DEFAULT_CURRENCY ? {} : { currency };
 
           tx.set(doc(db, ORDERS, orderId), {
             buyerId: user.uid,
@@ -108,6 +114,7 @@ export const ticketController = {
             eventId,
             eventName: event.name,
             unitPrice: event.price,
+            ...currencyField,
             quantity,
             ticketIds,
             createdAt: serverTimestamp(),
@@ -121,6 +128,7 @@ export const ticketController = {
               buyerId: user.uid,
               buyerEmail,
               price: event.price,
+              ...currencyField,
               quantity: 1,
               status: 'VALID',
               createdAt: serverTimestamp(),
@@ -201,6 +209,16 @@ export const ticketController = {
       totalTickets: count(),
       revenue: sum('price'),
     });
-    return { totalTickets: snap.data().totalTickets, revenue: snap.data().revenue || 0 };
+    const all = snap.data().revenue || 0;
+    // Tickets from before per-event currencies have no currency field and are rand,
+    // so rand is whatever is left after the other currencies are taken out.
+    const others = await Promise.all(CURRENCIES.filter(c => c.code !== DEFAULT_CURRENCY).map(async c => {
+      const part = await getAggregateFromServer(query(collection(db, TICKETS), where('currency', '==', c.code)), { value: sum('price') });
+      return { currency: c.code as CurrencyCode, total: part.data().value || 0 };
+    }));
+    const foreign = others.filter(o => o.total > 0);
+    const rand = all - foreign.reduce((s, o) => s + o.total, 0);
+    const revenue = [{ currency: DEFAULT_CURRENCY, total: rand }, ...foreign].filter((r, i) => i === 0 || r.total > 0);
+    return { totalTickets: snap.data().totalTickets, revenue };
   },
 };

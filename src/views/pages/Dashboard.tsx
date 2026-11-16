@@ -17,7 +17,7 @@ export default function Dashboard() {
   const canSeeSales = isFinance(role);
   const canManageEvents = isEventManager(role);
 
-  const [stats, setStats] = useState<{ totalUsers?: number; totalTickets?: number; revenue?: number; activeEvents?: number }>({});
+  const [stats, setStats] = useState<{ totalUsers?: number; totalTickets?: number; revenue?: Array<{ currency: string; total: number }>; activeEvents?: number }>({});
   const [recentScans, setRecentScans] = useState<TicketScan[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -63,7 +63,7 @@ export default function Dashboard() {
         <dl className="grid grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-8 border-y border-bai-black/15 py-8" aria-busy={loading}>
           {canSeeUsers && <Stat title="Registered users" value={loading ? null : show(stats.totalUsers)} />}
           {canSeeSales && <Stat title="Tickets issued" value={loading ? null : show(stats.totalTickets)} />}
-          {canSeeSales && <Stat title="Ticket value" value={loading ? null : show(stats.revenue, formatCurrency)} />}
+          {canSeeSales && <Stat title="Ticket value" value={loading ? null : stats.revenue === undefined ? '—' : stats.revenue.map(r => formatCurrency(r.total, r.currency)).join(' + ')} />}
           <Stat title="Events on sale" value={stats.activeEvents === undefined ? null : String(stats.activeEvents)} />
         </dl>
 

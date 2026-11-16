@@ -113,6 +113,12 @@ No setup makes a system immune to every attack. These settings are not in the co
 
 Set `VITE_CLOUDINARY_CLOUD_NAME` and `VITE_CLOUDINARY_UPLOAD_PRESET` (see `.env.example`) so uploads go to Cloudinary. Without them, uploaded images are compressed and stored inside Firestore documents, which caps each page at roughly 1 MB of images.
 
+## Events in other countries
+
+Each event has its own currency (rand, pula, emalangeni, maloti, Namibian dollar, US dollar, euro or pound; rand if none is set). Prices show the local symbol, and the bag and checkout show one total per currency, never converted or added together. The list lives in `src/models/currency.ts` and must match the list in `firestore.rules`.
+
+When a show is sold by someone else, such as MojaTicket in Eswatini or the venue's own box office, fill in "Sold somewhere else?" on the event. The Events page then shows a "Buy tickets on …" link to that seller instead of the bag button, and the rules refuse any on-site order for that event. Seat counts for those shows are kept by the seller.
+
 ## Before taking real payments
 
 Checkout currently issues tickets **without charging anyone** and tells the buyer so (`PAYMENTS_LIVE` in `src/config.ts`). A browser-only site cannot take payments safely: the payment provider must confirm payment to a server, and that server must be the only thing allowed to create tickets. To go live:

@@ -8,6 +8,7 @@ import { logger } from '../../services/loggerService';
 import { toast } from '../../services/toast';
 import { friendlyError } from '../../controllers/lib/utils';
 import { RECENT_SIGN_IN_HOURS } from '../../config';
+import { confirmAction } from '../../services/confirm';
 import { ROLE_LABELS, UserProfile, UserRole } from '../../models/types';
 
 const ROLE_OPTIONS = Object.keys(ROLE_LABELS) as UserRole[];
@@ -52,7 +53,11 @@ export default function AdminUsers() {
 
   const handleRoleChange = async (target: UserProfile, newRole: UserRole) => {
     if (newRole === target.role) return;
-    if (!window.confirm(`Change ${target.displayName || target.email} from ${ROLE_LABELS[target.role] || target.role} to ${ROLE_LABELS[newRole]}?`)) return;
+    if (!await confirmAction({
+      title: `Change ${target.displayName || target.email}'s role?`,
+      message: `From ${ROLE_LABELS[target.role] || target.role} to ${ROLE_LABELS[newRole]}.`,
+      confirmLabel: 'Change role',
+    })) return;
     try {
       await userController.setRole(target.uid, newRole);
       patchUser(target.uid, { role: newRole });
@@ -65,7 +70,12 @@ export default function AdminUsers() {
 
   const handleToggleActive = async (target: UserProfile) => {
     const next = target.isActive === false;
-    if (!next && !window.confirm(`Deactivate ${target.displayName || target.email}? They will be signed out and lose all staff access until reactivated.`)) return;
+    if (!next && !await confirmAction({
+      title: `Deactivate ${target.displayName || target.email}?`,
+      message: 'They will be signed out and lose all staff access until reactivated.',
+      confirmLabel: 'Deactivate',
+      tone: 'danger',
+    })) return;
     try {
       await userController.setActive(target.uid, next);
       patchUser(target.uid, { isActive: next });

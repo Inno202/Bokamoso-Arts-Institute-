@@ -116,7 +116,13 @@ service cloud.firestore {
         && data.capacity is int && data.capacity >= 1 && data.capacity <= 1000000
         && data.ticketsSold is int && data.ticketsSold >= 0
         && data.status is string && data.status.size() <= 40
-        && data.get('description', '') is string && data.get('description', '').size() <= 5000;
+        && data.get('description', '') is string && data.get('description', '').size() <= 5000
+        // Each event is priced in one currency; events without one are in rand.
+        && data.get('currency', 'ZAR') in ['ZAR', 'BWP', 'SZL', 'LSL', 'NAD', 'USD', 'EUR', 'GBP']
+        // Shows sold by an outside seller (for example abroad) link to that seller's page.
+        && data.get('ticketUrl', '') is string
+        && (data.get('ticketUrl', '') == '' || data.get('ticketUrl', '').matches('^https://[^\\s]{4,490}$'))
+        && data.get('ticketProvider', '') is string && data.get('ticketProvider', '').size() <= 60;
     }
 
     function eventPath(eventId) {
@@ -187,7 +193,7 @@ service cloud.firestore {
       allow list: if isSignedIn() && (resource.data.buyerId == request.auth.uid || isAnyAdmin());
       // Orders are a permanent record: created once at checkout, never edited.
       allow create: if isSignedIn()
-        && request.resource.data.keys().hasOnly(['buyerId', 'buyerEmail', 'eventId', 'eventName', 'unitPrice', 'quantity', 'ticketIds', 'createdAt'])
+        && request.resource.data.keys().hasOnly(['buyerId', 'buyerEmail', 'eventId', 'eventName', 'unitPrice', 'currency', 'quantity', 'ticketIds', 'createdAt'])
         && request.resource.data.buyerId == request.auth.uid
         && request.resource.data.buyerEmail == tokenEmail()
         && request.resource.data.createdAt == request.time
@@ -201,6 +207,9 @@ service cloud.firestore {
         && request.resource.data.eventName is string
         && request.resource.data.eventName.size() <= 200
         && get(eventPath(request.resource.data.eventId)).data.status == 'On Sale'
+        // Tickets for shows sold by an outside seller are never issued here.
+        && get(eventPath(request.resource.data.eventId)).data.get('ticketUrl', '') == ''
+        && request.resource.data.get('currency', 'ZAR') == get(eventPath(request.resource.data.eventId)).data.get('currency', 'ZAR')
         && request.resource.data.unitPrice == get(eventPath(request.resource.data.eventId)).data.price
         && getAfter(eventPath(request.resource.data.eventId)).data.ticketsSold
              == get(eventPath(request.resource.data.eventId)).data.ticketsSold + request.resource.data.quantity
@@ -222,7 +231,8 @@ service cloud.firestore {
         && ticket.buyerEmail == order.buyerEmail
         && ticket.eventId == order.eventId
         && ticket.eventName == order.eventName
-        && ticket.price == order.unitPrice;
+        && ticket.price == order.unitPrice
+        && ticket.get('currency', 'ZAR') == order.get('currency', 'ZAR');
     }
 
     match /tickets/{ticketId} {
@@ -238,7 +248,7 @@ service cloud.firestore {
       // may only evaluate a limited amount of rule logic, and a full order has 10 tickets.
       allow create: if isSignedIn()
         && ticketId.matches('^BAI-[A-HJ-NP-Z2-9]{12}$')
-        && request.resource.data.keys().hasOnly(['orderId', 'eventId', 'eventName', 'ticketType', 'buyerId', 'buyerEmail', 'price', 'quantity', 'status', 'createdAt'])
+        && request.resource.data.keys().hasOnly(['orderId', 'eventId', 'eventName', 'ticketType', 'buyerId', 'buyerEmail', 'price', 'currency', 'quantity', 'status', 'createdAt'])
         && request.resource.data.status == 'VALID'
         && request.resource.data.quantity == 1
         && request.resource.data.ticketType == 'General Admission'

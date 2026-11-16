@@ -8,17 +8,17 @@ import {
   sendPasswordResetEmail,
   type User,
 } from 'firebase/auth';
-import { doc, runTransaction, serverTimestamp } from 'firebase/firestore';
-import { auth, db } from './lib/firebase';
+import { doc, runTransaction, serverTimestamp, type Firestore } from 'firebase/firestore';
+import { auth, db, inSignupSession } from './lib/firebase';
 
 /**
  * Creates the Firestore profile for a signed-in user if it does not exist yet.
  * Runs in a transaction so sign-up and the auth listener can both call it safely.
  * New profiles are always plain, active USERs; firestore.rules rejects anything else.
  */
-export async function ensureUserProfile(user: User, displayName?: string) {
-  const ref = doc(db, 'users', user.uid);
-  await runTransaction(db, async (tx) => {
+export async function ensureUserProfile(user: User, displayName?: string, database: Firestore = db) {
+  const ref = doc(database, 'users', user.uid);
+  await runTransaction(database, async (tx) => {
     const snap = await tx.get(ref);
     if (snap.exists()) return;
     const email = user.email || '';
@@ -39,12 +39,17 @@ export const authController = {
     return credential.user;
   },
 
+  /**
+   * Creates the account and its profile without signing in: the person signs in
+   * with their new details afterwards.
+   */
   async register(email: string, password: string, displayName: string) {
-    const credential = await createUserWithEmailAndPassword(auth, email.trim(), password);
-    const name = displayName.trim();
-    if (name) await updateProfile(credential.user, { displayName: name });
-    await ensureUserProfile(credential.user, name);
-    return credential.user;
+    await inSignupSession(async (session) => {
+      const credential = await createUserWithEmailAndPassword(session.auth, email.trim(), password);
+      const name = displayName.trim();
+      if (name) await updateProfile(credential.user, { displayName: name });
+      await ensureUserProfile(credential.user, name, session.db);
+    });
   },
 
   async loginWithGoogle() {

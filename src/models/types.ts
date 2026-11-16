@@ -47,6 +47,12 @@ export interface BAIEvent {
   description: string;
   ticketImageUrl?: string;
   bannerImageUrl?: string;
+  /** ISO code, e.g. ZAR or BWP. Events saved before this existed are in rand. */
+  currency?: string;
+  /** When set, tickets are sold by the venue or a ticket seller at this https link, not on this site. */
+  ticketUrl?: string;
+  /** Who sells them there, e.g. MojaTicket. */
+  ticketProvider?: string;
   createdAt: DateLike;
   createdBy: string;
 }
@@ -64,6 +70,7 @@ export interface Ticket {
   status: TicketStatus;
   createdAt: DateLike;
   price: number;
+  currency?: string;
   quantity: number;
   scannedAt?: DateLike;
   scannedBy?: string;
@@ -104,6 +111,7 @@ export interface CartItem {
   date: DateLike;
   ticketType: string;
   price: number;
+  currency?: string;
   quantity: number;
 }
 

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Calendar, Ticket, MapPin, Search, CheckCircle2 } from 'lucide-react';
+import { Calendar, Ticket, MapPin, Search, CheckCircle2, ExternalLink } from 'lucide-react';
+import { currencyOf, sellsElsewhere } from '../../models/currency';
 import { eventController } from '../../controllers/eventController';
 import { BAIEvent } from '../../models/types';
 import { cloudinaryService } from '../../services/cloudinaryService';
@@ -51,6 +52,7 @@ export default function Events() {
       date: event.date,
       ticketType: 'General Admission',
       price: event.price,
+      currency: currencyOf(event.currency),
       quantity: 1,
     });
     setAddedIds(prev => new Set(prev).add(event.id));
@@ -101,8 +103,10 @@ export default function Events() {
         ) : (
           <ul className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredEvents.map((event) => {
+              const elsewhere = sellsElsewhere(event);
               const remaining = Math.max(0, (event.capacity || 0) - (event.ticketsSold || 0));
-              const soldOut = remaining === 0;
+              // Seats for shows sold elsewhere are counted by that seller, not here.
+              const soldOut = !elsewhere && remaining === 0;
               const added = addedIds.has(event.id);
               const when = formatDate(event.date, { weekday: 'short', day: 'numeric', month: 'short' });
               return (
@@ -118,7 +122,7 @@ export default function Events() {
                       className={`w-full h-full object-cover photo-zoom ${soldOut ? 'grayscale' : ''}`}
                     />
                     <span className="num absolute top-4 right-4 bg-white px-3.5 py-1.5 rounded-full font-semibold text-sm">
-                      {event.price > 0 ? formatCurrency(event.price) : 'Free'}
+                      {event.price > 0 ? formatCurrency(event.price, event.currency) : 'Free'}
                     </span>
                     {soldOut && <span className="absolute top-4 left-4 bg-bai-black text-white text-sm font-semibold px-3.5 py-1.5 rounded-full">Sold out</span>}
                   </div>
@@ -136,6 +140,18 @@ export default function Events() {
                     {event.description && <p className="text-bai-ink-soft leading-relaxed mt-3 line-clamp-2">{event.description}</p>}
 
                     <div className="mt-auto pt-6">
+                      {elsewhere ? (
+                        <a
+                          href={event.ticketUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="btn btn-block btn-primary"
+                        >
+                          <span>Buy tickets on {event.ticketProvider || 'the seller\'s site'}</span>
+                          <ExternalLink size={18} aria-hidden="true" />
+                          <span className="sr-only">(opens in a new tab)</span>
+                        </a>
+                      ) : (<>
                       {!soldOut && remaining <= 20 && (
                         <p className="num text-sm font-semibold text-bai-red-deep mb-3">Only {remaining} {remaining === 1 ? 'seat' : 'seats'} left</p>
                       )}
@@ -152,6 +168,7 @@ export default function Events() {
                           <><span>Add ticket to bag</span><Ticket size={18} className="btn-arrow" aria-hidden="true" /></>
                         )}
                       </button>
+                      </>)}
                     </div>
                   </div>
                 </li>

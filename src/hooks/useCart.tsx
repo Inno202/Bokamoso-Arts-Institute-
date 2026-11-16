@@ -2,12 +2,14 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { useAuth } from '../views/components/AuthProvider';
 import { cartController, MAX_PER_EVENT } from '../controllers/cartController';
 import { CartItem } from '../models/types';
+import { totalsByCurrency, type CurrencyCode } from '../models/currency';
 
 interface CartContextType {
   items: CartItem[];
   loading: boolean;
   totalItems: number;
-  subtotal: number;
+  /** One total per currency: rand and pula are never added together. */
+  totals: Array<{ currency: CurrencyCode; total: number }>;
   addToCart: (item: CartItem) => void;
   removeFromCart: (eventId: string, ticketType: string) => void;
   updateQuantity: (eventId: string, ticketType: string, delta: number) => void;
@@ -84,7 +86,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     items,
     loading,
     totalItems: items.reduce((sum, item) => sum + item.quantity, 0),
-    subtotal: items.reduce((sum, item) => sum + item.price * item.quantity, 0),
+    totals: totalsByCurrency(items.map(item => ({ amount: item.price * item.quantity, currency: item.currency }))),
     addToCart,
     removeFromCart,
     updateQuantity,

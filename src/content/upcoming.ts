@@ -7,6 +7,7 @@ import { useSyncExternalStore } from 'react';
 import { eventController } from '../controllers/eventController';
 import { toDate } from '../controllers/lib/utils';
 import type { BAIEvent } from '../models/types';
+import { currencyOf, sellsElsewhere, type CurrencyCode } from '../models/currency';
 
 export interface UpcomingEvent {
   id: string;
@@ -16,6 +17,7 @@ export interface UpcomingEvent {
   /** ISO date string, so it can be baked into pre-rendered HTML and compared after hydration. */
   date: string;
   price: number;
+  currency: CurrencyCode;
   soldOut: boolean;
 }
 
@@ -38,7 +40,9 @@ export function pickUpcoming(events: Array<Partial<BAIEvent> & { id: string }>, 
       city: String(e.city || '').slice(0, 100),
       date: when!.toISOString(),
       price: Number(e.price) || 0,
-      soldOut: (Number(e.capacity) || 0) - (Number(e.ticketsSold) || 0) <= 0,
+      currency: currencyOf(e.currency),
+      // Seats for shows sold by an outside seller are counted there, not here.
+      soldOut: !sellsElsewhere(e) && (Number(e.capacity) || 0) - (Number(e.ticketsSold) || 0) <= 0,
     }));
 }
 
@@ -52,7 +56,7 @@ export function seedUpcoming(list: unknown) {
   state = list
     .filter((e): e is UpcomingEvent => !!e && typeof e.id === 'string' && typeof e.name === 'string' && !Number.isNaN(new Date(e.date).getTime()))
     .slice(0, UPCOMING_LIMIT)
-    .map(e => ({ id: e.id, name: e.name, venue: String(e.venue || ''), city: String(e.city || ''), date: e.date, price: Number(e.price) || 0, soldOut: !!e.soldOut }));
+    .map(e => ({ id: e.id, name: e.name, venue: String(e.venue || ''), city: String(e.city || ''), date: e.date, price: Number(e.price) || 0, currency: currencyOf(e.currency), soldOut: !!e.soldOut }));
 }
 
 function start() {

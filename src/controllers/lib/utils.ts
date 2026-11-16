@@ -1,6 +1,7 @@
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import type { DateLike } from '../../models/types';
+import { formatMoney } from '../../models/currency';
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -29,11 +30,9 @@ export function formatDateTime(date: DateLike) {
   return d ? `${formatDate(d, { day: 'numeric', month: 'short', year: 'numeric' })}, ${formatTime(d)}` : '';
 }
 
-export function formatCurrency(amount: number) {
-  return new Intl.NumberFormat('en-ZA', {
-    style: 'currency',
-    currency: 'ZAR',
-  }).format(amount || 0);
+/** Money in an event's currency (rand when none is given). */
+export function formatCurrency(amount: number, currency?: unknown) {
+  return formatMoney(amount || 0, currency);
 }
 
 /** Turns Firebase/JS errors into something a visitor can act on, without leaking internals. */
