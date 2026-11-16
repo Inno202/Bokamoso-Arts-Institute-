@@ -10,6 +10,7 @@ import { SECTIONS, SECTION_KEYS, isSectionKey, type SectionKey } from '../../con
 import { ContentValidationError, saveSection, useContentState } from '../../content/store';
 import { formatDateTime, friendlyError } from '../../controllers/lib/utils';
 import { toast } from '../../services/toast';
+import { confirmAction } from '../../services/confirm';
 import { logger } from '../../services/loggerService';
 
 export default function AdminContent() {
@@ -90,14 +91,14 @@ function SectionEditor({ sectionKey }: { sectionKey: SectionKey }) {
     }
   };
 
-  const discard = () => {
-    if (!window.confirm('Discard your unsaved changes to this section?')) return;
+  const discard = async () => {
+    if (!await confirmAction({ title: 'Discard your changes?', message: 'Your unsaved changes to this section will be lost.', confirmLabel: 'Discard changes', tone: 'danger' })) return;
     setDraft(structuredClone(state.content) as unknown as Data);
     setErrors({});
   };
 
-  const loadDefaults = () => {
-    if (!window.confirm('Fill this form with the built-in defaults? Nothing changes on the site until you save.')) return;
+  const loadDefaults = async () => {
+    if (!await confirmAction({ title: 'Fill in the defaults?', message: 'This form will be filled with the built-in defaults. Nothing changes on the site until you save.', confirmLabel: 'Use defaults' })) return;
     setDraft(structuredClone(def.defaults) as unknown as Data);
     setErrors({});
   };

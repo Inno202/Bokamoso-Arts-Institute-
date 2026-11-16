@@ -84,6 +84,7 @@
   .btn-accent { @apply bg-bai-red text-white hover:bg-bai-black; }
   .btn-outline { @apply border border-bai-black/25 text-bai-black hover:border-bai-black hover:bg-bai-black hover:text-white; }
   .btn-danger { @apply border border-bai-red/60 text-bai-red hover:bg-bai-red hover:text-white hover:border-bai-red; }
+  .btn-danger-solid { @apply bg-bai-red-deep text-white hover:bg-bai-black; }
   /* On photographs and dark surfaces */
   .btn-light { @apply bg-white text-bai-black hover:bg-bai-red hover:text-white; }
   .btn-accent-light { @apply bg-bai-red text-white hover:bg-white hover:text-bai-black; }
@@ -205,6 +206,31 @@
     opacity: 0;
     transform: translateY(12px);
   }
+}
+
+/* Confirmation dialog: a small card that settles in from slightly below. */
+.confirm-dialog {
+  margin: auto;
+  width: calc(100% - 2rem);
+  max-width: 28rem;
+  padding: 0;
+  border: 0;
+  border-radius: 1.25rem;
+  background: #fff;
+  color: var(--color-bai-black);
+  box-shadow: 0 32px 80px -24px rgb(0 0 0 / 0.6);
+  opacity: 1;
+  transform: none;
+  transition: opacity 0.2s var(--ease-out), transform 0.2s var(--ease-out);
+  @starting-style {
+    opacity: 0;
+    transform: translateY(8px) scale(0.97);
+  }
+}
+.confirm-dialog::backdrop {
+  background: rgb(10 10 10 / 0.6);
+  transition: opacity 0.2s var(--ease-out);
+  @starting-style { opacity: 0; }
 }
 
 /* Html5Qrcode draws its own controls; bring them into the scanner's dark surface. */

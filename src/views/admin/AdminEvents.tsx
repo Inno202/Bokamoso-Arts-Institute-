@@ -7,6 +7,7 @@ import { BAIEvent } from '../../models/types';
 import { formatCurrency, formatDateTime, friendlyError } from '../../controllers/lib/utils';
 import { toast } from '../../services/toast';
 import { sellsElsewhere } from '../../models/currency';
+import { confirmAction } from '../../services/confirm';
 import { logger } from '../../services/loggerService';
 
 const STATUS_STYLE: Record<string, string> = {
@@ -34,9 +35,9 @@ export default function AdminEvents() {
 
   const handleDelete = async (event: BAIEvent) => {
     const sold = event.ticketsSold > 0
-      ? ` ${event.ticketsSold} ticket${event.ticketsSold === 1 ? ' has' : 's have'} already been issued for it, and those ticket holders will lose the event details.`
+      ? `${event.ticketsSold} ticket${event.ticketsSold === 1 ? ' has' : 's have'} already been issued for it, and those ticket holders will lose the event details. `
       : '';
-    if (!window.confirm(`Delete "${event.name}"?${sold} This cannot be undone.`)) return;
+    if (!await confirmAction({ title: `Delete "${event.name}"?`, message: `${sold}This cannot be undone.`, confirmLabel: 'Delete event', tone: 'danger' })) return;
     try {
       await eventController.deleteEvent(event.id);
       toast.success('Event deleted.');

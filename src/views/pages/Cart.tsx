@@ -10,6 +10,7 @@ import { eventController } from '../../controllers/eventController';
 import { MAX_PER_EVENT } from '../../controllers/cartController';
 import { formatCurrency, formatDate } from '../../controllers/lib/utils';
 import { CURRENCIES, type CurrencyCode } from '../../models/currency';
+import { confirmAction } from '../../services/confirm';
 import { FALLBACK_EVENT_IMAGE, PAYMENTS_LIVE } from '../../config';
 
 // Reads as "Total in Botswana pula"; the euro is the one name that is not capitalised mid-sentence.
@@ -39,8 +40,8 @@ export default function Cart() {
     else navigate(ROUTES.CHECKOUT);
   };
 
-  const handleClear = () => {
-    if (window.confirm('Remove every ticket from your bag?')) clearCart();
+  const handleClear = async () => {
+    if (await confirmAction({ title: 'Empty your bag?', message: 'Every ticket will be removed from your bag.', confirmLabel: 'Empty bag', tone: 'danger' })) clearCart();
   };
 
   if (loading) {

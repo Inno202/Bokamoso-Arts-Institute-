@@ -4,6 +4,7 @@ import { blankItem, isSafeImage, type Data, type Errors, type Field } from '../.
 import { contentImage } from '../../content/image';
 import { cloudinaryService } from '../../services/cloudinaryService';
 import { friendlyError } from '../../controllers/lib/utils';
+import { confirmAction } from '../../services/confirm';
 import { toast } from '../../services/toast';
 
 /** The id of the control for a field path, so an error summary can jump to it. */
@@ -251,8 +252,8 @@ function ListEditor({ field, value, path, errors, onChange }: EditorProps & { fi
     const raw = item[field.titleKey];
     return typeof raw === 'string' && raw.trim() ? raw : `${field.itemLabel} ${i + 1}`;
   };
-  const remove = (i: number) => {
-    if (window.confirm(`Remove "${titleOf(list[i], i)}"? It disappears from the site once you save.`)) {
+  const remove = async (i: number) => {
+    if (await confirmAction({ title: `Remove "${titleOf(list[i], i)}"?`, message: 'It disappears from the site once you save.', confirmLabel: 'Remove', tone: 'danger' })) {
       onChange(list.filter((_, n) => n !== i));
     }
   };
