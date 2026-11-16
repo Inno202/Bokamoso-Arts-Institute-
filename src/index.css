@@ -275,6 +275,7 @@
 
 /* Html5Qrcode draws its own controls; bring them into the scanner's dark surface. */
 #qr-reader { border: 0 !important; color: #fff; }
+#qr-reader video { width: 100% !important; height: 100% !important; object-fit: cover; }
 #qr-reader img { display: inline-block; }
 #qr-reader button {
   background: #fff;
