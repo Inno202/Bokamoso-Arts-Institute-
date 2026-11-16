@@ -107,9 +107,11 @@ export default function Dashboard() {
             <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3 mb-5">
               <h2 id="scans-heading" className="m-0">
                 <button type="button" onClick={toggleScans} aria-expanded={scansOpen} aria-controls="recent-scans" className="group flex items-center gap-3 min-h-[44px] text-left">
-                  <span className="display text-2xl">Recent scans</span>
-                  <span className="num text-sm font-bold bg-bai-black text-white rounded-full px-2.5 py-0.5" aria-label={scanCount === undefined ? 'Count loading' : `${scanCount} tickets scanned in total`}>
-                    {scanCount === undefined ? '…' : `${scanCount.toLocaleString('en-ZA')} scanned`}
+                  <span>
+                    <span className="display text-2xl block">Recent scans</span>
+                    <span className="num block text-sm font-normal text-bai-black/70 mt-0.5">
+                      {scanCount === undefined ? 'Counting scanned tickets' : `${scanCount.toLocaleString('en-ZA')} ${scanCount === 1 ? 'ticket' : 'tickets'} scanned`}
+                    </span>
                   </span>
                   <ChevronDown size={20} className={`shrink-0 transition-transform duration-200 ${scansOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
                   <span className="sr-only">{scansOpen ? 'Collapse' : 'Expand'}</span>
