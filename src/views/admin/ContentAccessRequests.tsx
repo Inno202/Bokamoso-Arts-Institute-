@@ -76,13 +76,14 @@ export function ContentAccessRequests() {
                 <p className="num text-sm text-bai-black/70 flex items-center gap-1.5 mt-0.5"><Clock size={14} aria-hidden="true" />Asked {formatDateTime(a.requestedAt)}</p>
                 {a.note && <p className="mt-2 break-words">“{a.note}”</p>}
               </div>
-              <div className="flex flex-wrap items-center gap-2 shrink-0">
+              {/* One row on every screen: how long, Approve, Decline. */}
+              <div className="grid grid-cols-3 gap-2 w-full lg:w-auto lg:flex lg:items-center shrink-0">
                 <label className="sr-only" htmlFor={`dur-${a.uid}`}>How long {who(a)} may edit</label>
-                <select id={`dur-${a.uid}`} className="field w-auto" value={durations[a.uid] ?? 24} onChange={e => setDurations(d => ({ ...d, [a.uid]: Number(e.target.value) }))}>
-                  {ACCESS_DURATIONS.map(d => <option key={d.hours} value={d.hours}>For {d.label}</option>)}
+                <select id={`dur-${a.uid}`} className="field min-w-0 px-3 lg:w-32" value={durations[a.uid] ?? 24} onChange={e => setDurations(d => ({ ...d, [a.uid]: Number(e.target.value) }))}>
+                  {ACCESS_DURATIONS.map(d => <option key={d.hours} value={d.hours}>{d.label}</option>)}
                 </select>
-                <button type="button" onClick={() => approve(a)} disabled={busy === a.uid} className="btn btn-primary"><Check size={16} aria-hidden="true" /><span>Approve</span></button>
-                <button type="button" onClick={() => decline(a)} disabled={busy === a.uid} className="btn btn-danger"><X size={16} aria-hidden="true" /><span>Decline</span></button>
+                <button type="button" onClick={() => approve(a)} disabled={busy === a.uid} className="btn btn-primary min-w-0 px-3 sm:px-5"><Check size={16} className="hidden sm:block shrink-0" aria-hidden="true" /><span>Approve</span></button>
+                <button type="button" onClick={() => decline(a)} disabled={busy === a.uid} className="btn btn-danger min-w-0 px-3 sm:px-5"><X size={16} className="hidden sm:block shrink-0" aria-hidden="true" /><span>Decline</span></button>
               </div>
             </li>
           ))}
