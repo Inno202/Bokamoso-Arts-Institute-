@@ -188,7 +188,7 @@ const home: SectionDef<'home'> = {
   defaults: {
     hero: {
       tagline: 'Bula Pelo. Open your heart.',
-      images: ['assets/photos/choir-stage.jpg', 'assets/photos/choir-blue.jpg', 'assets/photos/conductor-lost-in-music.jpg', 'assets/photos/orchestra-lost-in-music.jpg', 'assets/photos/choir-black.jpg'],
+      images: ['assets/photos/choir-stage.jpg', 'assets/photos/conductor-lost-in-music.jpg', 'assets/photos/choir-black.jpg'],
     },
     stats: [
       { value: '2', label: 'WCG World Titles', detail: 'Gold Medals in South Korea 2023' },

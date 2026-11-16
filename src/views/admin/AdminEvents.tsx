@@ -6,6 +6,7 @@ import { eventController } from '../../controllers/eventController';
 import { BAIEvent } from '../../models/types';
 import { formatCurrency, formatDateTime, friendlyError } from '../../controllers/lib/utils';
 import { toast } from '../../services/toast';
+import { sellsElsewhere } from '../../models/currency';
 import { logger } from '../../services/loggerService';
 
 const STATUS_STYLE: Record<string, string> = {
@@ -75,13 +76,14 @@ export default function AdminEvents() {
                 <div className="flex flex-wrap items-center gap-3">
                   <h2 className="font-semibold text-lg break-words">{event.name}</h2>
                   <span className={`text-sm font-bold px-2.5 py-0.5 rounded-full ${STATUS_STYLE[event.status] || STATUS_STYLE.Closed}`}>{event.status}</span>
+                  {sellsElsewhere(event) && <span className="text-sm font-bold px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-900">Sold by {event.ticketProvider || 'outside seller'}</span>}
                 </div>
                 <p className="num text-bai-black/75 mt-1">{formatDateTime(event.date) || 'No date'} · {[event.venue, event.city].filter(Boolean).join(', ')}</p>
               </div>
               <dl className="num flex gap-8 shrink-0">
                 <div>
                   <dt className="text-sm text-bai-black/70">Price</dt>
-                  <dd className="font-bold">{event.price > 0 ? formatCurrency(event.price) : 'Free'}</dd>
+                  <dd className="font-bold">{event.price > 0 ? formatCurrency(event.price, event.currency) : 'Free'}</dd>
                 </div>
                 <div>
                   <dt className="text-sm text-bai-black/70">Issued</dt>

@@ -216,7 +216,7 @@ describe('validating what staff type', () => {
 });
 
 describe('validating events', () => {
-  const good: EventForm = { name: 'Gala', venue: 'Hall', city: 'Pretoria', date: '2026-05-29T10:00', price: '200', capacity: '300', description: '', status: 'On Sale' };
+  const good: EventForm = { name: 'Gala', venue: 'Hall', city: 'Pretoria', date: '2026-05-29T10:00', price: '200', capacity: '300', description: '', status: 'On Sale', currency: 'ZAR', ticketUrl: '', ticketProvider: '' };
 
   it('accepts a complete event, including a free one', () => {
     expect(validateEvent(good)).toEqual({});
@@ -249,6 +249,45 @@ describe('validating events', () => {
   });
 });
 
+describe('currencies and outside sellers', () => {
+  const good: EventForm = { name: 'Gala', venue: 'Hall', city: 'Mbabane', date: '2026-05-29T10:00', price: '200', capacity: '300', description: '', status: 'On Sale', currency: 'SZL', ticketUrl: 'https://www.mojaticket.com/event/gala', ticketProvider: 'MojaTicket' };
+
+  it('formats each amount with its own currency, and legacy amounts as rand', async () => {
+    const { formatMoney } = await import('../src/models/currency');
+    expect(formatMoney(150)).toMatch(/^R 150[.,]00$/);
+    expect(formatMoney(150, 'BWP')).toMatch(/^P 150[.,]00$/);
+    expect(formatMoney(150, 'SZL')).toMatch(/^E 150[.,]00$/);
+    expect(formatMoney(150, 'nonsense')).toMatch(/^R /);
+  });
+
+  it('never adds different currencies together', async () => {
+    const { totalsByCurrency } = await import('../src/models/currency');
+    expect(totalsByCurrency([{ amount: 100 }, { amount: 50, currency: 'BWP' }, { amount: 20, currency: 'ZAR' }]))
+      .toEqual([{ currency: 'ZAR', total: 120 }, { currency: 'BWP', total: 50 }]);
+  });
+
+  it('treats only https links as sold elsewhere', async () => {
+    const { sellsElsewhere } = await import('../src/models/currency');
+    expect(sellsElsewhere({ ticketUrl: 'https://www.mojaticket.com/x' })).toBe(true);
+    expect(sellsElsewhere({ ticketUrl: '' })).toBe(false);
+    expect(sellsElsewhere({ ticketUrl: 'javascript:alert(1)' })).toBe(false);
+    expect(sellsElsewhere({})).toBe(false);
+  });
+
+  it('accepts an event sold by MojaTicket in emalangeni', () => {
+    expect(validateEvent(good)).toEqual({});
+  });
+
+  it('rejects unknown currencies, unsafe links, and a link without a seller or the reverse', () => {
+    expect(validateEvent({ ...good, currency: 'BTC' }).currency).toBeDefined();
+    expect(validateEvent({ ...good, ticketUrl: 'http://mojaticket.com/x' }).ticketUrl).toMatch(/https/);
+    expect(validateEvent({ ...good, ticketUrl: 'javascript:alert(1)' }).ticketUrl).toBeDefined();
+    expect(validateEvent({ ...good, ticketProvider: '' }).ticketProvider).toBeDefined();
+    expect(validateEvent({ ...good, ticketUrl: '' }).ticketUrl).toBeDefined();
+    expect(validateEvent({ ...good, ticketProvider: 'x'.repeat(61) }).ticketProvider).toMatch(/60/);
+  });
+});
+
 describe('confirming a save', () => {
   it('treats the same content as equal whatever order its fields come back in', async () => {
     const { stable } = await import('../src/content/stable');
@@ -276,5 +315,6 @@ describe('upcoming events on the home page', () => {
     expect(list.map(e => e.id)).toEqual(['tonight', 'soon', 'late']);
     expect(list[1].soldOut).toBe(true);
     expect(list[0].date).toBe('2026-11-16T09:00:00.000Z');
+    expect(list[0].currency).toBe('ZAR');
   });
 });

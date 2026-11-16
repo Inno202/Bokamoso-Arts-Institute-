@@ -2,6 +2,7 @@ import { doc, getDoc, setDoc, deleteDoc, serverTimestamp } from 'firebase/firest
 import { db } from './lib/firebase';
 import { CartItem } from '../models/types';
 import { logger } from '../services/loggerService';
+import { currencyOf } from '../models/currency';
 
 const COLLECTION = 'cart';
 export const MAX_PER_EVENT = 10;
@@ -20,6 +21,7 @@ export function sanitizeCartItems(raw: unknown): CartItem[] {
       date: i.date ?? null,
       ticketType: String(i.ticketType || 'General Admission'),
       price: Number(i.price),
+      currency: currencyOf(i.currency),
       quantity: Math.max(1, Math.min(MAX_PER_EVENT, Math.floor(Number(i.quantity) || 1))),
     }));
 }

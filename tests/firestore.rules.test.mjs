@@ -198,6 +198,35 @@ test('ticket purchases cannot be forged', async () => {
   await assertFails(buy(guest(), 'alice'), 'signed out');
 });
 
+test('events take a known currency and only https links to an outside seller', async () => {
+  const pro = as('pro');
+  await assertSucceeds(setDoc(doc(pro, 'events/bw'), eventDoc({ currency: 'BWP' })));
+  await assertSucceeds(setDoc(doc(pro, 'events/sz'), eventDoc({ currency: 'SZL', ticketUrl: 'https://www.mojaticket.com/event/gala', ticketProvider: 'MojaTicket' })));
+  await assertFails(setDoc(doc(pro, 'events/x1'), eventDoc({ currency: 'BTC' })), 'unknown currency');
+  await assertFails(setDoc(doc(pro, 'events/x2'), eventDoc({ ticketUrl: 'javascript:alert(1)' })), 'script link');
+  await assertFails(setDoc(doc(pro, 'events/x3'), eventDoc({ ticketUrl: 'http://example.com/tickets' })), 'plain http link');
+  await assertFails(setDoc(doc(pro, 'events/x4'), eventDoc({ ticketProvider: 'x'.repeat(61) })), 'provider name too long');
+});
+
+test('tickets carry the event currency, and outside-sold events are never issued here', async () => {
+  await env.withSecurityRulesDisabled(async ctx => {
+    await setDoc(doc(ctx.firestore(), 'events/bw'), eventDoc({ currency: 'BWP' }));
+    await setDoc(doc(ctx.firestore(), 'events/sz'), eventDoc({ currency: 'SZL', ticketUrl: 'https://www.mojaticket.com/event/gala', ticketProvider: 'MojaTicket' }));
+  });
+  const db = as('alice');
+  await assertFails(buy(db, 'alice', { eventId: 'sz', order: { currency: 'SZL' }, ticket: { currency: 'SZL' } }), 'event sold by MojaTicket');
+  await assertFails(buy(db, 'alice', { eventId: 'bw' }), 'pula event recorded as rand');
+  await assertFails(buy(db, 'alice', { eventId: 'bw', order: { currency: 'BWP' } }), 'ticket currency differs from order');
+  await assertFails(buy(db, 'alice', { order: { currency: 'BWP' }, ticket: { currency: 'BWP' } }), 'rand event recorded as pula');
+  await assertSucceeds(buy(db, 'alice', { eventId: 'bw', order: { currency: 'BWP' }, ticket: { currency: 'BWP' } }));
+  await assertSucceeds(buy(db, 'alice', { order: { currency: 'ZAR' }, ticket: { currency: 'ZAR' }, prefix: 'C' }));
+});
+
+test('a full order of 10 tickets with a currency still goes through in one write', async () => {
+  await env.withSecurityRulesDisabled(ctx => setDoc(doc(ctx.firestore(), 'events/e1'), eventDoc({ capacity: 500, currency: 'ZAR', ticketUrl: '', ticketProvider: '' })));
+  await assertSucceeds(buy(as('alice'), 'alice', { n: 10, order: { currency: 'ZAR' }, ticket: { currency: 'ZAR' } }));
+});
+
 test('tickets cannot outnumber what the order and the sold counter record', async () => {
   const db = as('alice');
   // Two tickets, but the order and the counter only account for one.

@@ -14,7 +14,7 @@ import { APP_CHECK_ENABLED } from '../../controllers/lib/firebase';
  * charged, collected, stored or promised, update the matching section here and
  * the LAST_UPDATED date in the same commit.
  */
-const LAST_UPDATED = '15 November 2026';
+const LAST_UPDATED = '16 November 2026';
 
 type Doc = 'terms' | 'privacy' | 'cookies';
 const TITLES: Record<Doc, [string, string]> = {
@@ -52,6 +52,8 @@ export default function Legal({ doc }: { doc: Doc }) {
               {PAYMENTS_LIVE
                 ? <li>The price shown at checkout is the price you pay, including any ticketing fee shown there.</li>
                 : <li><strong>Online payment is not available yet.</strong> Tickets booked on this site are currently issued without charge, and the site never asks for card details. These terms will be updated before any payment is taken online.</li>}
+              <li>Each event is priced in the currency shown next to its price, for example rand (R), pula (P) or emalangeni (E). Amounts in different currencies are shown separately and never converted or added together.</li>
+              <li>Tickets for some events, for example performances outside South Africa, are sold by another company such as the venue or a local ticket site. For those events the Events page links to that seller and no ticket is issued on this site. The seller's own prices, terms, refund rules and privacy policy apply, and any questions about those tickets go to them.</li>
               <li>Each ticket admits one person, once. It is checked and marked as used at the door.</li>
               <li>One account can hold up to {MAX_PER_EVENT} tickets for an event, while seats remain.</li>
               <li>Your ticket reference and QR code are your proof of booking. Anyone who has them can use the ticket, so only share them with the person attending.</li>
@@ -76,7 +78,7 @@ export default function Legal({ doc }: { doc: Doc }) {
             <H>What we collect</H>
             <UL>
               <li><strong>Account details:</strong> your name and email address when you create an account. If you sign in with Google, we receive your name and email address from Google. Your password is handled by Google Firebase Authentication; we never see or store it.</li>
-              <li><strong>Tickets and orders:</strong> which events you booked, how many tickets, the price, the time of booking, how many tickets your account holds for each event, and when a ticket was scanned at the door and by which staff account.</li>
+              <li><strong>Tickets and orders:</strong> which events you booked, how many tickets, the price and its currency, the time of booking, how many tickets your account holds for each event, and when a ticket was scanned at the door and by which staff account.</li>
               <li><strong>Your bag:</strong> the tickets you have added but not yet booked, saved to your account and in your browser so they are still there when you come back.</li>
               <li><strong>Emails you send us:</strong> if you email us, we receive whatever you choose to send.</li>
               <li><strong>Staff activity:</strong> for staff accounts, your role and a record of which account last changed site content or scanned a ticket.</li>
@@ -97,6 +99,7 @@ export default function Legal({ doc }: { doc: Doc }) {
               <li><strong>Google Firebase</strong> stores accounts, tickets and site content, and handles sign-in. Its servers may be outside South Africa.</li>
               <li><strong>Cloudinary</strong> stores photographs that staff upload to the site.</li>
               {APP_CHECK_ENABLED && <li><strong>Google reCAPTCHA</strong> (through Firebase App Check) checks that requests come from this website in a real browser and not from an automated script. It looks at device and browser signals to do this, under Google's privacy policy.</li>}
+              <li><strong>Outside ticket sellers:</strong> when you follow a link to buy tickets from another seller (such as a venue or a ticket site in another country), you leave this site. We do not pass them your details; whatever you give them is covered by their own privacy policy.</li>
               <li><strong>GitHub Pages</strong> hosts the website, and <strong>Google Fonts</strong> supplies its typefaces. Like any web host, they see your device's IP address when your browser loads the page.</li>
             </UL>
 

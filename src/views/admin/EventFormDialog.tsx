@@ -8,6 +8,7 @@ import { friendlyError, toDate } from '../../controllers/lib/utils';
 import { toast } from '../../services/toast';
 import { logger } from '../../services/loggerService';
 import { EVENT_LIMITS, validateEvent, type EventForm } from '../../content/eventValidation';
+import { CURRENCIES, currencyOf } from '../../models/currency';
 import type { Errors } from '../../content/fields';
 
 /** datetime-local wants local wall-clock time, not UTC. */
@@ -27,6 +28,9 @@ const formFor = (event?: BAIEvent | null): EventForm => ({
   capacity: event ? String(event.capacity) : '100',
   description: event?.description ?? '',
   status: event?.status ?? 'On Sale',
+  currency: currencyOf(event?.currency),
+  ticketUrl: event?.ticketUrl ?? '',
+  ticketProvider: event?.ticketProvider ?? '',
 });
 
 interface Props {
@@ -70,7 +74,7 @@ export function EventFormDialog({ event, onClose }: Props) {
     setSaving(true);
     try {
       const bannerUrl = bannerFile ? (await cloudinaryService.upload(bannerFile, 'events')).url : event?.bannerImageUrl;
-      const ticketUrl = ticketFile ? (await cloudinaryService.upload(ticketFile, 'events')).url : (event?.ticketImageUrl || bannerUrl);
+      const ticketArtUrl = ticketFile ? (await cloudinaryService.upload(ticketFile, 'events')).url : (event?.ticketImageUrl || bannerUrl);
       const data = {
         name: form.name.trim(),
         venue: form.venue.trim(),
@@ -80,9 +84,13 @@ export function EventFormDialog({ event, onClose }: Props) {
         price: Number(form.price),
         capacity: Number(form.capacity),
         date: new Date(form.date),
+        currency: form.currency,
+        // Empty when tickets are sold on this site; cleared values are saved as empty.
+        ticketUrl: form.ticketUrl.trim(),
+        ticketProvider: form.ticketUrl.trim() ? form.ticketProvider.trim() : '',
         createdBy: event?.createdBy || user?.uid || '',
         ...(bannerUrl ? { bannerImageUrl: bannerUrl } : {}),
-        ...(ticketUrl ? { ticketImageUrl: ticketUrl } : {}),
+        ...(ticketArtUrl ? { ticketImageUrl: ticketArtUrl } : {}),
       };
       if (event?.id) {
         await eventController.updateEvent(event.id, data);
@@ -133,7 +141,14 @@ export function EventFormDialog({ event, onClose }: Props) {
             {input('date', 'Date and time', { type: 'datetime-local' })}
             {input('venue', 'Venue', { maxLength: EVENT_LIMITS.venue })}
             {input('city', 'City', { maxLength: EVENT_LIMITS.city })}
-            {input('price', 'Ticket price in rand', { type: 'number', inputMode: 'decimal', min: 0, step: '0.01', placeholder: 'For example 200' })}
+            <div>
+              <label htmlFor="ev-currency" className="field-label">Currency</label>
+              <select id="ev-currency" value={form.currency} onChange={set('currency')} aria-invalid={!!errors.currency} className="field">
+                {CURRENCIES.map(c => <option key={c.code} value={c.code}>{c.name} ({c.symbol})</option>)}
+              </select>
+              {errors.currency && <p className="field-error">{errors.currency}</p>}
+            </div>
+            {input('price', `Ticket price in ${form.currency === 'EUR' ? 'euros' : CURRENCIES.find(c => c.code === form.currency)?.name || 'rand'}`, { type: 'number', inputMode: 'decimal', min: 0, step: '0.01', placeholder: 'For example 200' })}
             {input('capacity', 'Seats available', { type: 'number', inputMode: 'numeric', min: 1, step: 1 })}
             <div className="sm:col-span-2">
               <label htmlFor="ev-status" className="field-label">Status</label>
@@ -143,6 +158,14 @@ export function EventFormDialog({ event, onClose }: Props) {
                 <option value="Closed">Closed (hidden, sales ended)</option>
               </select>
             </div>
+            <fieldset className="sm:col-span-2 border-t border-bai-black/15 pt-5">
+              <legend className="font-semibold pr-3">Sold somewhere else? <span className="font-normal text-bai-black/70">(optional)</span></legend>
+              <p className="field-help mb-4">For a show where the venue or a ticket seller, such as MojaTicket, sells the tickets. Visitors get a button to buy there instead of adding the ticket to their bag here.</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                {input('ticketProvider', 'Who sells the tickets', { maxLength: EVENT_LIMITS.ticketProvider, placeholder: 'For example MojaTicket' })}
+                {input('ticketUrl', 'Link to their ticket page', { type: 'url', inputMode: 'url', maxLength: EVENT_LIMITS.ticketUrl, placeholder: 'https://', spellCheck: false, autoComplete: 'off' })}
+              </div>
+            </fieldset>
             {fileInput('ev-banner', 'Banner photo', setBannerFile, event?.bannerImageUrl)}
             {fileInput('ev-ticket', 'Ticket artwork', setTicketFile, event?.ticketImageUrl)}
             <div className="sm:col-span-2">

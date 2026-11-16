@@ -132,7 +132,7 @@ export default function Home() {
                       <span className="num block text-bai-ink-soft mt-1 truncate">{[formatTime(event.date), [event.venue, event.city].filter(Boolean).join(', ')].filter(Boolean).join(' · ')}</span>
                     </span>
                     <span className="flex items-center gap-3 shrink-0">
-                      <span className="num hidden sm:inline font-semibold">{event.soldOut ? 'Sold out' : event.price > 0 ? formatCurrency(event.price) : 'Free'}</span>
+                      <span className="num hidden sm:inline font-semibold">{event.soldOut ? 'Sold out' : event.price > 0 ? formatCurrency(event.price, event.currency) : 'Free'}</span>
                       <ArrowRight size={20} className="transition-transform duration-200 group-hover:translate-x-1" aria-hidden="true" />
                     </span>
                   </Link>
