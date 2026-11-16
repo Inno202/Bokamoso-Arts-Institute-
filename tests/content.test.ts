@@ -297,6 +297,20 @@ describe('confirming a save', () => {
   });
 });
 
+describe('event list order', () => {
+  it('shows the most recently added event first, older records after by date', async () => {
+    const { sortNewestFirst } = await import('../src/controllers/eventController');
+    const at = (iso: string) => ({ seconds: Date.parse(iso) / 1000 });
+    const list = sortNewestFirst([
+      { id: 'tour', createdAt: at('2026-11-01T10:00:00Z'), date: at('2027-05-29T10:00:00Z') },
+      { id: 'legacyLate', createdAt: undefined, date: at('2027-09-01T10:00:00Z') },
+      { id: 'eswatini', createdAt: at('2026-11-16T09:00:00Z'), date: at('2026-12-16T11:34:00Z') },
+      { id: 'legacySoon', createdAt: undefined, date: at('2027-01-01T10:00:00Z') },
+    ] as never);
+    expect(list.map((e: { id: string }) => e.id)).toEqual(['eswatini', 'tour', 'legacySoon', 'legacyLate']);
+  });
+});
+
 describe('upcoming events on the home page', () => {
   it('lists events on sale that are still to come, soonest first, at most three', async () => {
     const { pickUpcoming } = await import('../src/content/upcoming');
