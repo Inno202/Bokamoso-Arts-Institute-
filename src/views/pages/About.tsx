@@ -1,10 +1,14 @@
 import { useContent } from '../../content/store';
 import { contentImage } from '../../content/image';
+import { ZoomablePhoto } from '../components/ZoomablePhoto';
 import { PageHero } from '../components/PageHero';
 
 export default function About() {
   const { heroImage, story, valuesHeading, values, management, choirPictures } = useContent('about');
   const storyImage = choirPictures[0] || 'assets/philosophy.jpg';
+  const teamWithPhotos = management.filter(member => member.image);
+  const teamPhotos = teamWithPhotos.map(member => ({ src: contentImage(member.image, 2000), alt: member.name }));
+  const choirPhotos = choirPictures.map(picture => ({ src: contentImage(picture, 2000), alt: 'The Bokamoso choir' }));
 
   return (
     <div>
@@ -26,7 +30,7 @@ export default function About() {
           )}
         </div>
         <div className="frame aspect-[4/5]">
-          <img src={contentImage(storyImage, 1000)} alt="The Bokamoso choir" loading="lazy" decoding="async" className="w-full h-full object-cover" />
+          <ZoomablePhoto src={contentImage(storyImage, 1000)} largeSrc={contentImage(storyImage, 2000)} alt="The Bokamoso choir" />
         </div>
       </section>
 
@@ -56,7 +60,7 @@ export default function About() {
               <li key={`${member.name}-${member.role}`}>
                 <div className="frame aspect-square mb-5">
                   {member.image && (
-                    <img src={contentImage(member.image, 700)} alt={member.name} loading="lazy" decoding="async" className="w-full h-full object-cover" />
+                    <ZoomablePhoto src={contentImage(member.image, 700)} largeSrc={contentImage(member.image, 2000)} alt={member.name} group={teamPhotos} index={teamWithPhotos.indexOf(member)} />
                   )}
                 </div>
                 <h3 className="font-serif font-semibold text-3xl leading-tight">{member.name}</h3>
@@ -72,9 +76,9 @@ export default function About() {
         <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-20 md:pb-28">
           <h2 className="display text-5xl md:text-6xl mb-10">The <span className="text-bai-blue">choir</span></h2>
           <ul className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
-            {choirPictures.map((picture) => (
+            {choirPictures.map((picture, i) => (
               <li key={picture} className="group frame aspect-square">
-                <img src={contentImage(picture, 600)} alt="The Bokamoso choir" loading="lazy" decoding="async" className="w-full h-full object-cover photo-zoom" />
+                <ZoomablePhoto src={contentImage(picture, 600)} largeSrc={contentImage(picture, 2000)} alt="The Bokamoso choir" className="w-full h-full object-cover photo-zoom" group={choirPhotos} index={i} />
               </li>
             ))}
           </ul>

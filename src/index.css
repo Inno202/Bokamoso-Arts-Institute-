@@ -233,6 +233,46 @@
   @starting-style { opacity: 0; }
 }
 
+/* Photos that open larger: show the expand hint on hover/focus with a mouse;
+   on touch screens it stays faintly visible so people know they can tap. */
+.zoomable:focus-visible { outline-offset: -4px; }
+.zoom-hint { opacity: 0.85; transition: opacity 0.2s var(--ease-out), transform 0.2s var(--ease-out); }
+@media (hover: hover) and (pointer: fine) {
+  .zoom-hint { opacity: 0; transform: scale(0.9); }
+  .zoomable:hover .zoom-hint, .zoomable:focus-visible .zoom-hint { opacity: 1; transform: none; }
+}
+
+/* Full-screen photo viewer */
+.photo-viewer {
+  width: 100vw;
+  height: 100dvh;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: rgb(10 10 10 / 0.95);
+  color: #fff;
+  overflow: hidden;
+  opacity: 1;
+  transition: opacity 0.2s var(--ease-out);
+  @starting-style { opacity: 0; }
+}
+.photo-viewer::backdrop { background: transparent; }
+.photo-viewer-img { transition: opacity 0.25s var(--ease-out); touch-action: pan-y pinch-zoom; }
+.viewer-btn {
+  width: 48px;
+  height: 48px;
+  border-radius: 9999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgb(255 255 255 / 0.12);
+  color: #fff;
+  transition: background-color 0.2s var(--ease-out);
+}
+.viewer-btn:hover { background: rgb(255 255 255 / 0.25); }
+
 /* Html5Qrcode draws its own controls; bring them into the scanner's dark surface. */
 #qr-reader { border: 0 !important; color: #fff; }
 #qr-reader img { display: inline-block; }

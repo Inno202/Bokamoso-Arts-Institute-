@@ -1,6 +1,7 @@
 import { ArrowUpRight, Facebook, Instagram, Youtube } from 'lucide-react';
 import { useContent } from '../../content/store';
 import { contentImage } from '../../content/image';
+import { ZoomablePhoto } from '../components/ZoomablePhoto';
 import { PageHero } from '../components/PageHero';
 
 const FOLLOW = {
@@ -12,6 +13,8 @@ const FOLLOW = {
 export default function Programs() {
   const { heroImage, pillars, gallery, projects, outreach } = useContent('work');
   const { socials } = useContent('site');
+  const projectsWithPhotos = projects.filter(project => project.imageUrl);
+  const projectPhotos = projectsWithPhotos.map(project => ({ src: contentImage(project.imageUrl, 2000), alt: project.title }));
   // The links come from Site content, so they change in one place for the whole site.
   const follow = (['youtube', 'facebook', 'instagram'] as const)
     .map(network => ({ ...FOLLOW[network], url: socials.find(s => s.network === network)?.url }))
@@ -44,10 +47,10 @@ export default function Programs() {
             {projects.map((project) => (
               <li key={project.title} className="group relative frame aspect-[4/5] bg-bai-black">
                 {project.imageUrl && (
-                  <img src={contentImage(project.imageUrl)} alt="" loading="lazy" decoding="async" className="w-full h-full object-cover photo-zoom" />
+                  <ZoomablePhoto src={contentImage(project.imageUrl)} largeSrc={contentImage(project.imageUrl, 2000)} alt={project.title} className="w-full h-full object-cover photo-zoom" group={projectPhotos} index={projectsWithPhotos.indexOf(project)} />
                 )}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-transparent to-transparent" aria-hidden="true" />
-                <h3 className="absolute bottom-0 left-0 p-6 md:p-7 font-serif font-semibold text-2xl md:text-3xl text-white">{project.title}</h3>
+                <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-transparent to-transparent pointer-events-none" aria-hidden="true" />
+                <h3 className="absolute bottom-0 left-0 p-6 md:p-7 pointer-events-none font-serif font-semibold text-2xl md:text-3xl text-white">{project.title}</h3>
               </li>
             ))}
           </ul>
@@ -73,7 +76,7 @@ export default function Programs() {
             </div>
             <div className="frame aspect-square relative bg-bai-black">
               {outreach.imageUrl && (
-                <img src={contentImage(outreach.imageUrl, 1000)} alt="The choir performing for the community" loading="lazy" decoding="async" className="w-full h-full object-cover" />
+                <ZoomablePhoto src={contentImage(outreach.imageUrl, 1000)} largeSrc={contentImage(outreach.imageUrl, 2000)} alt="The choir performing for the community" />
               )}
             </div>
           </div>
