@@ -54,7 +54,7 @@ export interface WorkContent {
 
 export interface TraditionsContent {
   heroImage: string;
-  items: Array<{ title: string; tag: string; desc: string; when: string }>;
+  items: Array<{ title: string; desc: string; when: string }>;
 }
 
 export interface ContentMap {
@@ -342,7 +342,6 @@ const traditions: SectionDef<'traditions'> = {
     { kind: 'image', key: 'heroImage', label: 'Photo at the top of the page', required: true },
     { kind: 'list', key: 'items', label: 'Traditions', itemLabel: 'Tradition', titleKey: 'title', min: 1, max: 12, fields: [
       text('title', 'Name', 80, required),
-      text('tag', 'Short description', 60),
       text('desc', 'Description', 600, { ...required, ...long }),
       text('when', 'When it happens', 60, { help: 'For example Every February 14-15, or Annually.' }),
     ] },
@@ -350,9 +349,9 @@ const traditions: SectionDef<'traditions'> = {
   defaults: {
     heroImage: 'assets/photos/choir-black.jpg',
     items: [
-      { title: 'Annual Prayer Service', tag: 'The First Kick', desc: 'Our season begins with an all-night spiritual gathering in Mabopane. We invite elders, parents, and community leaders to join the institute in a collective "Bula Pelo" prayer for the year ahead.', when: 'Every February 14-15' },
-      { title: 'Conductors Extravaganza', tag: 'Artistic Focus', desc: 'A week-long masterclass hosted by BAI, bringing together the finest choral conductors in Southern Africa to share techniques, arrangements, and the philosophy of African Excellence.', when: 'Annually' },
-      { title: 'Concert Series', tag: 'Community Showcase', desc: 'Our highlight local performance for the residents. This is where we debut our international repertoire to the community before taking it across borders.', when: 'Annually' },
+      { title: 'Annual Prayer Service', desc: 'Our season begins with an all-night spiritual gathering in Mabopane. We invite elders, parents, and community leaders to join the institute in a collective "Bula Pelo" prayer for the year ahead.', when: 'Every February 14-15' },
+      { title: 'Conductors Extravaganza', desc: 'A week-long masterclass hosted by BAI, bringing together the finest choral conductors in Southern Africa to share techniques, arrangements, and the philosophy of African Excellence.', when: 'Annually' },
+      { title: 'Concert Series', desc: 'Our highlight local performance for the residents. This is where we debut our international repertoire to the community before taking it across borders.', when: 'Annually' },
     ],
   },
 };
