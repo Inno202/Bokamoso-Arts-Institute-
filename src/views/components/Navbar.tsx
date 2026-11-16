@@ -50,16 +50,19 @@ export default function Navbar() {
     <header className="sticky top-0 z-50 bg-bai-bone/90 backdrop-blur-md border-b border-bai-black/10">
       <nav aria-label="Main" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-20 items-center gap-4">
-          <Link to={ROUTES.HOME} className="flex items-center gap-3 group shrink-0" aria-label="Bokamoso Arts Institute, home">
-            <span className="relative w-12 h-12 flex items-center justify-center" aria-hidden="true">
-              <span className="absolute inset-0 piano-key-pattern rounded-full opacity-20" />
-              <span className="relative w-9 h-9 bg-bai-black flex items-center justify-center rounded-full border-2 border-white transition-transform duration-300 group-hover:scale-110">
-                <span className="text-white font-display font-bold text-[11px]">BAI</span>
-              </span>
-            </span>
+          <Link to={ROUTES.HOME} className="flex items-center gap-3 group shrink-0">
+            <img
+              src={`${import.meta.env.BASE_URL}assets/brand/mark-192.png`}
+              alt=""
+              width={48}
+              height={48}
+              className="logo-mark w-12 h-12"
+            />
+            {/* The link's name is the institute's name; spoken on phones too, where the words are hidden. */}
+            <span className="sr-only sm:hidden">Bokamoso Arts Institute</span>
             <span className="hidden sm:flex flex-col">
-              <span className="font-display font-bold text-base leading-tight tracking-tight">BOKAMOSO</span>
-              <span className="text-[11px] uppercase tracking-[0.18em] font-semibold text-bai-red">Arts Institute</span>
+              <span className="font-serif font-semibold text-xl leading-none tracking-[0.06em]">BOKAMOSO</span>
+              <span className="text-[11px] uppercase tracking-[0.18em] font-semibold text-bai-red-deep">Arts Institute</span>
             </span>
           </Link>
 
@@ -72,7 +75,7 @@ export default function Navbar() {
                   to={link.path}
                   aria-current={active ? 'page' : undefined}
                   className={`font-display text-xs font-bold uppercase tracking-[0.14em] py-2 border-b-2 transition-colors hover:text-bai-red ${
-                    active ? 'text-bai-red border-bai-red' : 'text-bai-black border-transparent'
+                    active ? 'text-bai-red-deep border-bai-red' : 'text-bai-black border-transparent'
                   }`}
                 >
                   {link.name}
@@ -134,7 +137,7 @@ export default function Navbar() {
                     key={link.path}
                     to={link.path}
                     aria-current={active ? 'page' : undefined}
-                    className={`block py-3 font-display text-base font-bold uppercase tracking-widest hover:text-bai-red ${active ? 'text-bai-red' : 'text-bai-black'}`}
+                    className={`block py-3 font-display text-base font-bold uppercase tracking-widest hover:text-bai-red ${active ? 'text-bai-red-deep' : 'text-bai-black'}`}
                   >
                     {link.name}
                   </Link>

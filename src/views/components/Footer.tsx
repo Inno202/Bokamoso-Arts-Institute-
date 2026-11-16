@@ -1,6 +1,6 @@
 import { Youtube, Facebook, Instagram, MessageCircle, ChevronUp, ChevronDown, Mail, Phone, MapPin } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { ROUTES } from '../../controllers/navigation';
 import { useContent } from '../../content/store';
 
@@ -31,9 +31,16 @@ const legalLinks = [
 
 export default function Footer() {
   const { contact, footerBlurb, copyrightLine, socials, partners } = useContent('site');
-  const [isCollapsed, setIsCollapsed] = useState(readCollapsed);
+  // Starts open (as the pre-rendered page does), then applies the visitor's saved choice.
+  const [isCollapsed, setIsCollapsed] = useState(false);
+  const restored = useRef(false);
 
   useEffect(() => {
+    if (!restored.current) {
+      restored.current = true;
+      if (readCollapsed()) setIsCollapsed(true);
+      return;
+    }
     try { localStorage.setItem('footer_collapsed', String(isCollapsed)); } catch { /* preference simply is not remembered */ }
   }, [isCollapsed]);
 
@@ -59,15 +66,15 @@ export default function Footer() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-12 lg:gap-16">
             <div>
               <div className="flex items-center gap-3 mb-6">
-                <span className="w-9 h-9 bg-white flex items-center justify-center rounded-full border-2 border-bai-red" aria-hidden="true">
-                  <span className="text-bai-black font-display font-bold text-[11px]">BAI</span>
+                <span className="w-12 h-12 bg-white rounded-full flex items-center justify-center shrink-0" aria-hidden="true">
+                  <img src={`${import.meta.env.BASE_URL}assets/brand/mark-96.png`} alt="" width={40} height={40} className="w-10 h-10" />
                 </span>
                 <span className="flex flex-col">
-                  <span className="font-display font-bold text-lg leading-tight tracking-tight">BOKAMOSO</span>
+                  <span className="font-serif font-semibold text-xl leading-none tracking-[0.06em]">BOKAMOSO</span>
                   <span className="text-xs uppercase tracking-[0.18em] font-semibold text-bai-red-soft">Arts Institute</span>
                 </span>
               </div>
-              {footerBlurb && <p className="text-white/75 leading-relaxed mb-6 italic max-w-xs">{footerBlurb}</p>}
+              {footerBlurb && <p className="text-white/75 leading-relaxed mb-6 max-w-xs">{footerBlurb}</p>}
               {socials.length > 0 && (
                 <ul className="flex items-center -ml-3">
                   {socials.map((social) => {

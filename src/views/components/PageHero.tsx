@@ -1,33 +1,51 @@
 import type { ReactNode } from 'react';
+import { contentImage } from '../../content/image';
 
 interface PageHeroProps {
-  /** First line of the heading. */
-  line1: string;
-  /** Second line, shown in the accent colour. */
-  line2?: string;
-  accent?: 'red' | 'blue';
-  /** Short line above the heading, in the brand's serif italic. */
-  label?: string;
-  quote?: string;
+  /** The page title. */
+  title: string;
+  /** Optional last word(s), set in the brand red. */
+  accent?: string;
+  /** Photograph behind the title. Without one the header is a plain, light band. */
+  image?: string;
   children?: ReactNode;
-  /** Extra space below, for pages whose first block overlaps the band. */
-  overlap?: boolean;
 }
 
-/** The dark page header with the piano-key motif, shared by every inner page. */
-export function PageHero({ line1, line2, accent = 'red', label, quote, children, overlap }: PageHeroProps) {
+/**
+ * The header of every inner page: a rounded photograph inset from the page edges,
+ * with the title set in the logo's serif at its foot. Title only, no subtitles.
+ */
+export function PageHero({ title, accent, image, children }: PageHeroProps) {
+  const heading = (
+    <h1 className="display text-5xl sm:text-6xl md:text-7xl">
+      {title}{accent && <> <span className={image ? 'text-bai-red-soft' : 'text-bai-red-deep'}>{accent}</span></>}
+    </h1>
+  );
+
+  if (!image) {
+    return (
+      <header className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-14 md:pt-20 pb-4">
+        <div className="hero-rise">{heading}{children}</div>
+      </header>
+    );
+  }
+
   return (
-    <section className={`bg-bai-black text-white px-4 pt-16 md:pt-24 relative overflow-hidden ${overlap ? 'pb-28 md:pb-36' : 'pb-16 md:pb-24'}`}>
-      <div className="absolute inset-0 piano-key-pattern opacity-10" aria-hidden="true" />
-      <div className="max-w-7xl mx-auto sm:px-2 lg:px-4 relative">
-        {label && <p className="font-serif italic text-white text-xl md:text-2xl mb-4">{label}</p>}
-        <h1 className="display text-4xl sm:text-5xl md:text-7xl">
-          {line1}
-          {line2 && <><br /><span className={accent === 'blue' ? 'text-bai-blue-soft' : 'text-bai-red-soft'}>{line2}</span></>}
-        </h1>
-        {quote && <p className="max-w-2xl text-white/85 text-lg md:text-2xl leading-relaxed font-serif italic mt-6 md:mt-8">{quote}</p>}
-        {children}
+    <header className="px-3 sm:px-4 pt-3">
+      <div className="relative overflow-hidden rounded-[2rem] bg-bai-black text-white min-h-[17rem] md:min-h-[24rem] flex items-end">
+        <img
+          src={contentImage(image, 1800)}
+          alt=""
+          fetchPriority="high"
+          decoding="async"
+          className="absolute inset-0 w-full h-full object-cover"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/25 to-black/5" aria-hidden="true" />
+        <div className="relative w-full max-w-7xl mx-auto px-5 sm:px-6 lg:px-8 pb-8 md:pb-12 pt-24 hero-rise">
+          {heading}
+          {children}
+        </div>
       </div>
-    </section>
+    </header>
   );
 }

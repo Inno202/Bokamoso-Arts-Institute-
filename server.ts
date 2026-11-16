@@ -112,13 +112,13 @@ async function startServer() {
     contentSecurityPolicy: isProd ? {
       directives: {
         defaultSrc: ["'self'"],
-        scriptSrc: ["'self'", "https://apis.google.com", "https://www.gstatic.com"],
+        scriptSrc: ["'self'", "https://apis.google.com", "https://www.gstatic.com", "https://www.google.com/recaptcha/"],
         styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
         fontSrc: ["'self'", "https://fonts.gstatic.com"],
         imgSrc: ["'self'", "data:", "blob:", "https:"],
         mediaSrc: ["'self'", "blob:"],
         connectSrc: ["'self'", "https://*.googleapis.com", "https://api.cloudinary.com"],
-        frameSrc: authDomain ? [`https://${authDomain}`] : ["'none'"],
+        frameSrc: [...(authDomain ? [`https://${authDomain}`] : []), "https://www.google.com/recaptcha/", "https://recaptcha.google.com/recaptcha/"],
         workerSrc: ["'self'", "blob:"],
         objectSrc: ["'none'"],
         baseUri: ["'self'"],

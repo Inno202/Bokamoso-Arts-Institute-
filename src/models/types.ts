@@ -55,6 +55,7 @@ export type TicketStatus = 'VALID' | 'SCANNED' | 'CANCELLED';
 
 export interface Ticket {
   id: string;
+  orderId?: string;
   eventId: string;
   eventName?: string;
   ticketType: string;

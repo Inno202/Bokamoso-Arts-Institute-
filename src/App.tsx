@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, type ReactNode } from 'react';
-import { HashRouter as Router, Routes, Route, Navigate, useLocation, Link } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation, Link } from 'react-router-dom';
 import { ROUTES } from './controllers/navigation';
 import Navbar from './views/components/Navbar';
 import Footer from './views/components/Footer';
@@ -26,7 +26,14 @@ const AdminEvents = lazy(() => import('./views/admin/AdminEvents'));
 const AdminContent = lazy(() => import('./views/admin/AdminContent'));
 const Legal = lazy(() => import('./views/pages/Legal'));
 
-export default function App() {
+/** The routes that are pre-rendered to HTML at build time (public, same for everyone). */
+export const PRERENDERED_ROUTES = [
+  ROUTES.HOME, ROUTES.ABOUT, ROUTES.PROGRAMS, ROUTES.EVENTS, ROUTES.TRADITIONS,
+  ROUTES.LOGIN, ROUTES.REGISTER, ROUTES.TERMS, ROUTES.PRIVACY, ROUTES.COOKIES,
+];
+
+/** The router is supplied by the caller: BrowserRouter in the browser, StaticRouter at build time. */
+export default function App({ router: Router }: { router: (props: { children: ReactNode }) => ReactNode }) {
   return (
     <AuthProvider>
       <CartProvider>
@@ -35,7 +42,7 @@ export default function App() {
           <a href="#main" className="skip-link" onClick={(e) => { e.preventDefault(); document.getElementById('main')?.focus(); }}>
             Skip to content
           </a>
-          <div className="min-h-screen flex flex-col township-grid font-sans overflow-x-hidden">
+          <div className="min-h-screen flex flex-col font-sans overflow-x-hidden">
             <Navbar />
             <main id="main" tabIndex={-1} className="flex-grow outline-none">
               <ErrorBoundary>

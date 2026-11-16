@@ -43,10 +43,10 @@ export class ErrorBoundary extends Component<Props, State> {
 
     return (
       <div className="min-h-[70vh] flex flex-col items-center justify-center p-8 text-center bg-bai-bone" role="alert">
-        <h2 className="text-3xl md:text-5xl font-display font-bold uppercase text-bai-black mb-4 tracking-tighter">
+        <h2 className="text-3xl md:text-5xl font-serif font-semibold text-bai-black mb-4">
           {stale ? 'Update available' : 'This page hit a problem'}
         </h2>
-        <p className="text-bai-black/70 text-lg font-serif italic mb-8 max-w-md mx-auto">
+        <p className="text-bai-black/70 text-lg font-serif mb-8 max-w-md mx-auto">
           {stale
             ? 'A newer version of the site is ready. Reload to get it.'
             : 'Something went wrong while showing this page. Reloading usually fixes it; if not, check your connection and try again shortly.'}

@@ -73,7 +73,7 @@ export default function AdminEvents() {
             <li key={event.id} className="py-5 border-b border-bai-black/15 flex flex-col md:flex-row md:items-center gap-4 md:gap-8">
               <div className="min-w-0 flex-grow">
                 <div className="flex flex-wrap items-center gap-3">
-                  <h2 className="font-bold text-lg break-words">{event.name}</h2>
+                  <h2 className="font-semibold text-lg break-words">{event.name}</h2>
                   <span className={`text-sm font-bold px-2.5 py-0.5 rounded-full ${STATUS_STYLE[event.status] || STATUS_STYLE.Closed}`}>{event.status}</span>
                 </div>
                 <p className="num text-bai-black/75 mt-1">{formatDateTime(event.date) || 'No date'} · {[event.venue, event.city].filter(Boolean).join(', ')}</p>

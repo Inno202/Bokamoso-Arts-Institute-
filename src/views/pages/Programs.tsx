@@ -1,21 +1,34 @@
+import { ArrowUpRight, Facebook, Instagram, Youtube } from 'lucide-react';
 import { useContent } from '../../content/store';
 import { contentImage } from '../../content/image';
 import { PageHero } from '../components/PageHero';
 
+const FOLLOW = {
+  youtube: { name: 'YouTube', detail: 'Watch our performances', Icon: Youtube },
+  facebook: { name: 'Facebook', detail: 'News and photos from every event', Icon: Facebook },
+  instagram: { name: 'Instagram', detail: 'Behind the scenes with the choir', Icon: Instagram },
+} as const;
+
 export default function Programs() {
-  const { hero, pillars, gallery, projects, outreach } = useContent('work');
+  const { heroImage, pillars, gallery, projects, outreach } = useContent('work');
+  const { socials } = useContent('site');
+  // The links come from Site content, so they change in one place for the whole site.
+  const follow = (['youtube', 'facebook', 'instagram'] as const)
+    .map(network => ({ ...FOLLOW[network], url: socials.find(s => s.network === network)?.url }))
+    .filter((item): item is typeof item & { url: string } => !!item.url);
 
   return (
-    <div className="bg-bai-bone">
-      <PageHero line1="Our" line2="Work" accent="blue" label={hero.tagline} quote={hero.description} />
+    <div>
+      <PageHero title="Our" accent="work" image={heroImage} />
 
       {pillars.length > 0 && (
         <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 md:py-24">
           <ul className="grid grid-cols-1 md:grid-cols-3 gap-x-12 gap-y-10">
-            {pillars.map((pillar) => (
-              <li key={pillar.title} className="border-t-4 border-bai-black pt-6">
-                <h2 className="font-display font-bold text-2xl italic uppercase tracking-tight mb-4">{pillar.title}</h2>
-                <p className="text-bai-black/75 text-lg leading-relaxed">{pillar.desc}</p>
+            {pillars.map((pillar, i) => (
+              <li key={pillar.title} className="border-t border-bai-black/15 pt-6">
+                <span className={`block w-10 h-1 rounded-full mb-5 ${['bg-bai-red', 'bg-bai-blue', 'bg-bai-black'][i % 3]}`} aria-hidden="true" />
+                <h2 className="font-serif font-semibold text-3xl mb-3">{pillar.title}</h2>
+                <p className="text-bai-ink-soft text-lg leading-relaxed">{pillar.desc}</p>
               </li>
             ))}
           </ul>
@@ -23,53 +36,80 @@ export default function Programs() {
       )}
 
       {projects.length > 0 && (
-        <section className="py-20 md:py-24 bg-bai-black text-white">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <h2 className="display text-4xl md:text-7xl mb-12 md:mb-16">
-              {gallery.headingLine1} {gallery.headingLine2 && <><br /><span className="text-bai-blue-soft">{gallery.headingLine2}</span></>}
-            </h2>
-            <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-              {projects.map((project) => (
-                <li key={project.title} className="group relative aspect-[4/5] bg-bai-charcoal overflow-hidden rounded-2xl">
-                  {project.imageUrl && (
-                    <>
-                      <img src={contentImage(project.imageUrl)} alt="" loading="lazy" decoding="async" className="w-full h-full object-cover photo-zoom" />
-                      <div className="absolute inset-0 bg-gradient-to-t from-bai-black/90 via-transparent to-transparent" aria-hidden="true" />
-                    </>
-                  )}
-                  <h3 className="absolute bottom-0 left-0 p-6 md:p-8 text-xl font-display font-bold uppercase italic">{project.title}</h3>
-                </li>
-              ))}
-            </ul>
-          </div>
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-20 md:pb-28">
+          <h2 className="display text-5xl md:text-7xl mb-10 md:mb-12">
+            {gallery.headingLine1}{gallery.headingLine2 && <> <span className="text-bai-blue">{gallery.headingLine2}</span></>}
+          </h2>
+          <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+            {projects.map((project) => (
+              <li key={project.title} className="group relative frame aspect-[4/5] bg-bai-black">
+                {project.imageUrl && (
+                  <img src={contentImage(project.imageUrl)} alt="" loading="lazy" decoding="async" className="w-full h-full object-cover photo-zoom" />
+                )}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-transparent to-transparent" aria-hidden="true" />
+                <h3 className="absolute bottom-0 left-0 p-6 md:p-7 font-serif font-semibold text-2xl md:text-3xl text-white">{project.title}</h3>
+              </li>
+            ))}
+          </ul>
         </section>
       )}
 
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 md:py-28 grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center">
-        <div>
-          {outreach.label && <p className="font-serif italic text-bai-red text-xl mb-3">{outreach.label}</p>}
-          <h2 className="display text-3xl sm:text-4xl md:text-6xl mb-6 md:mb-8">{outreach.title}</h2>
-          <p className="text-bai-black/75 text-xl leading-relaxed font-serif italic max-w-[60ch]">{outreach.description}</p>
-          {outreach.stats.length > 0 && (
-            <dl className="flex flex-wrap gap-x-12 gap-y-6 pt-8 mt-10 border-t border-bai-black/15">
-              {outreach.stats.map((stat) => (
-                <div key={stat.label} className="flex flex-col-reverse">
-                  <dt className="font-display font-bold uppercase tracking-wide text-sm text-bai-red mt-1">{stat.label}</dt>
-                  <dd className="num font-display font-bold text-4xl md:text-5xl italic leading-none">{stat.value}</dd>
-                </div>
-              ))}
-            </dl>
-          )}
-        </div>
-        <div className="aspect-square bg-bai-black overflow-hidden relative rounded-2xl">
-          {outreach.imageUrl && (
-            <img src={contentImage(outreach.imageUrl, 1000)} alt="Community outreach performance" loading="lazy" decoding="async" className="w-full h-full object-cover" />
-          )}
-          {outreach.badge && (
-            <p className="absolute bottom-0 left-0 px-6 py-4 bg-bai-red text-white font-display font-bold uppercase text-lg leading-none">{outreach.badge}</p>
-          )}
+      <section className="px-3 sm:px-4">
+        <div className="rounded-[2rem] bg-bai-sand">
+          <div className="max-w-7xl mx-auto px-5 sm:px-6 lg:px-8 py-16 md:py-24 grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-20 items-center">
+            <div>
+              <h2 className="display text-4xl sm:text-5xl md:text-6xl mb-6">{outreach.title}</h2>
+              <p className="text-bai-ink-soft text-xl leading-relaxed max-w-[52ch]">{outreach.description}</p>
+              {outreach.stats.length > 0 && (
+                <dl className="flex flex-wrap gap-x-14 gap-y-6 mt-10">
+                  {outreach.stats.map((stat) => (
+                    <div key={stat.label} className="flex flex-col-reverse">
+                      <dt className="font-semibold mt-1">{stat.label}</dt>
+                      <dd className="num font-serif font-semibold text-6xl leading-none text-bai-red">{stat.value}</dd>
+                    </div>
+                  ))}
+                </dl>
+              )}
+            </div>
+            <div className="frame aspect-square relative bg-bai-black">
+              {outreach.imageUrl && (
+                <img src={contentImage(outreach.imageUrl, 1000)} alt="The choir performing for the community" loading="lazy" decoding="async" className="w-full h-full object-cover" />
+              )}
+              {outreach.badge && (
+                <p className="absolute bottom-5 left-5 px-4 py-2 rounded-full bg-white text-bai-black font-semibold">{outreach.badge}</p>
+              )}
+            </div>
+          </div>
         </div>
       </section>
+
+      {follow.length > 0 && (
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 md:py-28" aria-labelledby="follow-heading">
+          <h2 id="follow-heading" className="display text-5xl md:text-6xl mb-10">Follow our <span className="text-bai-red">work</span></h2>
+          <ul className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {follow.map(({ name, detail, url, Icon }) => (
+              <li key={name}>
+                <a
+                  href={url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="group lift panel flex items-center gap-5 p-6 h-full"
+                >
+                  <span className="w-14 h-14 rounded-full bg-bai-black text-white flex items-center justify-center shrink-0 transition-colors duration-200 group-hover:bg-bai-red">
+                    <Icon size={24} strokeWidth={1.75} aria-hidden="true" />
+                  </span>
+                  <span className="flex-grow min-w-0">
+                    <span className="block font-serif font-semibold text-2xl">{name}</span>
+                    <span className="block text-bai-ink-soft">{detail}</span>
+                  </span>
+                  <ArrowUpRight size={20} className="shrink-0 text-bai-ink-soft transition-transform duration-200 group-hover:translate-x-0.5 group-hover:-translate-y-0.5" aria-hidden="true" />
+                  <span className="sr-only">(opens in a new tab)</span>
+                </a>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
     </div>
   );
 }

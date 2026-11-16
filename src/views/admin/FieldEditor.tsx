@@ -200,7 +200,7 @@ export function FieldEditor({ field, value, path, errors, onChange }: EditorProp
                     <button type="button" className="icon-btn hover:bg-bai-black/10 disabled:opacity-30" disabled={i === 0} aria-label={`Move photo ${i + 1} earlier`} onClick={() => move(i, i - 1)}>
                       <ArrowUp size={18} aria-hidden="true" />
                     </button>
-                    <button type="button" className="icon-btn text-bai-red hover:bg-bai-red hover:text-white" aria-label={`Remove photo ${i + 1}`} onClick={() => onChange(list.filter((_, n) => n !== i))}>
+                    <button type="button" className="icon-btn text-bai-red-deep hover:bg-bai-red hover:text-white" aria-label={`Remove photo ${i + 1}`} onClick={() => onChange(list.filter((_, n) => n !== i))}>
                       <Trash2 size={18} aria-hidden="true" />
                     </button>
                   </div>
@@ -218,7 +218,7 @@ export function FieldEditor({ field, value, path, errors, onChange }: EditorProp
       const group = (typeof value === 'object' && value !== null ? value : {}) as Data;
       return (
         <fieldset className="border-t-2 border-bai-black pt-6">
-          <legend className="font-display font-bold uppercase tracking-wide text-lg pr-4">{field.label}</legend>
+          <legend className="font-display font-bold text-lg pr-4">{field.label}</legend>
           {help}
           <div className="space-y-6 mt-2">
             {field.fields.map(child => (
@@ -259,8 +259,8 @@ function ListEditor({ field, value, path, errors, onChange }: EditorProps & { fi
 
   return (
     <fieldset id={id} tabIndex={-1} className="border-t-2 border-bai-black pt-6" aria-describedby={error ? `${id}-error` : undefined}>
-      <legend className="font-display font-bold uppercase tracking-wide text-lg pr-4">
-        {field.label} <span className="num font-sans font-normal normal-case tracking-normal text-base text-bai-black/70">({list.length} of {field.max})</span>
+      <legend className="font-display font-bold text-lg pr-4">
+        {field.label} <span className="num font-sans font-normal text-base text-bai-black/70">({list.length} of {field.max})</span>
       </legend>
       {field.help && <p className="field-help">{field.help}</p>}
       {error && <p id={`${id}-error`} className="field-error">{error}</p>}
@@ -271,7 +271,7 @@ function ListEditor({ field, value, path, errors, onChange }: EditorProps & { fi
         {list.map((item, i) => (
           <li key={`${baseId}-${i}`} className="py-6 border-b border-bai-black/15">
             <div className="flex items-center justify-between gap-3 mb-4">
-              <h4 className="font-bold text-lg break-words min-w-0">{titleOf(item, i)}</h4>
+              <h4 className="font-semibold text-lg break-words min-w-0">{titleOf(item, i)}</h4>
               <div className="flex shrink-0">
                 <button type="button" className="icon-btn hover:bg-bai-black/10 disabled:opacity-30" disabled={i === 0} aria-label={`Move ${titleOf(item, i)} up`} onClick={() => move(i, i - 1)}>
                   <ArrowUp size={18} aria-hidden="true" />
@@ -279,7 +279,7 @@ function ListEditor({ field, value, path, errors, onChange }: EditorProps & { fi
                 <button type="button" className="icon-btn hover:bg-bai-black/10 disabled:opacity-30" disabled={i === list.length - 1} aria-label={`Move ${titleOf(item, i)} down`} onClick={() => move(i, i + 1)}>
                   <ArrowDown size={18} aria-hidden="true" />
                 </button>
-                <button type="button" className="icon-btn text-bai-red hover:bg-bai-red hover:text-white" aria-label={`Remove ${titleOf(item, i)}`} onClick={() => remove(i)}>
+                <button type="button" className="icon-btn text-bai-red-deep hover:bg-bai-red hover:text-white" aria-label={`Remove ${titleOf(item, i)}`} onClick={() => remove(i)}>
                   <Trash2 size={18} aria-hidden="true" />
                 </button>
               </div>

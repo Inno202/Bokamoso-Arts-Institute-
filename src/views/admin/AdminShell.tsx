@@ -28,7 +28,7 @@ export function AdminShell({ title, children }: { title: string; children: React
                   <NavLink
                     to={tab.path}
                     end={tab.path === ROUTES.DASHBOARD}
-                    className={({ isActive }) => `inline-flex items-center min-h-12 px-4 font-display font-bold uppercase tracking-wide text-sm border-b-4 transition-colors ${
+                    className={({ isActive }) => `inline-flex items-center min-h-12 px-4 font-medium border-b-4 transition-colors ${
                       isActive ? 'border-bai-red text-white' : 'border-transparent text-white/75 hover:text-white'
                     }`}
                   >

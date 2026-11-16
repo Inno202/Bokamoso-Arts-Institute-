@@ -11,10 +11,20 @@ import { userController } from '../../controllers/userController';
 import { logger } from '../../services/loggerService';
 import { toast } from '../../services/toast';
 import { formatCurrency, formatDateTime, friendlyError } from '../../controllers/lib/utils';
+import { RECENT_SIGN_IN_HOURS } from '../../config';
 import { isEventManager, isFinance, isScanner, isUserAdmin, ROLE_LABELS, TicketScan, UserProfile, UserRole } from '../../models/types';
 
 const ROLE_OPTIONS = Object.keys(ROLE_LABELS) as UserRole[];
 const EMPTY_USER = { displayName: '', email: '', password: '', role: 'USER' as UserRole };
+
+/** Role and account changes need a fresh sign-in (enforced in firestore.rules); say so plainly when that is the reason. */
+function accountChangeError(err: unknown, signedInAt: string | undefined, fallback: string) {
+  const age = signedInAt ? Date.now() - new Date(signedInAt).getTime() : 0;
+  if ((err as { code?: string })?.code === 'permission-denied' && age > RECENT_SIGN_IN_HOURS * 3_600_000) {
+    return `For security, changing roles or accounts needs a sign-in from the last ${RECENT_SIGN_IN_HOURS} hours. Sign out, sign in again, and repeat the change.`;
+  }
+  return friendlyError(err, fallback);
+}
 
 export default function Dashboard() {
   const { user, role } = useAuth();
@@ -89,7 +99,7 @@ export default function Dashboard() {
       toast.success(`${target.displayName || target.email} is now ${ROLE_LABELS[newRole]}.`);
     } catch (err) {
       logger.error('Failed to update role', err);
-      toast.error(friendlyError(err, 'The role could not be changed.'));
+      toast.error(accountChangeError(err, user?.metadata.lastSignInTime, 'The role could not be changed.'));
     }
   };
 
@@ -102,7 +112,7 @@ export default function Dashboard() {
       toast.success(next ? 'Account reactivated.' : 'Account deactivated.');
     } catch (err) {
       logger.error('Failed to change account status', err);
-      toast.error(friendlyError(err, 'The account status could not be changed.'));
+      toast.error(accountChangeError(err, user?.metadata.lastSignInTime, 'The account status could not be changed.'));
     }
   };
 
@@ -117,7 +127,7 @@ export default function Dashboard() {
       setStats(prev => ({ ...prev, totalUsers: prev.totalUsers === undefined ? undefined : prev.totalUsers + 1 }));
     } catch (err) {
       logger.error('Failed to create user', err);
-      toast.error(friendlyError(err, 'The account could not be created.'));
+      toast.error(accountChangeError(err, user?.metadata.lastSignInTime, 'The account could not be created.'));
     } finally {
       setAddingUser(false);
     }
@@ -205,7 +215,7 @@ export default function Dashboard() {
             </div>
 
             <form onSubmit={handleAddUser} className="mb-8 border-y border-bai-black/15 py-6">
-              <h3 className="font-bold mb-3">Add a staff account</h3>
+              <h3 className="font-semibold mb-3">Add a staff account</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
                 <input required type="text" aria-label="Full name" placeholder="Full name" maxLength={100} className="field" value={newUser.displayName} onChange={e => setNewUser({ ...newUser, displayName: e.target.value })} />
                 <input required type="email" aria-label="Email address" placeholder="Email address" autoComplete="off" className="field" value={newUser.email} onChange={e => setNewUser({ ...newUser, email: e.target.value })} />
@@ -230,7 +240,7 @@ export default function Dashboard() {
                       <p className="font-semibold text-sm truncate">{u.displayName || 'No name'}{isSelf && <span className="font-normal text-bai-black/70"> (you)</span>}</p>
                       <p className="text-sm text-bai-black/70 truncate">{u.email}</p>
                     </div>
-                    {inactive && <span className="self-start lg:self-auto text-xs font-bold uppercase tracking-widest bg-red-100 text-red-800 px-3 py-1 rounded-full">Deactivated</span>}
+                    {inactive && <span className="self-start lg:self-auto text-xs font-bold bg-red-100 text-red-800 px-3 py-1 rounded-full">Deactivated</span>}
                     <div className="flex items-center gap-2">
                       <select
                         aria-label={`Role for ${u.displayName || u.email}`}
@@ -271,7 +281,7 @@ function Stat({ title, value }: { title: string; value: string | null }) {
   return (
     <div className="flex flex-col-reverse">
       <dt className="text-bai-black/75 font-semibold mt-1">{title}</dt>
-      <dd className="num text-3xl sm:text-4xl font-display font-bold tracking-tight break-words">
+      <dd className="num text-3xl sm:text-4xl font-display font-bold break-words">
         {value === null ? <span className="inline-block h-8 w-20 bg-bai-black/10 animate-pulse rounded" aria-label="Loading" /> : value}
       </dd>
     </div>

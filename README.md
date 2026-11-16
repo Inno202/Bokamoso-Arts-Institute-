@@ -46,6 +46,14 @@ Everyone who signs up is a `USER`. Roles are changed by a super admin in Dashboa
 
 Deactivating an account (`isActive: false`) signs the person out and removes all staff access immediately.
 
+## Pages are pre-rendered
+
+`npm run build` produces finished HTML for every public page (home, about, our work, events, traditions, sign-in, sign-up and the policies), with the site's current content from the database baked in. Pages appear instantly, work for search engines and link previews, and are then brought to life in the browser. If the database cannot be reached during a build, the built-in defaults are used and the build still succeeds.
+
+- Addresses are real paths, such as `/Bokamoso-Arts-Institute-/events`. Old `#/events` links are redirected automatically.
+- Content edited in the admin area appears straight away without a rebuild; the next build bakes it into the HTML too.
+- Pages that depend on who is signed in (bag, checkout, tickets, staff pages) are not pre-rendered.
+
 ## Editing the site (content store)
 
 Everything that changes on the public pages lives in one place: the Firestore `content` collection, one document per section (`site`, `home`, `about`, `work`, `traditions`). Events live in the `events` collection.
@@ -73,6 +81,33 @@ VITE_USE_EMULATORS=true npx vite
 ## Terms, privacy and cookies
 
 `src/views/pages/Legal.tsx` holds the three policies. Update it, and its "last updated" date, in the same change as anything that alters what is charged, collected, stored or promised.
+
+## Security
+
+What protects the system, and where each protection lives.
+
+| Threat | Protection | Where |
+| --- | --- | --- |
+| Flooding the website (DDoS) | The site is static files served from GitHub's global network; there is no server of ours to overload | GitHub Pages |
+| Flooding or scraping the database, mass fake sign-ups | **Firebase App Check**: requests without proof they come from this site in a real browser are refused | Console setup below |
+| Someone using another person's account or data | Every read and write is checked against the signed-in person and their role | `firestore.rules` |
+| Stolen or abandoned staff session | Staff are signed out after 30 idle minutes; role and account changes need a sign-in from the last 8 hours; a deactivated account loses access at once | `AuthProvider.tsx`, `firestore.rules` |
+| Forged, free-minted or hoarded tickets | A ticket only exists as part of an order that matches the event's price and sold count; 10 tickets per account per event | `firestore.rules` |
+| Malicious script injected into a page (XSS) | Content-Security-Policy limits where scripts can come from; admin input is validated; links must be https | `vite.config.ts`, `src/content` |
+| The site hidden inside a hostile page (clickjacking) | The app refuses to start inside another site's frame | `src/main.tsx` |
+| Forged requests from another site (CSRF) | Sign-in uses tokens the browser never sends automatically, not cookies | Firebase Auth |
+
+No setup makes a system immune to every attack. These settings are not in the code and must be switched on once in the consoles:
+
+1. **App Check** (the main defence against scripted floods):
+   - Create a reCAPTCHA v3 key for your site's domain at google.com/recaptcha/admin.
+   - Firebase console → App Check → register the web app with that key.
+   - Put the site key in `.env` as `VITE_RECAPTCHA_SITE_KEY`, rebuild and deploy.
+   - After a day of traffic shows as verified, press **Enforce** for Cloud Firestore and Authentication.
+2. **Authentication settings** (Firebase console → Authentication → Settings): turn on email enumeration protection, set a password policy (minimum length 8), and remove any authorised domain you do not use.
+3. **Budget alert** (Google Cloud console → Billing → Budgets): get an email if usage ever spikes.
+4. **API key restriction** (Google Cloud console → Credentials → Browser key): restrict to your site's address under HTTP referrers.
+5. **Staff accounts**: use strong unique passwords, and prefer Google sign-in with 2-step verification for anyone with a role.
 
 ## Images
 

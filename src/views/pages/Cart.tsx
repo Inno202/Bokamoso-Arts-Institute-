@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Minus, Plus, Trash2, ShoppingBag, ArrowRight } from 'lucide-react';
 import { useCart, TICKETING_FEE } from '../../hooks/useCart';
 import { useAuth } from '../components/AuthProvider';
+import { PageHero } from '../components/PageHero';
 import { ROUTES } from '../../controllers/navigation';
 import { Link, useNavigate } from 'react-router-dom';
 import { cloudinaryService } from '../../services/cloudinaryService';
@@ -51,7 +52,7 @@ export default function Cart() {
     return (
       <div className="min-h-[70vh] flex flex-col items-center justify-center p-4 text-center">
         <ShoppingBag size={56} className="text-bai-black/25 mb-6" aria-hidden="true" />
-        <h1 className="display text-3xl  mb-4">Your bag is empty</h1>
+        <h1 className="display text-3xl mb-4">Your bag is empty</h1>
         <p className="text-bai-black/70 max-w-xs mb-8">Pick a performance and your tickets will wait here until you check out.</p>
         <Link to={ROUTES.EVENTS} className="btn btn-lg btn-primary">
           See upcoming events
@@ -61,13 +62,11 @@ export default function Cart() {
   }
 
   return (
-    <div className="pb-24 bg-bai-bone min-h-screen">
-      <div className="bg-bai-black text-white py-12 px-4 mb-12">
-        <div className="max-w-7xl mx-auto sm:px-2 lg:px-4 flex items-end justify-between gap-6">
-          <h1 className="display text-4xl md:text-6xl ">Your <span className="text-bai-red-soft">bag.</span></h1>
-          <p className="num font-display font-bold text-xl md:text-2xl">{totalItems} {totalItems === 1 ? 'ticket' : 'tickets'}</p>
-        </div>
-      </div>
+    <div className="pb-24 min-h-screen">
+      <PageHero title="Your" accent="bag">
+        <p className="num text-bai-ink-soft text-lg mt-3">{totalItems} {totalItems === 1 ? 'ticket' : 'tickets'}</p>
+      </PageHero>
+      <div className="h-8" />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
@@ -82,21 +81,21 @@ export default function Cart() {
                   <div className="flex-grow min-w-0">
                     <div className="flex justify-between items-start gap-2">
                       <div className="min-w-0">
-                        <h2 className="font-display font-bold text-base md:text-xl uppercase tracking-tight italic leading-tight break-words">{item.eventName}</h2>
+                        <h2 className="font-serif font-semibold text-base md:text-xl leading-tight break-words">{item.eventName}</h2>
                         <p className="text-bai-black/70 text-sm mt-1">{[item.venue, formatDate(item.date)].filter(Boolean).join(' · ')}</p>
                       </div>
-                      <button onClick={() => removeFromCart(item.eventId, item.ticketType)} aria-label={`Remove ${item.eventName} from your bag`} className="w-11 h-11 -mt-2 -mr-2 shrink-0 flex items-center justify-center text-bai-black/60 hover:text-bai-red transition-colors rounded-full">
+                      <button onClick={() => removeFromCart(item.eventId, item.ticketType)} aria-label={`Remove ${item.eventName} from your bag`} className="icon-btn -mt-2 -mr-2 text-bai-black/60 hover:text-bai-red-deep">
                         <Trash2 size={18} aria-hidden="true" />
                       </button>
                     </div>
 
                     <div className="flex items-center justify-between mt-3 gap-4">
                       <div className="flex items-center bg-bai-bone rounded-lg border border-bai-black/10" role="group" aria-label={`Quantity for ${item.eventName}`}>
-                        <button onClick={() => updateQuantity(item.eventId, item.ticketType, -1)} disabled={item.quantity <= 1} aria-label="One ticket fewer" className="w-11 h-11 flex items-center justify-center hover:bg-white rounded-md transition-colors disabled:opacity-40">
+                        <button onClick={() => updateQuantity(item.eventId, item.ticketType, -1)} disabled={item.quantity <= 1} aria-label="One ticket fewer" className="icon-btn hover:bg-white disabled:opacity-40">
                           <Minus size={16} aria-hidden="true" />
                         </button>
                         <span className="num w-8 text-center font-display font-bold" aria-live="polite">{item.quantity}</span>
-                        <button onClick={() => updateQuantity(item.eventId, item.ticketType, 1)} disabled={item.quantity >= MAX_PER_EVENT} aria-label="One ticket more" className="w-11 h-11 flex items-center justify-center hover:bg-white rounded-md transition-colors disabled:opacity-40">
+                        <button onClick={() => updateQuantity(item.eventId, item.ticketType, 1)} disabled={item.quantity >= MAX_PER_EVENT} aria-label="One ticket more" className="icon-btn hover:bg-white disabled:opacity-40">
                           <Plus size={16} aria-hidden="true" />
                         </button>
                       </div>
@@ -105,7 +104,7 @@ export default function Cart() {
                         <p className="num font-display font-bold text-lg text-bai-red">{formatCurrency(item.price * item.quantity)}</p>
                       </div>
                     </div>
-                    {item.quantity >= MAX_PER_EVENT && <p className="text-xs text-bai-black/70 mt-2">{MAX_PER_EVENT} tickets is the most one order can hold for an event.</p>}
+                    {item.quantity >= MAX_PER_EVENT && <p className="text-xs text-bai-black/70 mt-2">{MAX_PER_EVENT} tickets is the most one account can hold for an event.</p>}
                   </div>
                 </li>
               ))}
@@ -123,8 +122,8 @@ export default function Cart() {
           </div>
 
           <aside className="lg:col-span-1" aria-labelledby="bag-summary">
-            <div className="bg-white rounded-2xl p-6 sm:p-8 border-t-8 border-bai-black shadow-[0_24px_60px_-28px_rgb(0_0_0/0.4)] sticky top-28">
-              <h2 id="bag-summary" className="display text-2xl  mb-6">Summary</h2>
+            <div className="bg-white rounded-2xl p-6 sm:p-8 border border-bai-black/[0.07] sticky top-28">
+              <h2 id="bag-summary" className="display text-2xl mb-6">Summary</h2>
               <dl className="space-y-3 mb-8 text-sm">
                 <div className="flex justify-between">
                   <dt className="text-bai-black/70">Subtotal</dt>
@@ -137,7 +136,7 @@ export default function Cart() {
                   </div>
                 )}
                 <div className="pt-4 border-t border-bai-black/10 flex justify-between items-baseline">
-                  <dt className="font-display font-bold uppercase tracking-widest text-xs">Total</dt>
+                  <dt className="font-display font-bold text-xs">Total</dt>
                   <dd className="num font-display font-bold text-3xl text-bai-red">{formatCurrency(total)}</dd>
                 </div>
               </dl>

@@ -4,6 +4,7 @@ import { doc, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '../../controllers/lib/firebase';
 import { ensureUserProfile } from '../../controllers/authController';
 import { UserProfile, UserRole } from '../../models/types';
+import { STAFF_IDLE_MINUTES } from '../../config';
 import { logger } from '../../services/loggerService';
 import { toast } from '../../services/toast';
 
@@ -62,6 +63,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setProfileLoading(false);
     });
   }, [user]);
+
+  // Staff sessions end after a stretch of inactivity, so a laptop or door phone
+  // left open cannot be picked up and used with staff powers.
+  const isStaffSession = !!userData && userData.role !== 'USER';
+  useEffect(() => {
+    if (!isStaffSession) return;
+    const limit = STAFF_IDLE_MINUTES * 60_000;
+    let lastActive = Date.now();
+    const touch = () => { lastActive = Date.now(); };
+    const check = () => {
+      if (Date.now() - lastActive < limit) return;
+      toast.info(`You were signed out after ${STAFF_IDLE_MINUTES} minutes without activity.`);
+      void signOut(auth);
+    };
+    const events = ['pointerdown', 'keydown', 'scroll', 'touchstart'] as const;
+    events.forEach(name => window.addEventListener(name, touch, { passive: true }));
+    // Checked on a timer and whenever the tab is looked at again (timers pause in background tabs).
+    const timer = window.setInterval(check, 30_000);
+    document.addEventListener('visibilitychange', check);
+    return () => {
+      events.forEach(name => window.removeEventListener(name, touch));
+      window.clearInterval(timer);
+      document.removeEventListener('visibilitychange', check);
+    };
+  }, [isStaffSession]);
 
   const value: AuthContextType = {
     user,

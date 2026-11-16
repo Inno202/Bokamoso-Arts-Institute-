@@ -4,10 +4,12 @@
  * path is saveSection(), used by the admin area and enforced by firestore.rules.
  */
 import { useSyncExternalStore } from 'react';
-import { doc, getDoc, onSnapshot, serverTimestamp, setDoc } from 'firebase/firestore';
+import { doc, getDoc, getDocFromServer, onSnapshot, serverTimestamp, setDoc } from 'firebase/firestore';
 import { db } from '../controllers/lib/firebase';
 import { logger } from '../services/loggerService';
+import { AppError } from '../controllers/lib/utils';
 import { clean, validate, type Data, type Errors } from './fields';
+import { stable } from './stable';
 import { SECTIONS, pickSource, resolveSection, type ContentMap, type ContentSource, type SectionKey } from './sections';
 
 export const CONTENT_COLLECTION = 'content';
@@ -20,6 +22,8 @@ export interface SectionState<K extends SectionKey> {
   source: ContentSource;
   /** False until the store has answered (or failed) at least once. */
   ready: boolean;
+  /** True while a change made in this browser has not yet been accepted by the database. */
+  pending: boolean;
   updatedAt: Date | null;
 }
 
@@ -31,7 +35,7 @@ function entryFor<K extends SectionKey>(key: K): Entry<K> {
   if (!entry) {
     entry = {
       // Defaults are in place before anything loads, so a page is never blank.
-      state: { content: SECTIONS[key].defaults, source: 'defaults', ready: false, updatedAt: null },
+      state: { content: SECTIONS[key].defaults, source: 'defaults', ready: false, pending: false, updatedAt: null },
       listeners: new Set(),
       started: false,
     };
@@ -53,7 +57,12 @@ function start<K extends SectionKey>(key: K) {
   entry.started = true;
   const def = SECTIONS[key];
 
-  onSnapshot(doc(db, CONTENT_COLLECTION, key), async (snap) => {
+  // includeMetadataChanges: we are also told when a local change is confirmed by the server.
+  // Each snapshot gets a number; a slow fallback lookup from an older snapshot
+  // must never overwrite content from a newer one.
+  let latest = 0;
+  onSnapshot(doc(db, CONTENT_COLLECTION, key), { includeMetadataChanges: true }, async (snap) => {
+    const mine = ++latest;
     const stored = snap.exists() ? snap.data()?.data : undefined;
     let legacy: unknown;
     if (!stored && def.legacyPath) {
@@ -64,9 +73,10 @@ function start<K extends SectionKey>(key: K) {
         logger.error(`Could not read earlier ${key} content`, err);
       }
     }
+    if (mine !== latest) return;
     const { source, raw } = pickSource(stored, legacy);
     const updatedAt = snap.exists() ? snap.data()?.updatedAt?.toDate?.() ?? null : null;
-    publish(key, { content: resolveSection(key, raw), source, updatedAt });
+    publish(key, { content: resolveSection(key, raw), source, updatedAt, pending: snap.metadata.hasPendingWrites });
   }, (err) => {
     // Offline, blocked or denied: keep showing what we have (defaults at worst).
     logger.error(`Could not load ${key} content`, err);
@@ -84,8 +94,27 @@ export function useContentState<K extends SectionKey>(key: K): SectionState<K> {
       return () => { entry.listeners.delete(notify); };
     },
     () => entry.state,
+    // While pre-rendering at build time, and on the browser's first (hydrating)
+    // render, the page shows the content that was baked into the HTML.
+    () => entry.state,
   );
 }
+
+/**
+ * Starts sections from content captured at build time instead of the built-in
+ * defaults, so a pre-rendered page and the browser's first render match exactly.
+ * Unknown keys and malformed values are ignored (resolveSection validates them).
+ */
+export function seedContent(raw: Partial<Record<SectionKey, unknown>>) {
+  for (const key of Object.keys(SECTIONS) as SectionKey[]) {
+    if (raw[key] === undefined) continue;
+    const entry = entryFor(key);
+    entry.state = { ...entry.state, content: resolveSection(key, raw[key]) as never, source: 'store' };
+  }
+}
+
+/** The id of the JSON block a pre-rendered page carries its content in. */
+export const SEED_ELEMENT_ID = 'bai-content';
 
 export const useContent = <K extends SectionKey>(key: K): ContentMap[K] => useContentState(key).content;
 
@@ -111,9 +140,25 @@ export async function saveSection<K extends SectionKey>(key: K, draft: unknown, 
     });
   }
 
-  await setDoc(doc(db, CONTENT_COLLECTION, key), {
-    data: data as Data,
-    updatedAt: serverTimestamp(),
-    updatedBy: uid,
+  const ref = doc(db, CONTENT_COLLECTION, key);
+  const notConfirmed = 'The database did not confirm this save, so your change is not live yet. Check your connection and save again.';
+
+  await withTimeout(setDoc(ref, { data: data as Data, updatedAt: serverTimestamp(), updatedBy: uid }), notConfirmed);
+
+  // Read it back from the server (never from this browser's own copy), so
+  // "saved" always means "this is what every visitor now gets".
+  const live = await withTimeout(getDocFromServer(ref), notConfirmed);
+  if (!live.exists() || stable(live.data().data) !== stable(data)) throw new AppError(notConfirmed);
+}
+
+const CONFIRM_TIMEOUT_MS = 20_000;
+
+function withTimeout<T>(work: Promise<T>, message: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new AppError(message)), CONFIRM_TIMEOUT_MS);
+    work.then(
+      (value) => { clearTimeout(timer); resolve(value); },
+      (error) => { clearTimeout(timer); reject(error); },
+    );
   });
 }
