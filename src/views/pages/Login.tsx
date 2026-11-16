@@ -79,7 +79,6 @@ export default function Login() {
           <h1 className="display text-4xl">
             Sign <span className="text-bai-red">in</span>
           </h1>
-          <p className="text-sm text-bai-black/70 mt-3">Book tickets and see the ones you have.</p>
         </div>
 
         <div className="px-8 pb-8">

@@ -24,16 +24,15 @@ export interface HomeContent {
   hero: { tagline: string; images: string[] };
   stats: Stat[];
   philosophy: { headingLine1: string; headingLine2: string; quote: string; image: string; buttonLabel: string };
-  community: { headingLine1: string; headingLine2: string; caption: string; images: string[] };
+  community: { headingLine1: string; headingLine2: string; images: string[] };
   highlights: {
-    headingLine1: string; headingLine2: string; intro: string;
+    headingLine1: string; headingLine2: string;
     items: Array<{ date: string; title: string; text: string; linkLabel: string; linkTo: 'traditions' | 'events' | 'about' | 'programs' }>;
   };
 }
 
 export interface AboutContent {
   heroImage: string;
-  badge: string;
   story: { title: string; description: string; stats: Array<{ value: string; label: string }> };
   valuesHeading: string;
   values: Array<{ title: string; desc: string }>;
@@ -47,14 +46,14 @@ export interface WorkContent {
   gallery: { headingLine1: string; headingLine2: string };
   projects: Array<{ title: string; imageUrl: string }>;
   outreach: {
-    label: string; title: string; description: string; badge: string; imageUrl: string;
+    title: string; description: string; imageUrl: string;
     stats: Array<{ value: string; label: string }>;
   };
 }
 
 export interface TraditionsContent {
   heroImage: string;
-  items: Array<{ title: string; tag: string; desc: string; when: string }>;
+  items: Array<{ title: string; desc: string; when: string }>;
 }
 
 export interface ContentMap {
@@ -167,13 +166,11 @@ const home: SectionDef<'home'> = {
     { kind: 'group', key: 'community', label: 'Community', fields: [
       text('headingLine1', 'Heading, first word', 40, required),
       text('headingLine2', 'Heading, second word', 40),
-      text('caption', 'Line under the photos', 200),
       { kind: 'images', key: 'images', label: 'Photos', max: 6, help: 'Three photos fit best.' },
     ] },
     { kind: 'group', key: 'highlights', label: 'Highlights', fields: [
       text('headingLine1', 'Heading, first word', 40, required),
       text('headingLine2', 'Heading, second word', 40),
-      text('intro', 'Line under the heading', 120),
       { kind: 'list', key: 'items', label: 'Highlights', itemLabel: 'Highlight', titleKey: 'title', max: 4, fields: [
         text('date', 'Date', 40, { help: 'For example Feb 14-15.' }),
         text('title', 'Title', 80, required),
@@ -208,13 +205,11 @@ const home: SectionDef<'home'> = {
     community: {
       headingLine1: 'Community',
       headingLine2: 'Impact',
-      caption: 'Nurturing talent in the heart of Mabopane.',
       images: ['assets/community/community-1.jpg', 'assets/community/community-2.jpg', 'assets/community/community-3.jpg'],
     },
     highlights: {
       headingLine1: 'Our',
       headingLine2: 'Traditions',
-      intro: 'Experience the rhythm of our community',
       items: [
         { date: 'Feb 14-15', title: '5th Annual Prayer Service', text: '"The First Kick" — An all-night spiritual gathering to set the tone for the season. Join us in Mabopane.', linkLabel: 'Learn More', linkTo: 'traditions' },
         { date: 'May 29-30', title: 'Botswana on Tour', text: 'Maitisong Theatre, Gaborone. We are bringing the voices of Mabopane to our neighbors. Tickets out now.', linkLabel: 'Get Tickets', linkTo: 'events' },
@@ -231,7 +226,6 @@ const about: SectionDef<'about'> = {
   legacyPath: 'about/main',
   fields: [
     { kind: 'image', key: 'heroImage', label: 'Photo at the top of the page', required: true },
-    text('badge', 'Founding line', 40, { help: 'For example Since 2022.' }),
     { kind: 'group', key: 'story', label: 'Our story', fields: [
       text('title', 'Heading', 60, required),
       text('description', 'Story', 1500, { ...required, ...long }),
@@ -252,7 +246,6 @@ const about: SectionDef<'about'> = {
   ],
   defaults: {
     heroImage: 'assets/photos/choir-stage.jpg',
-    badge: 'Since 2022',
     story: {
       title: 'Our Story',
       description: "Founded deep within the industrial heart of Mabopane, BAI was a response to the lack of artistic sanctuaries for marginalized youth. We believe that discipline in music translates to discipline in life. Our choristers don't just gain vocal skills; they gain a spiritual compass and an artistic drive.",
@@ -295,10 +288,8 @@ const work: SectionDef<'work'> = {
       { kind: 'image', key: 'imageUrl', label: 'Photo' },
     ] },
     { kind: 'group', key: 'outreach', label: 'Outreach', fields: [
-      text('label', 'Line above the heading', 60),
       text('title', 'Heading', 80, required),
       text('description', 'Description', 600, { ...required, ...long }),
-      text('badge', 'Label on the photo', 40),
       { kind: 'image', key: 'imageUrl', label: 'Photo' },
       { kind: 'list', key: 'stats', label: 'Figures', itemLabel: 'Figure', titleKey: 'label', max: 4, fields: statFields(false) },
     ] },
@@ -320,10 +311,8 @@ const work: SectionDef<'work'> = {
       { title: 'Orphanage Visit', imageUrl: '' },
     ],
     outreach: {
-      label: 'Community Engagement',
       title: 'Schools & Orphanages.',
       description: 'The Bokamoso Choir regularly visits local schools and orphanages in Mabopane to perform, share music, and inspire the youth through artistic exchange and spiritual upliftment.',
-      badge: 'Community Impact',
       imageUrl: 'assets/community/community-3.jpg',
       stats: [
         { value: '20+', label: 'Visits Per Year' },
@@ -342,7 +331,6 @@ const traditions: SectionDef<'traditions'> = {
     { kind: 'image', key: 'heroImage', label: 'Photo at the top of the page', required: true },
     { kind: 'list', key: 'items', label: 'Traditions', itemLabel: 'Tradition', titleKey: 'title', min: 1, max: 12, fields: [
       text('title', 'Name', 80, required),
-      text('tag', 'Short description', 60),
       text('desc', 'Description', 600, { ...required, ...long }),
       text('when', 'When it happens', 60, { help: 'For example Every February 14-15, or Annually.' }),
     ] },
@@ -350,9 +338,9 @@ const traditions: SectionDef<'traditions'> = {
   defaults: {
     heroImage: 'assets/photos/choir-black.jpg',
     items: [
-      { title: 'Annual Prayer Service', tag: 'The First Kick', desc: 'Our season begins with an all-night spiritual gathering in Mabopane. We invite elders, parents, and community leaders to join the institute in a collective "Bula Pelo" prayer for the year ahead.', when: 'Every February 14-15' },
-      { title: 'Conductors Extravaganza', tag: 'Artistic Focus', desc: 'A week-long masterclass hosted by BAI, bringing together the finest choral conductors in Southern Africa to share techniques, arrangements, and the philosophy of African Excellence.', when: 'Annually' },
-      { title: 'Concert Series', tag: 'Community Showcase', desc: 'Our highlight local performance for the residents. This is where we debut our international repertoire to the community before taking it across borders.', when: 'Annually' },
+      { title: 'Annual Prayer Service', desc: 'Our season begins with an all-night spiritual gathering in Mabopane. We invite elders, parents, and community leaders to join the institute in a collective "Bula Pelo" prayer for the year ahead.', when: 'Every February 14-15' },
+      { title: 'Conductors Extravaganza', desc: 'A week-long masterclass hosted by BAI, bringing together the finest choral conductors in Southern Africa to share techniques, arrangements, and the philosophy of African Excellence.', when: 'Annually' },
+      { title: 'Concert Series', desc: 'Our highlight local performance for the residents. This is where we debut our international repertoire to the community before taking it across borders.', when: 'Annually' },
     ],
   },
 };

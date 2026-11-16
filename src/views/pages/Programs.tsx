@@ -4,9 +4,9 @@ import { contentImage } from '../../content/image';
 import { PageHero } from '../components/PageHero';
 
 const FOLLOW = {
-  youtube: { name: 'YouTube', detail: 'Watch our performances', Icon: Youtube },
-  facebook: { name: 'Facebook', detail: 'News and photos from every event', Icon: Facebook },
-  instagram: { name: 'Instagram', detail: 'Behind the scenes with the choir', Icon: Instagram },
+  youtube: { name: 'YouTube', Icon: Youtube },
+  facebook: { name: 'Facebook', Icon: Facebook },
+  instagram: { name: 'Instagram', Icon: Instagram },
 } as const;
 
 export default function Programs() {
@@ -75,9 +75,6 @@ export default function Programs() {
               {outreach.imageUrl && (
                 <img src={contentImage(outreach.imageUrl, 1000)} alt="The choir performing for the community" loading="lazy" decoding="async" className="w-full h-full object-cover" />
               )}
-              {outreach.badge && (
-                <p className="absolute bottom-5 left-5 px-4 py-2 rounded-full bg-white text-bai-black font-semibold">{outreach.badge}</p>
-              )}
             </div>
           </div>
         </div>
@@ -87,7 +84,7 @@ export default function Programs() {
         <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 md:py-28" aria-labelledby="follow-heading">
           <h2 id="follow-heading" className="display text-5xl md:text-6xl mb-10">Follow our <span className="text-bai-red">work</span></h2>
           <ul className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {follow.map(({ name, detail, url, Icon }) => (
+            {follow.map(({ name, url, Icon }) => (
               <li key={name}>
                 <a
                   href={url}
@@ -98,10 +95,7 @@ export default function Programs() {
                   <span className="w-14 h-14 rounded-full bg-bai-black text-white flex items-center justify-center shrink-0 transition-colors duration-200 group-hover:bg-bai-red">
                     <Icon size={24} strokeWidth={1.75} aria-hidden="true" />
                   </span>
-                  <span className="flex-grow min-w-0">
-                    <span className="block font-serif font-semibold text-2xl">{name}</span>
-                    <span className="block text-bai-ink-soft">{detail}</span>
-                  </span>
+                  <span className="flex-grow min-w-0 font-serif font-semibold text-2xl">{name}</span>
                   <ArrowUpRight size={20} className="shrink-0 text-bai-ink-soft transition-transform duration-200 group-hover:translate-x-0.5 group-hover:-translate-y-0.5" aria-hidden="true" />
                   <span className="sr-only">(opens in a new tab)</span>
                 </a>

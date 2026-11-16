@@ -106,8 +106,9 @@ describe('loading content', () => {
   });
 
   it('ignores fields it does not know and caps over-long text', () => {
-    const about = resolveSection('about', { badge: 'x'.repeat(500), injected: '<script>', story: { title: 'Hello', evil: true } });
-    expect(about.badge).toHaveLength(40);
+    const about = resolveSection('about', { valuesHeading: 'x'.repeat(500), badge: 'retired field', injected: '<script>', story: { title: 'Hello', evil: true } });
+    expect(about.valuesHeading).toHaveLength(60);
+    expect(about).not.toHaveProperty('badge');
     expect(about.story.title).toBe('Hello');
     expect(about).not.toHaveProperty('injected');
     expect(about.story).not.toHaveProperty('evil');
@@ -254,5 +255,26 @@ describe('confirming a save', () => {
     expect(stable({ b: 1, a: { d: [2, { z: 1, y: 2 }], c: 'x' } })).toBe(stable({ a: { c: 'x', d: [2, { y: 2, z: 1 }] }, b: 1 }));
     expect(stable({ a: [1, 2] })).not.toBe(stable({ a: [2, 1] }));
     expect(stable({ a: 'x' })).not.toBe(stable({ a: 'y' }));
+  });
+});
+
+describe('upcoming events on the home page', () => {
+  it('lists events on sale that are still to come, soonest first, at most three', async () => {
+    const { pickUpcoming } = await import('../src/content/upcoming');
+    const now = Date.parse('2026-11-16T12:00:00Z');
+    const at = (iso: string) => ({ seconds: Date.parse(iso) / 1000 });
+    const events = [
+      { id: 'late', name: 'Late', status: 'On Sale', date: at('2027-03-01T18:00:00Z'), capacity: 10, ticketsSold: 0, price: 100 },
+      { id: 'soon', name: 'Soon', status: 'On Sale', date: at('2026-12-01T18:00:00Z'), capacity: 10, ticketsSold: 10, price: 50 },
+      { id: 'past', name: 'Past', status: 'On Sale', date: at('2026-10-01T18:00:00Z'), capacity: 10, ticketsSold: 0, price: 50 },
+      { id: 'tonight', name: 'Tonight', status: 'On Sale', date: at('2026-11-16T09:00:00Z'), capacity: 10, ticketsSold: 0, price: 0 },
+      { id: 'draft', name: 'Draft', status: 'Draft', date: at('2026-12-02T18:00:00Z'), capacity: 10, ticketsSold: 0, price: 50 },
+      { id: 'later', name: 'Later', status: 'On Sale', date: at('2027-06-01T18:00:00Z'), capacity: 10, ticketsSold: 0, price: 50 },
+      { id: 'nodate', name: 'No date', status: 'On Sale', date: null, capacity: 10, ticketsSold: 0, price: 50 },
+    ];
+    const list = pickUpcoming(events as never, now);
+    expect(list.map(e => e.id)).toEqual(['tonight', 'soon', 'late']);
+    expect(list[1].soldOut).toBe(true);
+    expect(list[0].date).toBe('2026-11-16T09:00:00.000Z');
   });
 });

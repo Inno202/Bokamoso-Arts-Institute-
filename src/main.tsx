@@ -3,6 +3,7 @@ import { createRoot, hydrateRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import App from './App.tsx';
 import { seedContent, SEED_ELEMENT_ID } from './content/store';
+import { seedUpcoming } from './content/upcoming';
 import './index.css';
 
 const basename = import.meta.env.BASE_URL.replace(/\/$/, '');
@@ -36,7 +37,11 @@ if (framed) {
   // start from exactly that so the first render matches the HTML, then go live.
   const seed = document.getElementById(SEED_ELEMENT_ID)?.textContent;
   if (seed) {
-    try { seedContent(JSON.parse(seed)); } catch { /* fall back to built-in defaults */ }
+    try {
+      const parsed = JSON.parse(seed);
+      seedContent(parsed);
+      seedUpcoming(parsed.upcomingEvents);
+    } catch { /* fall back to built-in defaults */ }
   }
   // Hydrate only when this HTML was pre-rendered for this very address.
   const path = window.location.pathname.slice(basename.length).replace(/\/$/, '') || '/';

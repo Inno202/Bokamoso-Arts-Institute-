@@ -4,6 +4,8 @@ import { ROUTES } from '../../controllers/navigation';
 import { useContent } from '../../content/store';
 import { contentImage } from '../../content/image';
 import { HeroSlideshow } from '../components/HeroSlideshow';
+import { useUpcomingEvents } from '../../content/upcoming';
+import { formatCurrency, formatTime } from '../../controllers/lib/utils';
 
 const LINKS = {
   traditions: ROUTES.TRADITIONS,
@@ -32,6 +34,7 @@ function Tagline({ text }: { text: string }) {
 export default function Home() {
   const { hero, stats, philosophy, community, highlights } = useContent('home');
   const { partners } = useContent('site');
+  const upcoming = useUpcomingEvents();
 
   return (
     <div>
@@ -92,7 +95,6 @@ export default function Home() {
               <h2 className="display text-5xl md:text-7xl">
                 {community.headingLine1}{community.headingLine2 && <> <span className="text-bai-red">{community.headingLine2}</span></>}
               </h2>
-              {community.caption && <p className="text-bai-ink-soft text-lg md:text-xl mt-4">{community.caption}</p>}
             </div>
             <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
               {community.images.map((image, i) => (
@@ -105,6 +107,42 @@ export default function Home() {
         </section>
       )}
 
+      {upcoming.length > 0 && (
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-20 md:pb-28" aria-labelledby="upcoming-heading">
+          <div className="flex flex-wrap items-end justify-between gap-4 mb-8 md:mb-10">
+            <h2 id="upcoming-heading" className="display text-5xl md:text-7xl">Upcoming <span className="text-bai-blue">events</span></h2>
+            <Link to={ROUTES.EVENTS} className="btn btn-outline">
+              <span>All events</span>
+              <ArrowRight size={18} className="btn-arrow" aria-hidden="true" />
+            </Link>
+          </div>
+          {/* Filled automatically from events on sale: a new event shows here as soon as it is created. */}
+          <ul className="border-t border-bai-black/15">
+            {upcoming.map((event) => {
+              const date = new Date(event.date);
+              return (
+                <li key={event.id} className="border-b border-bai-black/15">
+                  <Link to={ROUTES.EVENTS} className="group grid grid-cols-[4.5rem_1fr_auto] sm:grid-cols-[6rem_1fr_auto] items-center gap-4 sm:gap-8 py-6">
+                    <span className="text-center leading-none">
+                      <span className="num block font-serif font-semibold text-5xl sm:text-6xl text-bai-red">{date.toLocaleDateString('en-ZA', { day: 'numeric' })}</span>
+                      <span className="block font-semibold text-bai-ink-soft mt-1">{date.toLocaleDateString('en-ZA', { month: 'short' })}</span>
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block font-serif font-semibold text-2xl sm:text-3xl leading-tight truncate group-hover:text-bai-red-deep transition-colors">{event.name}</span>
+                      <span className="num block text-bai-ink-soft mt-1 truncate">{[formatTime(event.date), [event.venue, event.city].filter(Boolean).join(', ')].filter(Boolean).join(' · ')}</span>
+                    </span>
+                    <span className="flex items-center gap-3 shrink-0">
+                      <span className="num hidden sm:inline font-semibold">{event.soldOut ? 'Sold out' : event.price > 0 ? formatCurrency(event.price) : 'Free'}</span>
+                      <ArrowRight size={20} className="transition-transform duration-200 group-hover:translate-x-1" aria-hidden="true" />
+                    </span>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      )}
+
       {highlights.items.length > 0 && (
         <section className="px-3 sm:px-4">
           <div className="rounded-[2rem] bg-bai-black text-white py-16 md:py-24">
@@ -113,7 +151,6 @@ export default function Home() {
                 <h2 className="display text-5xl md:text-7xl">
                   {highlights.headingLine1}{highlights.headingLine2 && <> <span className="text-bai-red-soft">{highlights.headingLine2}</span></>}
                 </h2>
-                {highlights.intro && <p className="text-white/75 text-lg mt-4">{highlights.intro}</p>}
               </div>
               <ul className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
                 {highlights.items.map((item) => (

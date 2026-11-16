@@ -7,7 +7,7 @@ import { AuthProvider, useAuth } from './views/components/AuthProvider';
 import { CartProvider } from './hooks/useCart';
 import { ErrorBoundary } from './views/components/ErrorBoundary';
 import { Toaster } from './views/components/Toaster';
-import { isAnyAdmin, isEventManager, isScanner, type UserRole } from './models/types';
+import { isAnyAdmin, isEventManager, isScanner, isUserAdmin, type UserRole } from './models/types';
 import Home from './views/pages/Home';
 
 // Each page loads on demand, so a first visit downloads the home page only.
@@ -24,6 +24,7 @@ const Checkout = lazy(() => import('./views/pages/Checkout'));
 const MyTickets = lazy(() => import('./views/pages/MyTickets'));
 const AdminEvents = lazy(() => import('./views/admin/AdminEvents'));
 const AdminContent = lazy(() => import('./views/admin/AdminContent'));
+const AdminUsers = lazy(() => import('./views/admin/AdminUsers'));
 const Legal = lazy(() => import('./views/pages/Legal'));
 
 /** The routes that are pre-rendered to HTML at build time (public, same for everyone). */
@@ -62,6 +63,7 @@ export default function App({ router: Router }: { router: (props: { children: Re
                     <Route path={ROUTES.SCANNER} element={<Protected allow={isScanner}><TicketScanner /></Protected>} />
                     <Route path={ROUTES.ADMIN_EVENTS} element={<Protected allow={isEventManager}><AdminEvents /></Protected>} />
                     <Route path={ROUTES.ADMIN_CONTENT} element={<Protected allow={isEventManager}><AdminContent /></Protected>} />
+                    <Route path={ROUTES.ADMIN_USERS} element={<Protected allow={isUserAdmin}><AdminUsers /></Protected>} />
                     <Route path={`${ROUTES.ADMIN_CONTENT}/:section`} element={<Protected allow={isEventManager}><AdminContent /></Protected>} />
                     <Route path={ROUTES.TERMS} element={<Legal doc="terms" />} />
                     <Route path={ROUTES.PRIVACY} element={<Legal doc="privacy" />} />

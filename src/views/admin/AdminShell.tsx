@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { NavLink } from 'react-router-dom';
 import { ROUTES } from '../../controllers/navigation';
 import { useAuth } from '../components/AuthProvider';
-import { isEventManager, ROLE_LABELS } from '../../models/types';
+import { isEventManager, isUserAdmin, ROLE_LABELS } from '../../models/types';
 
 /** Frame shared by every staff page: who is signed in, and the admin sections they may open. */
 export function AdminShell({ title, children }: { title: string; children: ReactNode }) {
@@ -11,6 +11,7 @@ export function AdminShell({ title, children }: { title: string; children: React
     { name: 'Overview', path: ROUTES.DASHBOARD, show: true },
     { name: 'Events', path: ROUTES.ADMIN_EVENTS, show: isEventManager(role) },
     { name: 'Site content', path: ROUTES.ADMIN_CONTENT, show: isEventManager(role) },
+    { name: 'Users', path: ROUTES.ADMIN_USERS, show: isUserAdmin(role) },
   ].filter(tab => tab.show);
 
   return (
