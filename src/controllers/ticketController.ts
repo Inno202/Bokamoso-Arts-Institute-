@@ -197,6 +197,12 @@ export const ticketController = {
     return ticket;
   },
 
+  /** How many tickets have been scanned at the door: one server-side count. */
+  async countScans() {
+    const snap = await getAggregateFromServer(collection(db, SCANS), { total: count() });
+    return snap.data().total;
+  },
+
   async getRecentScans(max = 10) {
     const q = query(collection(db, SCANS), orderBy('scannedAt', 'desc'), limit(max));
     const snapshot = await getDocs(q);
