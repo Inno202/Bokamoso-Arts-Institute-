@@ -71,7 +71,7 @@ export default function TicketScanner() {
   };
 
   const modeButton = (active: boolean) =>
-    `h-14 rounded-lg flex items-center justify-center gap-3 font-bold text-xs uppercase tracking-widest border-2 transition-colors ${
+    `h-14 rounded-lg flex items-center justify-center gap-3 font-semibold border-2 transition-colors ${
       active ? 'bg-white text-bai-black border-white' : 'border-white/30 text-white/80 hover:border-white/60'
     }`;
 
@@ -81,7 +81,7 @@ export default function TicketScanner() {
     }`}>
       <div className="max-w-lg mx-auto w-full flex-grow flex flex-col">
         <div className="pt-8 pb-6 text-center">
-          <h1 className="display text-2xl  flex items-center justify-center gap-3">
+          <h1 className="display text-2xl flex items-center justify-center gap-3">
             <TicketIcon size={22} className="text-bai-red-soft" aria-hidden="true" />
             Door scanner
           </h1>
@@ -96,11 +96,11 @@ export default function TicketScanner() {
                   <CheckCircle size={32} aria-hidden="true" />
                 </div>
                 <div>
-                  <p className="font-display font-bold text-2xl uppercase italic leading-none text-green-800">Admit</p>
+                  <p className="font-display font-bold text-2xl leading-none text-green-800">Admit</p>
                   <p className="num text-sm font-bold text-bai-black/70 mt-1">{result.ticket.id}</p>
                 </div>
               </div>
-              <p className="font-display font-bold text-xl uppercase tracking-tight leading-tight break-words">{result.eventName}</p>
+              <p className="font-display font-bold text-xl leading-tight break-words">{result.eventName}</p>
               <dl className="mt-4 pt-4 border-t border-bai-black/10 space-y-2 text-sm">
                 <div className="flex justify-between gap-4"><dt className="text-bai-black/70">Ticket</dt><dd className="font-semibold text-right">{result.ticket.ticketType}</dd></div>
                 <div className="flex justify-between gap-4"><dt className="text-bai-black/70">Booked by</dt><dd className="font-semibold text-right break-all">{result.ticket.buyerEmail || 'Unknown'}</dd></div>
@@ -112,7 +112,7 @@ export default function TicketScanner() {
           ) : result?.kind === 'error' ? (
             <div className="bg-bai-red text-white rounded-2xl p-8 text-center">
               <XCircle size={56} className="mx-auto mb-4" aria-hidden="true" />
-              <p className="font-display font-bold text-3xl uppercase italic mb-2">Do not admit</p>
+              <p className="font-display font-bold text-3xl mb-2">Do not admit</p>
               <p className="font-semibold">{result.message}</p>
             </div>
           ) : (
@@ -138,7 +138,7 @@ export default function TicketScanner() {
                   autoCapitalize="characters"
                   autoComplete="off"
                   spellCheck={false}
-                  className="num w-full h-16 bg-white/10 border-2 border-white/30 text-white placeholder:text-white/50 rounded-lg px-5 focus:border-white font-mono text-lg uppercase"
+                  className="num w-full h-16 bg-white/10 border-2 border-white/30 text-white placeholder:text-white/50 rounded-lg px-5 focus:border-white font-mono text-lg"
                 />
               </div>
               <button

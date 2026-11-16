@@ -44,9 +44,10 @@ export default function Register() {
 
   return (
     <div className="min-h-[90vh] flex items-center justify-center p-4 bg-bai-bone">
-      <div className="w-full max-w-sm bg-white rounded-2xl shadow-[0_24px_60px_-28px_rgb(0_0_0/0.45)] border-t-8 border-bai-blue overflow-hidden">
+      <div className="w-full max-w-sm bg-white rounded-[1.75rem] border border-bai-black/[0.07] shadow-[0_24px_60px_-36px_rgb(0_0_0/0.35)] overflow-hidden">
         <div className="px-8 pt-8 pb-6 text-center">
-          <h1 className="display text-3xl ">
+          <img src={`${import.meta.env.BASE_URL}assets/brand/mark-96.png`} alt="" width={56} height={56} className="w-14 h-14 mx-auto mb-4" />
+          <h1 className="display text-4xl">
             Join <span className="text-bai-blue">Bokamoso</span>
           </h1>
           <p className="text-sm text-bai-black/70 mt-3">An account keeps your tickets in one place.</p>

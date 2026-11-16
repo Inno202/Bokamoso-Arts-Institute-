@@ -58,7 +58,11 @@ function start<K extends SectionKey>(key: K) {
   const def = SECTIONS[key];
 
   // includeMetadataChanges: we are also told when a local change is confirmed by the server.
+  // Each snapshot gets a number; a slow fallback lookup from an older snapshot
+  // must never overwrite content from a newer one.
+  let latest = 0;
   onSnapshot(doc(db, CONTENT_COLLECTION, key), { includeMetadataChanges: true }, async (snap) => {
+    const mine = ++latest;
     const stored = snap.exists() ? snap.data()?.data : undefined;
     let legacy: unknown;
     if (!stored && def.legacyPath) {
@@ -69,6 +73,7 @@ function start<K extends SectionKey>(key: K) {
         logger.error(`Could not read earlier ${key} content`, err);
       }
     }
+    if (mine !== latest) return;
     const { source, raw } = pickSource(stored, legacy);
     const updatedAt = snap.exists() ? snap.data()?.updatedAt?.toDate?.() ?? null : null;
     publish(key, { content: resolveSection(key, raw), source, updatedAt, pending: snap.metadata.hasPendingWrites });
@@ -89,8 +94,27 @@ export function useContentState<K extends SectionKey>(key: K): SectionState<K> {
       return () => { entry.listeners.delete(notify); };
     },
     () => entry.state,
+    // While pre-rendering at build time, and on the browser's first (hydrating)
+    // render, the page shows the content that was baked into the HTML.
+    () => entry.state,
   );
 }
+
+/**
+ * Starts sections from content captured at build time instead of the built-in
+ * defaults, so a pre-rendered page and the browser's first render match exactly.
+ * Unknown keys and malformed values are ignored (resolveSection validates them).
+ */
+export function seedContent(raw: Partial<Record<SectionKey, unknown>>) {
+  for (const key of Object.keys(SECTIONS) as SectionKey[]) {
+    if (raw[key] === undefined) continue;
+    const entry = entryFor(key);
+    entry.state = { ...entry.state, content: resolveSection(key, raw[key]) as never, source: 'store' };
+  }
+}
+
+/** The id of the JSON block a pre-rendered page carries its content in. */
+export const SEED_ELEMENT_ID = 'bai-content';
 
 export const useContent = <K extends SectionKey>(key: K): ContentMap[K] => useContentState(key).content;
 

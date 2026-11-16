@@ -29,20 +29,32 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const uidRef = useRef(uid);
   uidRef.current = uid;
 
+  // The bag is loaded once per account. Sign-in state can briefly report
+  // "loading" again (for example when the session refreshes); reloading then
+  // would replace changes the visitor had just made with an older saved copy.
+  const loadedFor = useRef<string | null | undefined>(undefined);
+  const edits = useRef(0);
+
   useEffect(() => {
-    if (authLoading) return;
+    if (authLoading || loadedFor.current === uid) return;
+    loadedFor.current = uid;
     let cancelled = false;
+    const editsAtStart = edits.current;
     setLoading(true);
     cartController.getCart(uid).then(loaded => {
       if (cancelled) return;
-      itemsRef.current = loaded;
-      setItems(loaded);
+      // Anything changed while loading wins over the saved copy.
+      if (edits.current === editsAtStart) {
+        itemsRef.current = loaded;
+        setItems(loaded);
+      }
       setLoading(false);
     });
     return () => { cancelled = true; };
   }, [uid, authLoading]);
 
   const commit = useCallback((update: (current: CartItem[]) => CartItem[]) => {
+    edits.current += 1;
     const next = update(itemsRef.current);
     itemsRef.current = next;
     setItems(next);

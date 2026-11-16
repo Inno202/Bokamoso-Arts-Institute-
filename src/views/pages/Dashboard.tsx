@@ -215,7 +215,7 @@ export default function Dashboard() {
             </div>
 
             <form onSubmit={handleAddUser} className="mb-8 border-y border-bai-black/15 py-6">
-              <h3 className="font-bold mb-3">Add a staff account</h3>
+              <h3 className="font-semibold mb-3">Add a staff account</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
                 <input required type="text" aria-label="Full name" placeholder="Full name" maxLength={100} className="field" value={newUser.displayName} onChange={e => setNewUser({ ...newUser, displayName: e.target.value })} />
                 <input required type="email" aria-label="Email address" placeholder="Email address" autoComplete="off" className="field" value={newUser.email} onChange={e => setNewUser({ ...newUser, email: e.target.value })} />
@@ -240,7 +240,7 @@ export default function Dashboard() {
                       <p className="font-semibold text-sm truncate">{u.displayName || 'No name'}{isSelf && <span className="font-normal text-bai-black/70"> (you)</span>}</p>
                       <p className="text-sm text-bai-black/70 truncate">{u.email}</p>
                     </div>
-                    {inactive && <span className="self-start lg:self-auto text-xs font-bold uppercase tracking-widest bg-red-100 text-red-800 px-3 py-1 rounded-full">Deactivated</span>}
+                    {inactive && <span className="self-start lg:self-auto text-xs font-bold bg-red-100 text-red-800 px-3 py-1 rounded-full">Deactivated</span>}
                     <div className="flex items-center gap-2">
                       <select
                         aria-label={`Role for ${u.displayName || u.email}`}
@@ -281,7 +281,7 @@ function Stat({ title, value }: { title: string; value: string | null }) {
   return (
     <div className="flex flex-col-reverse">
       <dt className="text-bai-black/75 font-semibold mt-1">{title}</dt>
-      <dd className="num text-3xl sm:text-4xl font-display font-bold tracking-tight break-words">
+      <dd className="num text-3xl sm:text-4xl font-display font-bold break-words">
         {value === null ? <span className="inline-block h-8 w-20 bg-bai-black/10 animate-pulse rounded" aria-label="Loading" /> : value}
       </dd>
     </div>

@@ -1,6 +1,8 @@
+import type React from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Ticket as TicketIcon, MapPin, Calendar, Clock, Download, ChevronRight, Share2, X } from 'lucide-react';
+import { Ticket as TicketIcon, MapPin, Calendar, Download, ChevronRight, Share2, X } from 'lucide-react';
+import { PageHero } from '../components/PageHero';
 import { useAuth } from '../components/AuthProvider';
 import { ticketController } from '../../controllers/ticketController';
 import { eventController } from '../../controllers/eventController';
@@ -16,9 +18,9 @@ import { logger } from '../../services/loggerService';
 type TicketWithEvent = Ticket & { event?: BAIEvent | null };
 
 const STATUS: Record<TicketStatus, { label: string; className: string }> = {
-  VALID: { label: 'Valid', className: 'bg-green-700 text-white' },
-  SCANNED: { label: 'Used', className: 'bg-bai-black text-white' },
-  CANCELLED: { label: 'Cancelled', className: 'bg-red-700 text-white' },
+  VALID: { label: 'Valid', className: 'bg-green-100 text-green-900' },
+  SCANNED: { label: 'Used', className: 'bg-bai-black/10 text-bai-black' },
+  CANCELLED: { label: 'Cancelled', className: 'bg-red-100 text-red-900' },
 };
 
 export default function MyTickets() {
@@ -104,72 +106,65 @@ export default function MyTickets() {
     );
   }
 
-  return (
-    <div className="pb-24 bg-bai-bone min-h-screen">
-      <div className="bg-bai-black text-white py-12 px-4 mb-12 relative overflow-hidden">
-        <div className="absolute inset-0 piano-key-pattern opacity-10" aria-hidden="true" />
-        <div className="max-w-7xl mx-auto relative z-10 sm:px-2 lg:px-4">
-          <h1 className="display text-4xl md:text-6xl ">Your <span className="text-bai-red-soft">tickets.</span></h1>
-        </div>
-      </div>
+  const image = (t: TicketWithEvent) => cloudinaryService.getOptimizedUrl(t.event?.bannerImageUrl || t.event?.ticketImageUrl, 600) || FALLBACK_EVENT_IMAGE;
+  const fallback = (e: React.SyntheticEvent<HTMLImageElement>) => {
+    if (!e.currentTarget.dataset.fallback) { e.currentTarget.dataset.fallback = '1'; e.currentTarget.src = FALLBACK_EVENT_IMAGE; }
+  };
+  const when = (t: TicketWithEvent) =>
+    [formatDate(t.event?.date, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }), formatTime(t.event?.date)].filter(Boolean).join(' · ') || 'Date to be confirmed';
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+  return (
+    <div className="pb-24 min-h-screen">
+      <PageHero title="Your" accent="tickets" />
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
         {failed ? (
-          <div className="py-24 text-center" role="alert">
-            <h2 className="font-display font-bold text-2xl uppercase italic">Your tickets could not be loaded</h2>
-            <p className="text-bai-black/70 mt-4 max-w-sm mx-auto">Check your connection and reload the page. Your tickets are safe.</p>
+          <div className="panel py-20 px-6 text-center" role="alert">
+            <h2 className="display text-3xl">Your tickets could not be loaded</h2>
+            <p className="text-bai-ink-soft mt-3 max-w-sm mx-auto">Check your connection and reload the page. Your tickets are safe.</p>
           </div>
         ) : tickets.length === 0 ? (
-          <div className="py-24 text-center">
-            <TicketIcon size={56} className="mx-auto text-bai-black/25 mb-6" aria-hidden="true" />
-            <h2 className="font-display font-bold text-2xl uppercase italic">No tickets yet</h2>
-            <p className="text-bai-black/70 mt-4 mb-8 max-w-xs mx-auto">Tickets you book appear here, ready to show at the door.</p>
+          <div className="panel py-20 px-6 text-center">
+            <TicketIcon size={48} className="mx-auto text-bai-red mb-5" strokeWidth={1.5} aria-hidden="true" />
+            <h2 className="display text-3xl">No tickets yet</h2>
+            <p className="text-bai-ink-soft mt-3 mb-8 max-w-xs mx-auto">Tickets you book appear here, ready to show at the door.</p>
             <Link to={ROUTES.EVENTS} className="btn btn-primary">See upcoming events</Link>
           </div>
         ) : (
-          <ul className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <ul className="grid grid-cols-1 lg:grid-cols-2 gap-5">
             {tickets.map((ticket) => {
               const status = STATUS[ticket.status] || STATUS.VALID;
+              const used = ticket.status !== 'VALID';
               return (
                 <li key={ticket.id}>
+                  {/* One fixed size for every ticket: long names are clipped, never stretch the card. */}
                   <button
                     onClick={() => setSelected(ticket)}
-                    className="w-full text-left bg-white rounded-2xl overflow-hidden border border-bai-black/10 shadow-[0_8px_24px_-12px_rgb(0_0_0/0.25)] flex flex-col group hover:shadow-[0_16px_40px_-16px_rgb(0_0_0/0.4)] transition-shadow"
+                    aria-label={`${eventName(ticket)}, ${status.label} ticket ${ticket.id}. Open ticket.`}
+                    className="group lift w-full h-40 sm:h-44 text-left flex rounded-3xl bg-white border border-bai-black/[0.07] overflow-hidden"
                   >
-                    <div className="aspect-[16/9] relative overflow-hidden w-full">
-                      <img
-                        src={cloudinaryService.getOptimizedUrl(ticket.event?.bannerImageUrl || ticket.event?.ticketImageUrl) || FALLBACK_EVENT_IMAGE}
-                        alt=""
-                        onError={(e) => { if (!e.currentTarget.dataset.fallback) { e.currentTarget.dataset.fallback = '1'; e.currentTarget.src = FALLBACK_EVENT_IMAGE; } }}
-                        loading="lazy"
-                        decoding="async"
-                        className={`w-full h-full object-cover photo-zoom ${ticket.status === 'VALID' ? '' : 'grayscale'}`}
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent" />
-                      <div className="absolute bottom-4 left-5 right-5 flex items-end justify-between gap-3">
-                        <div>
-                          <span className={`${status.className} text-[11px] font-bold uppercase tracking-widest px-2 py-1 mb-2 inline-block`}>{status.label}</span>
-                          <h3 className="text-white font-display font-bold text-xl leading-none uppercase italic">{eventName(ticket)}</h3>
-                        </div>
-                        <TicketQR value={ticket.id} size={96} className="w-12 h-12 bg-white rounded-lg p-1 shrink-0" />
-                      </div>
+                    <div className="hidden min-[400px]:block w-24 sm:w-32 shrink-0 bg-bai-sand">
+                      <img src={image(ticket)} alt="" onError={fallback} loading="lazy" decoding="async" className={`w-full h-full object-cover ${used ? 'grayscale opacity-70' : ''}`} />
                     </div>
 
-                    <div className="p-6 w-full">
-                      <p className="num text-xs font-bold uppercase tracking-widest text-bai-red mb-4">{ticket.id}</p>
-                      <div className="space-y-2 text-sm text-bai-black/80">
-                        <p className="flex items-center gap-3">
-                          <Calendar size={14} className="text-bai-blue shrink-0" aria-hidden="true" />
-                          <span>{formatDate(ticket.event?.date) || 'Date to be confirmed'}</span>
-                        </p>
-                        <p className="flex items-center gap-3">
-                          <MapPin size={14} className="text-bai-blue shrink-0" aria-hidden="true" />
-                          <span className="line-clamp-1">{ticket.event?.venue || 'Venue to be confirmed'}</span>
-                        </p>
-                      </div>
-                      <span className="w-full mt-6 flex items-center justify-between p-4 bg-bai-bone rounded-lg group-hover:bg-bai-black group-hover:text-white transition-colors">
-                        <span className="text-xs font-bold uppercase tracking-widest">View ticket</span>
-                        <ChevronRight size={16} aria-hidden="true" />
+                    <div className="flex-1 min-w-0 p-4 sm:p-5 flex flex-col">
+                      <span className={`self-start text-xs font-semibold px-2.5 py-0.5 rounded-full ${status.className}`}>{status.label}</span>
+                      <h3 className="font-serif font-semibold text-2xl leading-tight mt-2 line-clamp-1">{eventName(ticket)}</h3>
+                      <p className="num text-sm text-bai-ink-soft mt-1 truncate">{when(ticket)}</p>
+                      <p className="text-sm text-bai-ink-soft truncate">{ticket.event?.venue || 'Venue to be confirmed'}</p>
+                      <p className="num text-xs font-semibold text-bai-red mt-auto truncate">{ticket.id}</p>
+                    </div>
+
+                    {/* Perforation, with the two half-circle notches of a paper ticket */}
+                    <div className="relative w-0 border-l-2 border-dashed border-bai-black/15 my-3" aria-hidden="true">
+                      <span className="absolute -top-6 -left-[11px] w-5 h-5 rounded-full bg-bai-bone border border-bai-black/[0.07]" />
+                      <span className="absolute -bottom-6 -left-[11px] w-5 h-5 rounded-full bg-bai-bone border border-bai-black/[0.07]" />
+                    </div>
+
+                    <div className="w-24 sm:w-28 shrink-0 flex flex-col items-center justify-center gap-2 p-3">
+                      <TicketQR value={ticket.id} size={160} className={`w-16 h-16 sm:w-20 sm:h-20 ${used ? 'opacity-30' : ''}`} />
+                      <span className="inline-flex items-center gap-1 text-sm font-medium text-bai-black/80 group-hover:text-bai-red transition-colors">
+                        Open <ChevronRight size={16} aria-hidden="true" />
                       </span>
                     </div>
                   </button>
@@ -182,81 +177,72 @@ export default function MyTickets() {
 
       {selected && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="ticket-title">
-          <div onClick={() => setSelected(null)} className="absolute inset-0 bg-black/85" aria-hidden="true" />
+          <div onClick={() => setSelected(null)} className="absolute inset-0 bg-bai-black/80" aria-hidden="true" />
 
-          <div className="w-full max-w-lg max-h-[92dvh] overflow-y-auto bg-white rounded-2xl relative shadow-[0_32px_80px_-24px_rgb(0_0_0/0.6)]">
-            <div className="bg-bai-black px-8 pt-10 pb-8 text-center relative overflow-hidden">
-              <div className="absolute inset-0 piano-key-pattern opacity-10" aria-hidden="true" />
+          {/* The ticket itself: a fixed width, and everything inside fits it. */}
+          <div className="ticket-in relative w-full max-w-[22rem] max-h-[94dvh] overflow-y-auto rounded-[1.75rem] bg-white shadow-[0_32px_80px_-24px_rgb(0_0_0/0.6)]">
+            <div className="relative h-36 bg-bai-black">
+              <img src={image(selected)} alt="" onError={fallback} className="w-full h-full object-cover opacity-80" />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-black/10" aria-hidden="true" />
               <button
                 ref={closeRef}
                 onClick={() => setSelected(null)}
                 aria-label="Close ticket"
-                className="no-print absolute top-3 right-3 w-11 h-11 flex items-center justify-center text-white/80 hover:text-white rounded-full z-10"
+                className="no-print icon-btn absolute top-2 right-2 bg-black/30 text-white hover:bg-black/50"
               >
-                <X size={22} aria-hidden="true" />
+                <X size={20} aria-hidden="true" />
               </button>
-              <h2 id="ticket-title" className="text-white font-display font-bold text-2xl md:text-3xl uppercase italic leading-none tracking-tighter relative z-10">
+              <h2 id="ticket-title" className="absolute bottom-3 left-5 right-5 font-serif font-semibold text-3xl leading-tight text-white line-clamp-2">
                 {eventName(selected)}
               </h2>
             </div>
 
-            <div className="p-6 sm:p-8">
-              <div className="flex flex-col sm:flex-row gap-6 sm:gap-8 items-center sm:items-start">
-                <div className="shrink-0 text-center">
-                  <TicketQR value={selected.id} size={400} className={`w-48 h-48 rounded-2xl border-4 border-bai-black p-2 bg-white ${selected.status === 'VALID' ? '' : 'opacity-40'}`} />
-                  {selected.status !== 'VALID' && (
-                    <p className="mt-2 text-sm font-bold text-red-700">{selected.status === 'SCANNED' ? 'Already used at the door' : 'This ticket was cancelled'}</p>
-                  )}
-                </div>
-
-                <dl className="flex-grow space-y-5 w-full">
-                  <div>
-                    <dt className="text-xs font-bold uppercase tracking-widest text-bai-black/60 mb-1">Ticket holder</dt>
-                    <dd className="font-display font-bold text-xl uppercase italic break-words">{userData?.displayName || user?.displayName || user?.email}</dd>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <dt className="text-xs font-bold uppercase tracking-widest text-bai-black/60 mb-1">Reference</dt>
-                      <dd className="num font-bold text-sm text-bai-red break-all">{selected.id}</dd>
-                    </div>
-                    <div>
-                      <dt className="text-xs font-bold uppercase tracking-widest text-bai-black/60 mb-1">Type</dt>
-                      <dd className="font-bold text-sm">{selected.ticketType}</dd>
-                    </div>
-                  </div>
-                  <div className="space-y-3 pt-4 border-t border-bai-black/10 text-sm font-semibold">
-                    <p className="flex items-center gap-3">
-                      <Calendar className="text-bai-blue shrink-0" size={18} aria-hidden="true" />
-                      <span>{formatDate(selected.event?.date) || 'Date to be confirmed'}</span>
-                    </p>
-                    {formatTime(selected.event?.date) && (
-                      <p className="flex items-center gap-3">
-                        <Clock className="text-bai-blue shrink-0" size={18} aria-hidden="true" />
-                        <span className="num">{formatTime(selected.event?.date)}</span>
-                      </p>
-                    )}
-                    <p className="flex items-center gap-3">
-                      <MapPin className="text-bai-blue shrink-0" size={18} aria-hidden="true" />
-                      <span>{[selected.event?.venue, selected.event?.city].filter(Boolean).join(', ') || 'Venue to be confirmed'}</span>
-                    </p>
-                  </div>
-                </dl>
+            <dl className="px-5 pt-4 pb-5 grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
+              <div className="col-span-2">
+                <dt className="text-bai-ink-soft">Ticket holder</dt>
+                <dd className="font-semibold truncate">{userData?.displayName || user?.displayName || user?.email}</dd>
               </div>
+              <div className="col-span-2">
+                <dt className="text-bai-ink-soft flex items-center gap-1.5"><Calendar size={14} aria-hidden="true" />When</dt>
+                <dd className="num font-semibold">{when(selected)}</dd>
+              </div>
+              <div className="col-span-2">
+                <dt className="text-bai-ink-soft flex items-center gap-1.5"><MapPin size={14} aria-hidden="true" />Where</dt>
+                <dd className="font-semibold line-clamp-2">{[selected.event?.venue, selected.event?.city].filter(Boolean).join(', ') || 'Venue to be confirmed'}</dd>
+              </div>
+              <div>
+                <dt className="text-bai-ink-soft">Type</dt>
+                <dd className="font-semibold">{selected.ticketType}</dd>
+              </div>
+              <div>
+                <dt className="text-bai-ink-soft">Status</dt>
+                <dd className="font-semibold">{(STATUS[selected.status] || STATUS.VALID).label}</dd>
+              </div>
+            </dl>
 
-              <div className="no-print grid grid-cols-2 gap-4 mt-8 pt-8 border-t-2 border-dashed border-bai-black/15">
-                <button onClick={() => handleDownload(selected)} className="btn btn-lg btn-primary">
+            {/* Perforation */}
+            <div className="relative mx-5 border-t-2 border-dashed border-bai-black/15" aria-hidden="true">
+              <span className="absolute -left-8 -top-[11px] w-5 h-5 rounded-full bg-bai-black/80" />
+              <span className="absolute -right-8 -top-[11px] w-5 h-5 rounded-full bg-bai-black/80" />
+            </div>
+
+            <div className="px-5 pt-5 pb-5 flex flex-col items-center">
+              <TicketQR value={selected.id} size={400} className={`w-44 h-44 ${selected.status === 'VALID' ? '' : 'opacity-30'}`} />
+              <p className="num font-semibold text-bai-red mt-2">{selected.id}</p>
+              {selected.status !== 'VALID' && (
+                <p className="mt-1 text-sm font-semibold text-red-700">{selected.status === 'SCANNED' ? 'Already used at the door' : 'This ticket was cancelled'}</p>
+              )}
+              <p className="text-sm text-center text-bai-ink-soft mt-2">Show this code at the door. It admits one person, once.</p>
+              <div className="no-print grid grid-cols-2 gap-3 w-full mt-5">
+                <button onClick={() => handleDownload(selected)} className="btn btn-primary">
                   <Download size={18} aria-hidden="true" />
                   <span>Save QR</span>
                 </button>
-                <button onClick={() => handleShare(selected)} className="btn btn-lg btn-outline">
+                <button onClick={() => handleShare(selected)} className="btn btn-outline">
                   <Share2 size={18} aria-hidden="true" />
                   <span>Share</span>
                 </button>
               </div>
-
-              <p className="text-xs text-center text-bai-black/60 mt-6">
-                Show this code at the door. Each ticket admits one person, once.
-              </p>
             </div>
           </div>
         </div>

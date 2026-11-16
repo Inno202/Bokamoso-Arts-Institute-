@@ -3,6 +3,7 @@ import { Navigate, useNavigate, Link } from 'react-router-dom';
 import { ArrowRight, Loader2, CheckCircle, Info } from 'lucide-react';
 import { useCart, TICKETING_FEE } from '../../hooks/useCart';
 import { useAuth } from '../components/AuthProvider';
+import { PageHero } from '../components/PageHero';
 import { ROUTES } from '../../controllers/navigation';
 import { ticketController } from '../../controllers/ticketController';
 import { formatCurrency, friendlyError } from '../../controllers/lib/utils';
@@ -59,7 +60,7 @@ export default function Checkout() {
         <div className="w-24 h-24 bg-green-100 text-green-700 rounded-full flex items-center justify-center mb-8">
           <CheckCircle size={48} aria-hidden="true" />
         </div>
-        <h1 className="display text-4xl md:text-6xl  mb-4">
+        <h1 className="display text-4xl md:text-6xl mb-4">
           {issued === 1 ? 'Your ticket is' : 'Your tickets are'} <span className="text-bai-red">ready.</span>
         </h1>
         <p className="text-bai-black/70 max-w-md mb-8">Taking you to your tickets now.</p>
@@ -79,24 +80,19 @@ export default function Checkout() {
   if (items.length === 0) return <Navigate to={ROUTES.EVENTS} replace />;
 
   return (
-    <div className="pb-24 bg-bai-bone min-h-screen">
-      <div className="bg-bai-black text-white py-12 px-4 mb-12">
-        <div className="max-w-4xl mx-auto">
-          <h1 className="display text-4xl md:text-6xl ">
-            Confirm your <span className="text-bai-red-soft">order.</span>
-          </h1>
-        </div>
-      </div>
+    <div className="pb-24 min-h-screen">
+      <PageHero title="Confirm your" accent="order" />
+      <div className="h-8" />
 
       <div className="max-w-4xl mx-auto px-4">
         <div className="grid grid-cols-1 md:grid-cols-5 gap-10">
           <section className="md:col-span-3" aria-labelledby="summary-heading">
-            <h2 id="summary-heading" className="font-display font-bold text-xl uppercase italic mb-6">Order summary</h2>
+            <h2 id="summary-heading" className="font-serif font-semibold text-xl mb-6">Order summary</h2>
             <ul className="divide-y divide-bai-black/10 border-y border-bai-black/10">
               {items.map(item => (
                 <li key={`${item.eventId}-${item.ticketType}`} className="py-4 flex justify-between items-start gap-4">
                   <div>
-                    <p className="font-bold uppercase tracking-tight">{item.eventName}</p>
+                    <p className="font-bold">{item.eventName}</p>
                     <p className="text-sm text-bai-black/70">{item.quantity} × {item.ticketType}</p>
                   </div>
                   <span className="num font-display font-bold whitespace-nowrap">{formatCurrency(item.price * item.quantity)}</span>
@@ -115,7 +111,7 @@ export default function Checkout() {
                 </div>
               )}
               <div className="flex justify-between items-baseline pt-4 mt-2 border-t border-bai-black/10">
-                <dt className="font-display font-bold uppercase tracking-widest text-xs">Total</dt>
+                <dt className="font-display font-bold text-xs">Total</dt>
                 <dd className="num font-display font-bold text-3xl text-bai-red">{formatCurrency(total)}</dd>
               </div>
             </dl>

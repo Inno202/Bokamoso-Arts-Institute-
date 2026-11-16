@@ -46,6 +46,14 @@ Everyone who signs up is a `USER`. Roles are changed by a super admin in Dashboa
 
 Deactivating an account (`isActive: false`) signs the person out and removes all staff access immediately.
 
+## Pages are pre-rendered
+
+`npm run build` produces finished HTML for every public page (home, about, our work, events, traditions, sign-in, sign-up and the policies), with the site's current content from the database baked in. Pages appear instantly, work for search engines and link previews, and are then brought to life in the browser. If the database cannot be reached during a build, the built-in defaults are used and the build still succeeds.
+
+- Addresses are real paths, such as `/Bokamoso-Arts-Institute-/events`. Old `#/events` links are redirected automatically.
+- Content edited in the admin area appears straight away without a rebuild; the next build bakes it into the HTML too.
+- Pages that depend on who is signed in (bag, checkout, tickets, staff pages) are not pre-rendered.
+
 ## Editing the site (content store)
 
 Everything that changes on the public pages lives in one place: the Firestore `content` collection, one document per section (`site`, `home`, `about`, `work`, `traditions`). Events live in the `events` collection.

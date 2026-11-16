@@ -73,9 +73,10 @@ export default function Login() {
 
   return (
     <div className="min-h-[90vh] flex items-center justify-center p-4 bg-bai-bone">
-      <div className="w-full max-w-sm bg-white rounded-2xl shadow-[0_24px_60px_-28px_rgb(0_0_0/0.45)] border-t-8 border-bai-red overflow-hidden">
+      <div className="w-full max-w-sm bg-white rounded-[1.75rem] border border-bai-black/[0.07] shadow-[0_24px_60px_-36px_rgb(0_0_0/0.35)] overflow-hidden">
         <div className="px-8 pt-8 pb-6 text-center">
-          <h1 className="display text-3xl ">
+          <img src={`${import.meta.env.BASE_URL}assets/brand/mark-96.png`} alt="" width={56} height={56} className="w-14 h-14 mx-auto mb-4" />
+          <h1 className="display text-4xl">
             Sign <span className="text-bai-red">in</span>
           </h1>
           <p className="text-sm text-bai-black/70 mt-3">Book tickets and see the ones you have.</p>
@@ -112,7 +113,7 @@ export default function Login() {
             </button>
           </form>
 
-          <div className="my-6 flex items-center gap-4 text-xs uppercase font-bold tracking-widest text-bai-black/60" aria-hidden="true">
+          <div className="my-6 flex items-center gap-4 text-xs font-bold text-bai-black/60" aria-hidden="true">
             <span className="h-px flex-grow bg-bai-black/15" />or<span className="h-px flex-grow bg-bai-black/15" />
           </div>
 

@@ -51,14 +51,15 @@ export default function Navbar() {
       <nav aria-label="Main" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-20 items-center gap-4">
           <Link to={ROUTES.HOME} className="flex items-center gap-3 group shrink-0" aria-label="Bokamoso Arts Institute, home">
-            <span className="relative w-12 h-12 flex items-center justify-center" aria-hidden="true">
-              <span className="absolute inset-0 piano-key-pattern rounded-full opacity-20" />
-              <span className="relative w-9 h-9 bg-bai-black flex items-center justify-center rounded-full border-2 border-white transition-transform duration-300 group-hover:scale-110">
-                <span className="text-white font-display font-bold text-[11px]">BAI</span>
-              </span>
-            </span>
+            <img
+              src={`${import.meta.env.BASE_URL}assets/brand/mark-192.png`}
+              alt=""
+              width={48}
+              height={48}
+              className="logo-mark w-12 h-12"
+            />
             <span className="hidden sm:flex flex-col">
-              <span className="font-display font-bold text-base leading-tight tracking-tight">BOKAMOSO</span>
+              <span className="font-serif font-semibold text-xl leading-none tracking-[0.06em]">BOKAMOSO</span>
               <span className="text-[11px] uppercase tracking-[0.18em] font-semibold text-bai-red">Arts Institute</span>
             </span>
           </Link>

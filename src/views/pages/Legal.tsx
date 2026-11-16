@@ -18,12 +18,12 @@ const LAST_UPDATED = '15 November 2026';
 
 type Doc = 'terms' | 'privacy' | 'cookies';
 const TITLES: Record<Doc, [string, string]> = {
-  terms: ['Terms', 'of use.'],
-  privacy: ['Privacy', 'policy.'],
-  cookies: ['Cookie', 'policy.'],
+  terms: ['Terms', 'of use'],
+  privacy: ['Privacy', 'policy'],
+  cookies: ['Cookie', 'policy'],
 };
 
-const H = ({ children }: { children: React.ReactNode }) => <h2 className="font-display font-bold text-2xl uppercase tracking-tight mt-12 mb-4">{children}</h2>;
+const H = ({ children }: { children: React.ReactNode }) => <h2 className="font-serif font-semibold text-2xl mt-12 mb-4">{children}</h2>;
 const P = ({ children }: { children: React.ReactNode }) => <p className="mb-4">{children}</p>;
 const UL = ({ children }: { children: React.ReactNode }) => <ul className="list-disc pl-6 space-y-2 mb-4">{children}</ul>;
 
@@ -36,7 +36,7 @@ export default function Legal({ doc }: { doc: Doc }) {
 
   return (
     <div className="pb-20 md:pb-28">
-      <PageHero line1={TITLES[doc][0]} line2={TITLES[doc][1]} />
+      <PageHero title={TITLES[doc][0]} accent={TITLES[doc][1]} />
       <article className="max-w-[70ch] mx-auto px-4 sm:px-6 py-12 md:py-16 text-lg leading-relaxed text-bai-black/85">
         <p className="text-bai-black/70 mb-8">Last updated {LAST_UPDATED}</p>
 

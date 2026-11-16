@@ -76,8 +76,8 @@ describe('loading content', () => {
     });
     expect(site.socials).toEqual([{ network: 'instagram', url: 'https://instagram.com/ok' }]);
 
-    const home = resolveSection('home', { hero: { image: 'javascript:alert(1)' }, community: { images: ['assets/a.jpg', 'http://x/y.jpg', 7] } });
-    expect(home.hero.image).toBe('assets/hero.jpg');
+    const home = resolveSection('home', { hero: { images: ['javascript:alert(1)', 'assets/photos/a.jpg'] }, community: { images: ['assets/a.jpg', 'http://x/y.jpg', 7] } });
+    expect(home.hero.images).toEqual(['assets/photos/a.jpg']);
     expect(home.community.images).toEqual(['assets/a.jpg']);
   });
 
@@ -124,7 +124,7 @@ describe('loading content', () => {
     const about = resolveSection('about', legacy);
     expect(about.management[0].name).toBe('Nceba Mdaka');
     expect(about.story.stats).toEqual([{ value: '3', label: 'Tours' }]);
-    expect(about.hero.label).toBe(SECTIONS.about.defaults.hero.label);
+    expect(about.heroImage).toBe(SECTIONS.about.defaults.heroImage);
 
     const work = resolveSection('work', {
       pillars: [{ title: 'Choral', desc: 'Sing.', type: 'choral' }],
@@ -195,10 +195,10 @@ describe('validating what staff type', () => {
 
   it('rejects images that are not pictures', () => {
     const draft = structuredClone(SECTIONS.home.defaults) as any;
-    draft.hero.image = 'data:image/svg+xml;base64,AAAA';
+    draft.hero.images = ['data:image/svg+xml;base64,AAAA'];
     draft.community.images = ['assets/a.jpg', 'javascript:x'];
     const errors = validate(SECTIONS.home.fields, draft);
-    expect(errors['hero.image']).toBeDefined();
+    expect(errors['hero.images']).toBeDefined();
     expect(errors['community.images']).toBeDefined();
   });
 

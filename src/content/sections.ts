@@ -13,6 +13,7 @@ export interface Stat { value: string; label: string; detail: string }
 
 export interface SiteContent {
   contact: { address: string; phone: string; email: string };
+  eventsHeroImage: string;
   footerBlurb: string;
   copyrightLine: string;
   socials: Array<{ network: 'youtube' | 'facebook' | 'instagram' | 'whatsapp'; url: string }>;
@@ -20,7 +21,7 @@ export interface SiteContent {
 }
 
 export interface HomeContent {
-  hero: { text: string; tagline: string; image: string };
+  hero: { tagline: string; images: string[] };
   stats: Stat[];
   philosophy: { headingLine1: string; headingLine2: string; quote: string; image: string; buttonLabel: string };
   community: { headingLine1: string; headingLine2: string; caption: string; images: string[] };
@@ -31,7 +32,7 @@ export interface HomeContent {
 }
 
 export interface AboutContent {
-  hero: { label: string; quote: string };
+  heroImage: string;
   badge: string;
   story: { title: string; description: string; stats: Array<{ value: string; label: string }> };
   valuesHeading: string;
@@ -41,7 +42,7 @@ export interface AboutContent {
 }
 
 export interface WorkContent {
-  hero: { tagline: string; description: string };
+  heroImage: string;
   pillars: Array<{ title: string; desc: string }>;
   gallery: { headingLine1: string; headingLine2: string };
   projects: Array<{ title: string; imageUrl: string }>;
@@ -52,7 +53,7 @@ export interface WorkContent {
 }
 
 export interface TraditionsContent {
-  hero: { label: string; quote: string };
+  heroImage: string;
   items: Array<{ title: string; tag: string; desc: string; when: string }>;
 }
 
@@ -96,7 +97,7 @@ const statFields = (withDetail: boolean): Field[] => [
 const site: SectionDef<'site'> = {
   key: 'site',
   title: 'Contact, socials and partners',
-  shownOn: 'The footer of every page and the partners strip on the home page.',
+  shownOn: 'The footer of every page, the partners strip on the home page, the social links on Our Work, and the photo at the top of Events.',
   preview: '/',
   fields: [
     { kind: 'group', key: 'contact', label: 'Contact details', fields: [
@@ -104,6 +105,7 @@ const site: SectionDef<'site'> = {
       { kind: 'tel', key: 'phone', label: 'Phone number', required: true },
       { kind: 'email', key: 'email', label: 'Email address', required: true },
     ] },
+    { kind: 'image', key: 'eventsHeroImage', label: 'Photo at the top of the Events page', required: true },
     text('footerBlurb', 'Footer introduction', 200, long),
     text('copyrightLine', 'Line after the copyright notice', 100),
     { kind: 'list', key: 'socials', label: 'Social media links', itemLabel: 'Social link', titleKey: 'network', max: 8, fields: [
@@ -125,6 +127,7 @@ const site: SectionDef<'site'> = {
       phone: '+27 12 702 4455',
       email: 'info@bokamosoarts.org',
     },
+    eventsHeroImage: 'assets/photos/choir-red.jpg',
     footerBlurb: 'Bula Pelo. Open your heart. We nurture the voices of Mabopane to resonate across the globe.',
     copyrightLine: 'Cultural excellence from Mabopane.',
     socials: [
@@ -150,9 +153,8 @@ const home: SectionDef<'home'> = {
   preview: '/',
   fields: [
     { kind: 'group', key: 'hero', label: 'Top of the page', fields: [
-      text('text', 'Introduction', 220, { ...required, ...long }),
-      text('tagline', 'Tagline', 80),
-      { kind: 'image', key: 'image', label: 'Background photo', required: true },
+      text('tagline', 'Line under the name', 80, { help: 'Bula Pelo is underlined by hand on the page.' }),
+      { kind: 'images', key: 'images', label: 'Slideshow photos', max: 6, help: 'Wide photos of the choir work best. The first photo shows first.' },
     ] },
     { kind: 'list', key: 'stats', label: 'Key figures', itemLabel: 'Figure', titleKey: 'label', max: 4, fields: statFields(true) },
     { kind: 'group', key: 'philosophy', label: 'Philosophy', fields: [
@@ -188,9 +190,8 @@ const home: SectionDef<'home'> = {
   ],
   defaults: {
     hero: {
-      text: 'Nurturing African Excellence through choral music and holistic youth development since 2022.',
       tagline: 'Bula Pelo. Open your heart.',
-      image: 'assets/hero.jpg',
+      images: ['assets/photos/choir-stage.jpg', 'assets/photos/choir-red.jpg', 'assets/photos/choir-black.jpg'],
     },
     stats: [
       { value: '2', label: 'WCG World Titles', detail: 'Gold Medals in South Korea 2023' },
@@ -229,10 +230,7 @@ const about: SectionDef<'about'> = {
   preview: '/about',
   legacyPath: 'about/main',
   fields: [
-    { kind: 'group', key: 'hero', label: 'Top of the page', fields: [
-      text('label', 'Line above the heading', 60),
-      text('quote', 'Quote', 240, long),
-    ] },
+    { kind: 'image', key: 'heroImage', label: 'Photo at the top of the page', required: true },
     text('badge', 'Founding line', 40, { help: 'For example Since 2022.' }),
     { kind: 'group', key: 'story', label: 'Our story', fields: [
       text('title', 'Heading', 60, required),
@@ -253,10 +251,7 @@ const about: SectionDef<'about'> = {
     { kind: 'images', key: 'choirPictures', label: 'Choir photos', max: 24, help: 'The first photo also appears beside the story.' },
   ],
   defaults: {
-    hero: {
-      label: 'The BAI Rhythm',
-      quote: '"We are not just a choir; we are the guardians of the community\'s soul."',
-    },
+    heroImage: 'assets/photos/choir-stage.jpg',
     badge: 'Since 2022',
     story: {
       title: 'Our Story',
@@ -286,10 +281,7 @@ const work: SectionDef<'work'> = {
   preview: '/programs',
   legacyPath: 'work/main',
   fields: [
-    { kind: 'group', key: 'hero', label: 'Top of the page', fields: [
-      text('tagline', 'Line above the heading', 60),
-      text('description', 'Quote', 240, long),
-    ] },
+    { kind: 'image', key: 'heroImage', label: 'Photo at the top of the page', required: true },
     { kind: 'list', key: 'pillars', label: 'What we do', itemLabel: 'Area of work', titleKey: 'title', max: 6, fields: [
       text('title', 'Title', 60, required),
       text('desc', 'Description', 300, { ...required, ...long }),
@@ -312,10 +304,7 @@ const work: SectionDef<'work'> = {
     ] },
   ],
   defaults: {
-    hero: {
-      tagline: 'Our Artistic Journey',
-      description: '"Transforming the raw talent of the township into world-class excellence."',
-    },
+    heroImage: 'assets/photos/choir-red.jpg',
     pillars: [
       { title: 'Choral Mastery', desc: 'Intensive vocal training focusing on indigenous South African rhythms, hymns, and contemporary choral arrangements.' },
       { title: 'Professional Coaching', desc: 'Developing stage presence, emotional connectivity, and technical precision through professional workshops.' },
@@ -350,10 +339,7 @@ const traditions: SectionDef<'traditions'> = {
   shownOn: 'The Traditions page.',
   preview: '/traditions',
   fields: [
-    { kind: 'group', key: 'hero', label: 'Top of the page', fields: [
-      text('label', 'Line above the heading', 60),
-      text('quote', 'Quote', 240, long),
-    ] },
+    { kind: 'image', key: 'heroImage', label: 'Photo at the top of the page', required: true },
     { kind: 'list', key: 'items', label: 'Traditions', itemLabel: 'Tradition', titleKey: 'title', min: 1, max: 12, fields: [
       text('title', 'Name', 80, required),
       text('tag', 'Short description', 60),
@@ -362,10 +348,7 @@ const traditions: SectionDef<'traditions'> = {
     ] },
   ],
   defaults: {
-    hero: {
-      label: 'The BAI Rhythm',
-      quote: '"We are not just a choir; we are the guardians of the community\'s soul."',
-    },
+    heroImage: 'assets/photos/choir-black.jpg',
     items: [
       { title: 'Annual Prayer Service', tag: 'The First Kick', desc: 'Our season begins with an all-night spiritual gathering in Mabopane. We invite elders, parents, and community leaders to join the institute in a collective "Bula Pelo" prayer for the year ahead.', when: 'Every February 14-15' },
       { title: 'Conductors Extravaganza', tag: 'Artistic Focus', desc: 'A week-long masterclass hosted by BAI, bringing together the finest choral conductors in Southern Africa to share techniques, arrangements, and the philosophy of African Excellence.', when: 'Annually' },
