@@ -32,7 +32,8 @@ export default function Register() {
     setError(null);
     try {
       await authController.register(email, password, displayName);
-      navigate(safeReturnPath(location.state) || ROUTES.HOME, { replace: true });
+      // Creating an account does not sign you in: sign in next, then carry on to where you were going.
+      navigate(ROUTES.LOGIN, { replace: true, state: { from: safeReturnPath(location.state) || undefined, registered: email.trim() } });
     } catch (err) {
       setError(friendlyError(err, 'Your account could not be created. Please try again.'));
     } finally {

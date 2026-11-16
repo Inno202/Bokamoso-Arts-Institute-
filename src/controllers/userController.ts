@@ -12,10 +12,8 @@ import {
   updateDoc,
   type QueryDocumentSnapshot,
 } from 'firebase/firestore';
-import { initializeApp, deleteApp } from 'firebase/app';
-import { getAuth, createUserWithEmailAndPassword, updateProfile, signOut } from 'firebase/auth';
-import firebaseConfig from '../../firebase-applet-config.json';
-import { db } from './lib/firebase';
+import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
+import { db, inSignupSession } from './lib/firebase';
 import { UserProfile, UserRole } from '../models/types';
 
 const USERS = 'users';
@@ -52,10 +50,8 @@ export const userController = {
    * short-lived second Firebase app for the new user's sign-up.
    */
   async createUser(input: { email: string; password: string; displayName: string; role: UserRole }) {
-    const secondary = initializeApp(firebaseConfig, `staff-signup-${Date.now()}`);
-    try {
-      const secondaryAuth = getAuth(secondary);
-      const credential = await createUserWithEmailAndPassword(secondaryAuth, input.email.trim(), input.password);
+    await inSignupSession(async (session) => {
+      const credential = await createUserWithEmailAndPassword(session.auth, input.email.trim(), input.password);
       await updateProfile(credential.user, { displayName: input.displayName.trim() });
       await setDoc(doc(db, USERS, credential.user.uid), {
         email: input.email.trim(),
@@ -64,9 +60,6 @@ export const userController = {
         isActive: true,
         createdAt: serverTimestamp(),
       });
-      await signOut(secondaryAuth);
-    } finally {
-      await deleteApp(secondary);
-    }
+    });
   },
 };
