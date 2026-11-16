@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, NavLink, useParams } from 'react-router-dom';
-import { ExternalLink, Loader2, RotateCcw, Save } from 'lucide-react';
+import { Clock, ExternalLink, KeyRound, Loader2, RotateCcw, Save, ShieldCheck } from 'lucide-react';
 import { AdminShell } from './AdminShell';
 import { FieldEditor, fieldId } from './FieldEditor';
 import { useAuth } from '../components/AuthProvider';
@@ -8,7 +8,9 @@ import { ROUTES } from '../../controllers/navigation';
 import { clean, type Data, type Errors } from '../../content/fields';
 import { SECTIONS, SECTION_KEYS, isSectionKey, type SectionKey } from '../../content/sections';
 import { ContentValidationError, saveSection, useContentState } from '../../content/store';
-import { formatDateTime, friendlyError } from '../../controllers/lib/utils';
+import { formatDateTime, friendlyError, toDate } from '../../controllers/lib/utils';
+import { contentAccessController, hasLiveAccess, NOTE_LIMIT } from '../../controllers/contentAccessController';
+import { needsContentApproval, type ContentAccess } from '../../models/types';
 import { toast } from '../../services/toast';
 import { confirmAction } from '../../services/confirm';
 import { logger } from '../../services/loggerService';
@@ -16,9 +18,18 @@ import { logger } from '../../services/loggerService';
 export default function AdminContent() {
   const { section } = useParams();
   const key: SectionKey = isSectionKey(section) ? section : 'site';
+  const { role } = useAuth();
 
   return (
     <AdminShell title="Site content">
+      {needsContentApproval(role) ? <AccessGate>{editorFor(key)}</AccessGate> : editorFor(key)}
+    </AdminShell>
+  );
+}
+
+function editorFor(key: SectionKey) {
+  return (
+    <>
       <nav aria-label="Content sections" className="mb-10">
         <ul className="flex flex-wrap gap-2">
           {SECTION_KEYS.map(k => (
@@ -38,7 +49,114 @@ export default function AdminContent() {
       </nav>
       {/* A fresh editor per section, so one section's unsaved text never leaks into another. */}
       <SectionEditor key={key} sectionKey={key} />
-    </AdminShell>
+    </>
+  );
+}
+
+/**
+ * PRO staff see the editor only while a super admin or the CEO has approved it.
+ * The Firestore rules enforce the same thing; this screen explains it and lets them ask.
+ */
+function AccessGate({ children }: { children: React.ReactNode }) {
+  const { user, userData } = useAuth();
+  const [access, setAccess] = useState<ContentAccess | null | undefined>(undefined);
+  const [failed, setFailed] = useState(false);
+  const [now, setNow] = useState(() => Date.now());
+  const [note, setNote] = useState('');
+  const [sending, setSending] = useState(false);
+  // Once the editor has been open this visit, keep it open when access runs out, so unsaved text is not lost.
+  const [hadAccess, setHadAccess] = useState(false);
+
+  useEffect(() => {
+    if (!user) return;
+    return contentAccessController.subscribeMine(user.uid, (a) => { setAccess(a); setFailed(false); }, () => setFailed(true));
+  }, [user]);
+
+  // Re-check when the approval is due to run out.
+  const until = toDate(access?.expiresAt)?.getTime();
+  useEffect(() => {
+    if (!until || until <= Date.now()) return;
+    const timer = setTimeout(() => setNow(Date.now()), Math.min(until - Date.now() + 500, 2 ** 31 - 1));
+    return () => clearTimeout(timer);
+  }, [until]);
+
+  const live = hasLiveAccess(access, now);
+  useEffect(() => { if (live) setHadAccess(true); }, [live]);
+
+  const ask = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user || sending) return;
+    setSending(true);
+    try {
+      await contentAccessController.request(user, userData?.displayName || user.displayName || '', note);
+      setNote('');
+      toast.success('Request sent. You can edit as soon as it is approved.');
+    } catch (err) {
+      logger.error('Could not request content access', err);
+      toast.error(friendlyError(err, 'Your request could not be sent. Please try again.'));
+    } finally {
+      setSending(false);
+    }
+  };
+
+  if (access === undefined && !failed) {
+    return <div className="py-20 flex justify-center" role="status" aria-label="Checking your access"><Loader2 className="animate-spin" size={28} aria-hidden="true" /></div>;
+  }
+
+  const requestForm = (
+    <form onSubmit={ask} className="mt-6 space-y-4">
+      <div>
+        <label htmlFor="access-note" className="field-label">What would you like to change? <span className="font-normal text-bai-black/70">(optional)</span></label>
+        <textarea id="access-note" rows={3} maxLength={NOTE_LIMIT} value={note} onChange={(e) => setNote(e.target.value)} className="field leading-relaxed" placeholder="For example: add the new tour photos to the About page" />
+      </div>
+      <button type="submit" disabled={sending} className="btn btn-primary">
+        {sending ? <Loader2 className="animate-spin" size={18} aria-hidden="true" /> : <KeyRound size={18} aria-hidden="true" />}
+        <span>{sending ? 'Sending request' : 'Request access'}</span>
+      </button>
+    </form>
+  );
+
+  if (live || hadAccess) {
+    return (
+      <>
+        {live ? (
+          <p className="mb-8 p-4 rounded-xl bg-green-50 text-green-950 flex items-center gap-3" role="status">
+            <ShieldCheck size={20} className="shrink-0 text-green-800" aria-hidden="true" />
+            <span>You can edit site content until <strong className="num">{formatDateTime(access?.expiresAt)}</strong>.</span>
+          </p>
+        ) : (
+          <div className="mb-8 p-5 rounded-xl bg-amber-50 text-amber-950" role="alert">
+            <p className="font-semibold">Your editing access has ended, so changes can no longer be saved.</p>
+            <p className="mt-1 text-sm">Keep this page open and ask again: your unsaved text stays here.</p>
+            {access?.status === 'PENDING' ? <p className="mt-3 text-sm font-semibold">Request sent. Waiting for approval.</p> : requestForm}
+          </div>
+        )}
+        {children}
+      </>
+    );
+  }
+
+  return (
+    <section className="panel p-6 sm:p-8 max-w-2xl" aria-labelledby="access-heading">
+      <h2 id="access-heading" className="display text-3xl">Ask to edit site content</h2>
+      <p className="text-bai-ink-soft mt-3 leading-relaxed">
+        PRO staff need approval from a super admin or the CEO before changing site content. Once approved, you can edit for the time they choose.
+      </p>
+      {failed && <p className="mt-5 p-4 rounded-xl bg-red-50 text-red-900" role="alert">Your access could not be checked. Check your connection and reload the page.</p>}
+      {access?.status === 'PENDING' ? (
+        <div className="mt-6 p-5 rounded-xl bg-blue-50 text-blue-950" role="status">
+          <p className="font-semibold flex items-center gap-2"><Clock size={18} aria-hidden="true" />Request sent {formatDateTime(access.requestedAt)}</p>
+          <p className="mt-1 text-sm">Waiting for approval. This page opens the editor by itself once it is approved.</p>
+          {access.note && <p className="mt-3 text-sm break-words">Your note: {access.note}</p>}
+        </div>
+      ) : (
+        <>
+          {access?.status === 'DECLINED' && <p className="mt-5 p-4 rounded-xl bg-red-50 text-red-900">Your last request was declined {formatDateTime(access.decidedAt)}. You can ask again.</p>}
+          {(access?.status === 'ENDED' || access?.status === 'APPROVED') && <p className="mt-5 p-4 rounded-xl bg-bai-sand">Your last access ended {formatDateTime(access.expiresAt)}.</p>}
+          {requestForm}
+        </>
+      )}
+    </section>
   );
 }
 

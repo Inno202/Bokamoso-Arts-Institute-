@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import type { QueryDocumentSnapshot } from 'firebase/firestore';
 import { UserX, UserCheck } from 'lucide-react';
 import { AdminShell } from './AdminShell';
+import { ContentAccessRequests } from './ContentAccessRequests';
 import { useAuth } from '../components/AuthProvider';
 import { userController } from '../../controllers/userController';
 import { logger } from '../../services/loggerService';
@@ -109,6 +110,7 @@ export default function AdminUsers() {
 
   return (
     <AdminShell title="Users">
+            <ContentAccessRequests />
             <form onSubmit={handleAddUser} className="mb-8 border-b border-bai-black/15 pb-8">
               <h2 className="font-semibold text-lg mb-3">Add a staff account</h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">

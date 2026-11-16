@@ -295,7 +295,7 @@ test('handing out roles needs a recent sign-in', async () => {
   await assertFails(updateDoc(doc(as('ceo', 'ceo@example.com', 9 * 3600), 'users/alice'), { isActive: false }));
   await assertSucceeds(updateDoc(doc(as('root'), 'users/alice'), { role: 'CEO' }));
   // An old session can still do everyday work.
-  await assertSucceeds(setDoc(doc(as('pro', 'pro@example.com', 9 * 3600), 'content/home'), { data: { a: 1 }, updatedAt: serverTimestamp(), updatedBy: 'pro' }));
+  await assertSucceeds(setDoc(doc(as('ceo', 'ceo@example.com', 9 * 3600), 'content/home'), { data: { a: 1 }, updatedAt: serverTimestamp(), updatedBy: 'ceo' }));
 });
 
 test('tickets are visible to their buyer and staff only', async () => {
@@ -364,10 +364,11 @@ test('site content is public to read', async () => {
 });
 
 test('only content editors can change site content', async () => {
-  for (const uid of ['root', 'ceo', 'pro']) {
+  for (const uid of ['root', 'ceo']) {
     await assertSucceeds(setDoc(doc(as(uid), 'content/traditions'), section(uid)));
   }
-  for (const uid of ['alice', 'door', 'fin', 'exadmin']) {
+  // PRO staff need an approved request first (see the access request tests).
+  for (const uid of ['pro', 'alice', 'door', 'fin', 'exadmin']) {
     await assertFails(setDoc(doc(as(uid), 'content/traditions'), section(uid)));
   }
   await assertFails(setDoc(doc(guest(), 'content/traditions'), section('root')));
@@ -376,12 +377,67 @@ test('only content editors can change site content', async () => {
 });
 
 test('content saves must be well-formed and signed by the person saving', async () => {
-  const db = as('pro');
+  const db = as('ceo');
   await assertFails(setDoc(doc(db, 'content/traditions'), section('root')), 'someone else as author');
-  await assertFails(setDoc(doc(db, 'content/traditions'), section('pro', { updatedAt: Timestamp.fromMillis(0) })), 'back-dated');
-  await assertFails(setDoc(doc(db, 'content/traditions'), section('pro', { role: 'SUPER_ADMIN' })), 'extra fields');
-  await assertFails(setDoc(doc(db, 'content/traditions'), section('pro', { data: 'text' })), 'data is not a map');
-  await assertFails(setDoc(doc(db, 'content/anything-else'), section('pro')), 'unknown section');
+  await assertFails(setDoc(doc(db, 'content/traditions'), section('ceo', { updatedAt: Timestamp.fromMillis(0) })), 'back-dated');
+  await assertFails(setDoc(doc(db, 'content/traditions'), section('ceo', { role: 'SUPER_ADMIN' })), 'extra fields');
+  await assertFails(setDoc(doc(db, 'content/traditions'), section('ceo', { data: 'text' })), 'data is not a map');
+  await assertFails(setDoc(doc(db, 'content/anything-else'), section('ceo')), 'unknown section');
+});
+
+// ---------- site content access requests ----------
+
+const accessRequest = (uid, extra = {}) => ({
+  uid, name: 'Pro Officer', email: `${uid}@example.com`, note: 'Update the Traditions page', status: 'PENDING', requestedAt: serverTimestamp(), ...extra,
+});
+const decide = (uid, status, extra = {}) => ({ status, decidedBy: uid, decidedAt: serverTimestamp(), ...extra });
+const inHours = (h) => Timestamp.fromMillis(Date.now() + h * 3600e3);
+
+test('a PRO can ask for content access, but cannot approve it', async () => {
+  const pro = as('pro');
+  await assertFails(setDoc(doc(pro, 'content_access/pro'), accessRequest('pro', { status: 'APPROVED', expiresAt: inHours(24) })), 'self-approved request');
+  await assertFails(setDoc(doc(pro, 'content_access/pro'), accessRequest('pro', { email: 'ceo@example.com' })), 'someone else\'s email');
+  await assertFails(setDoc(doc(pro, 'content_access/pro'), accessRequest('pro', { note: 'x'.repeat(301) })), 'note too long');
+  await assertFails(setDoc(doc(as('alice'), 'content_access/alice'), accessRequest('alice')), 'not PRO staff');
+  await assertFails(setDoc(doc(pro, 'content_access/door'), accessRequest('door')), 'on someone else\'s behalf');
+  await assertSucceeds(setDoc(doc(pro, 'content_access/pro'), accessRequest('pro')));
+  await assertFails(updateDoc(doc(pro, 'content_access/pro'), decide('pro', 'APPROVED', { expiresAt: inHours(24) })), 'approving their own request');
+  await assertFails(setDoc(doc(pro, 'content_access/pro'), accessRequest('pro')), 'asking again while one is waiting');
+  await assertFails(setDoc(doc(pro, 'content/traditions'), section('pro')), 'still waiting: cannot edit');
+});
+
+test('requests are visible to their owner and to user admins only', async () => {
+  await assertSucceeds(setDoc(doc(as('pro'), 'content_access/pro'), accessRequest('pro')));
+  await assertSucceeds(getDoc(doc(as('pro'), 'content_access/pro')));
+  await assertSucceeds(getDocs(collection(as('ceo'), 'content_access')));
+  await assertSucceeds(getDocs(collection(as('root'), 'content_access')));
+  await assertFails(getDocs(collection(as('pro'), 'content_access')));
+  await assertFails(getDoc(doc(as('fin'), 'content_access/pro')));
+  await assertFails(getDoc(doc(as('alice'), 'content_access/pro')));
+});
+
+test('once the CEO approves, the PRO can edit until it expires or is ended', async () => {
+  await assertSucceeds(setDoc(doc(as('pro'), 'content_access/pro'), accessRequest('pro')));
+  const ceo = as('ceo');
+  await assertFails(updateDoc(doc(ceo, 'content_access/pro'), decide('ceo', 'APPROVED', { expiresAt: inHours(24 * 8) })), 'longer than 7 days');
+  await assertFails(updateDoc(doc(ceo, 'content_access/pro'), decide('root', 'APPROVED', { expiresAt: inHours(24) })), 'signed as someone else');
+  await assertFails(updateDoc(doc(as('fin'), 'content_access/pro'), decide('fin', 'APPROVED', { expiresAt: inHours(24) })), 'finance cannot approve');
+  await assertSucceeds(updateDoc(doc(ceo, 'content_access/pro'), decide('ceo', 'APPROVED', { expiresAt: inHours(24) })));
+  await assertSucceeds(setDoc(doc(as('pro'), 'content/traditions'), section('pro')));
+  // Ending it early takes effect at once.
+  await assertFails(updateDoc(doc(ceo, 'content_access/pro'), decide('ceo', 'ENDED', { expiresAt: inHours(1) })), 'ended in the future');
+  await assertSucceeds(updateDoc(doc(ceo, 'content_access/pro'), decide('ceo', 'ENDED', { expiresAt: serverTimestamp() })));
+  await assertFails(setDoc(doc(as('pro'), 'content/traditions'), section('pro')), 'ended: cannot edit');
+});
+
+test('expired or declined access does not let a PRO edit', async () => {
+  await env.withSecurityRulesDisabled(ctx => setDoc(doc(ctx.firestore(), 'content_access/pro'),
+    { ...accessRequest('pro', { requestedAt: Timestamp.now() }), status: 'APPROVED', decidedBy: 'ceo', decidedAt: Timestamp.now(), expiresAt: Timestamp.fromMillis(Date.now() - 1000) }));
+  await assertFails(setDoc(doc(as('pro'), 'content/traditions'), section('pro')), 'expired');
+  await assertSucceeds(setDoc(doc(as('pro'), 'content_access/pro'), accessRequest('pro')), 'can ask again after expiry');
+  await assertSucceeds(updateDoc(doc(as('root'), 'content_access/pro'), decide('root', 'DECLINED')));
+  await assertFails(setDoc(doc(as('pro'), 'content/traditions'), section('pro')), 'declined');
+  await assertFails(updateDoc(doc(as('root'), 'content_access/pro'), decide('root', 'APPROVED', { expiresAt: inHours(1) })), 'a declined request cannot be approved later; ask again');
 });
 
 test('the earlier About and Our Work documents are read-only', async () => {

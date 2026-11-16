@@ -1,9 +1,9 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Camera, CheckCircle, XCircle, Keyboard, Calendar, Ticket as TicketIcon } from 'lucide-react';
+import { Camera, CheckCircle, XCircle, Keyboard, Calendar, Ticket as TicketIcon, RefreshCw } from 'lucide-react';
 import { useAuth } from '../components/AuthProvider';
 import { ticketController } from '../../controllers/ticketController';
 import { eventController } from '../../controllers/eventController';
-import { Html5QrcodeScanner } from 'html5-qrcode';
+import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
 import { logger } from '../../services/loggerService';
 import { formatDateTime, friendlyError } from '../../controllers/lib/utils';
 import { Ticket } from '../../models/types';
@@ -12,21 +12,52 @@ type Result =
   | { kind: 'success'; ticket: Ticket; eventName: string; eventDate: string }
   | { kind: 'error'; message: string };
 
+type CameraState = { kind: 'starting' } | { kind: 'running' } | { kind: 'failed'; message: string };
+
+/** A code still in view is ignored until it has been out of sight this long. */
+const SAME_CODE_GAP_MS = 3000;
+/** The green/red result clears by itself so the next person starts from "Ready". */
+const RESULT_CLEARS_AFTER_MS = 8000;
+
+function cameraProblem(err: unknown): string {
+  const name = (err as { name?: string })?.name || '';
+  const text = String((err as { message?: string })?.message || err || '');
+  if (name === 'NotAllowedError' || /permission|denied|notallowed/i.test(text)) {
+    return 'Camera access is blocked. Allow the camera for this site in the browser settings, then tap Try again.';
+  }
+  if (name === 'NotFoundError' || /not ?found|no camera|requested device/i.test(text)) {
+    return 'No camera was found on this device. Use "Type it in" instead.';
+  }
+  if (name === 'NotReadableError' || /in use|could not start|notreadable/i.test(text)) {
+    return 'The camera is being used by another app. Close it, then tap Try again.';
+  }
+  if (typeof window !== 'undefined' && !window.isSecureContext) return 'The camera only works over a secure (https) connection.';
+  return 'The camera could not start. Tap Try again, or use "Type it in".';
+}
+
 export default function TicketScanner() {
   const { user, userData } = useAuth();
   const [manualId, setManualId] = useState('');
   const [result, setResult] = useState<Result | null>(null);
   const [checking, setChecking] = useState(false);
   const [showManual, setShowManual] = useState(false);
+  const [camera, setCamera] = useState<CameraState>({ kind: 'starting' });
+  const [cameraAttempt, setCameraAttempt] = useState(0);
   // The camera reports the same code many times a second; these keep one check per code.
   const busy = useRef(false);
-  const lastScan = useRef({ code: '', at: 0 });
+  const lastSeen = useRef({ code: '', at: 0 });
+  // Lets the running camera call the latest verify() without restarting when it changes.
+  const verifyRef = useRef<(code: string) => void>(() => {});
+  // Each camera start waits for the previous stop, so quick switches never collide.
+  const cameraQueue = useRef<Promise<void>>(Promise.resolve());
 
-  const verify = useCallback(async (code: string) => {
-    if (!user || busy.current) return;
+  const verify = useCallback(async (raw: string) => {
+    if (!user || busy.current) return; // the code being checked is re-marked as seen when the check ends
+    const code = raw.trim();
     const now = Date.now();
-    if (code === lastScan.current.code && now - lastScan.current.at < 4000) return;
-    lastScan.current = { code, at: now };
+    const repeat = code === lastSeen.current.code && now - lastSeen.current.at < SAME_CODE_GAP_MS;
+    lastSeen.current = { code, at: now };
+    if (repeat) return;
 
     busy.current = true;
     setChecking(true);
@@ -47,26 +78,82 @@ export default function TicketScanner() {
     } finally {
       busy.current = false;
       setChecking(false);
+      lastSeen.current = { code, at: Date.now() };
     }
   }, [user]);
 
+  useEffect(() => { verifyRef.current = (code) => { void verify(code); }; }, [verify]);
+
+  useEffect(() => {
+    if (!result) return;
+    const timer = setTimeout(() => setResult(null), RESULT_CLEARS_AFTER_MS);
+    return () => clearTimeout(timer);
+  }, [result]);
+
+  // The camera depends only on the mode (and Try again), never on sign-in refreshes.
   useEffect(() => {
     if (showManual) return;
-    const scanner = new Html5QrcodeScanner(
-      'qr-reader',
-      { fps: 10, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 },
-      false,
-    );
-    scanner.render((decoded) => { void verify(decoded); }, () => { /* frames without a code are normal */ });
-    return () => {
-      scanner.clear().catch(error => logger.error('Failed to stop the camera', error));
+    let cancelled = false;
+    let scanner: Html5Qrcode | null = null;
+    setCamera({ kind: 'starting' });
+
+    const started = cameraQueue.current.then(async () => {
+      if (cancelled) return;
+      scanner = new Html5Qrcode('qr-reader', { verbose: false, formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE] });
+      try {
+        await scanner.start(
+          { facingMode: 'environment' },
+          {
+            fps: 12,
+            qrbox: (w, h) => { const side = Math.max(160, Math.floor(Math.min(w, h) * 0.7)); return { width: side, height: side }; },
+            aspectRatio: 1,
+          },
+          (decoded) => verifyRef.current(decoded),
+          () => { /* frames without a code are normal */ },
+        );
+        if (!cancelled) setCamera({ kind: 'running' });
+      } catch (err) {
+        logger.error('The camera could not start', err);
+        if (!cancelled) setCamera({ kind: 'failed', message: cameraProblem(err) });
+      }
+    });
+
+    // Stop the camera while the screen is off or another tab is in front.
+    const onVisibility = () => {
+      if (!scanner?.isScanning) return;
+      try {
+        if (document.hidden) scanner.pause(true);
+        else scanner.resume();
+      } catch { /* already in that state */ }
     };
-  }, [showManual, verify]);
+    document.addEventListener('visibilitychange', onVisibility);
+
+    return () => {
+      cancelled = true;
+      document.removeEventListener('visibilitychange', onVisibility);
+      // Grab the camera stream now, before anything is removed from the page.
+      const stopStream = () => {
+        const video = document.querySelector<HTMLVideoElement>('#qr-reader video');
+        (video?.srcObject as MediaStream | null)?.getTracks().forEach(track => track.stop());
+      };
+      cameraQueue.current = started.then(async () => {
+        if (!scanner) return;
+        try {
+          if (scanner.isScanning) await scanner.stop();
+        } catch (err) {
+          logger.error('Failed to stop the camera', err);
+        }
+        // Belt and braces: make sure no camera is left switched on.
+        stopStream();
+        try { scanner.clear(); } catch { /* already cleared */ }
+      });
+    };
+  }, [showManual, cameraAttempt]);
 
   const submitManual = (e: React.FormEvent) => {
     e.preventDefault();
     if (!manualId.trim()) return;
-    lastScan.current = { code: '', at: 0 };
+    lastSeen.current = { code: '', at: 0 };
     void verify(manualId);
   };
 
@@ -88,9 +175,9 @@ export default function TicketScanner() {
           <p className="text-white/70 text-sm mt-2">Signed in as {userData?.displayName || user?.displayName || user?.email}</p>
         </div>
 
-        <div className="mb-6 min-h-48" aria-live="assertive">
+        <div className="relative mb-6 min-h-[17.5rem] flex flex-col" aria-live="assertive">
           {result?.kind === 'success' ? (
-            <div className="bg-white text-bai-black rounded-2xl p-6 sm:p-8">
+            <div className="flex-grow bg-white text-bai-black rounded-2xl p-6 sm:p-8">
               <div className="flex items-center gap-4 mb-5">
                 <div className="w-14 h-14 bg-green-700 text-white rounded-2xl flex items-center justify-center shrink-0">
                   <CheckCircle size={32} aria-hidden="true" />
@@ -110,22 +197,49 @@ export default function TicketScanner() {
               </dl>
             </div>
           ) : result?.kind === 'error' ? (
-            <div className="bg-bai-red text-white rounded-2xl p-8 text-center">
+            <div className="flex-grow bg-bai-red text-white rounded-2xl p-8 text-center flex flex-col items-center justify-center">
               <XCircle size={56} className="mx-auto mb-4" aria-hidden="true" />
               <p className="font-display font-bold text-3xl mb-2">Do not admit</p>
               <p className="font-semibold">{result.message}</p>
             </div>
           ) : (
-            <div className="h-48 flex items-center justify-center border-2 border-dashed border-white/25 rounded-2xl text-white/70">
+            <div className="flex-grow flex items-center justify-center border-2 border-dashed border-white/25 rounded-2xl text-white/70 text-lg">
               {checking ? 'Checking ticket' : 'Ready for the next ticket'}
             </div>
+          )}
+          {checking && result && (
+            <div className="absolute inset-0 rounded-2xl bg-bai-black/80 flex items-center justify-center text-lg font-semibold" role="status">Checking ticket</div>
           )}
         </div>
 
         <div className="flex-grow flex flex-col items-center">
-          {!showManual ? (
-            <div className="w-full bg-white/5 rounded-2xl overflow-hidden" id="qr-reader" />
-          ) : (
+          {/* The camera box stays on the page in both modes (hidden while typing),
+              so the camera can always be switched off cleanly. */}
+          <div className="w-full" hidden={showManual}>
+              <div className="relative w-full aspect-square max-w-md mx-auto bg-white/5 rounded-2xl overflow-hidden">
+                <div id="qr-reader" className="w-full h-full" />
+                {camera.kind !== 'running' && (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 p-6 text-center" role={camera.kind === 'failed' ? 'alert' : 'status'}>
+                    {camera.kind === 'starting' ? (
+                      <>
+                        <span className="w-10 h-10 border-4 border-white/70 border-t-transparent rounded-full animate-spin" aria-hidden="true" />
+                        <p className="text-white/80">Starting the camera</p>
+                      </>
+                    ) : (
+                      <>
+                        <Camera size={36} className="text-white/60" aria-hidden="true" />
+                        <p className="text-white/90 max-w-xs">{camera.message}</p>
+                        <button type="button" onClick={() => setCameraAttempt(n => n + 1)} className="btn btn-light">
+                          <RefreshCw size={18} aria-hidden="true" />
+                          <span>Try again</span>
+                        </button>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          {showManual && (
             <form onSubmit={submitManual} className="w-full bg-white/5 rounded-2xl p-6 sm:p-8 space-y-5">
               <div>
                 <label htmlFor="manual-ticket" className="block text-sm font-bold text-white/80 mb-3">Ticket reference</label>

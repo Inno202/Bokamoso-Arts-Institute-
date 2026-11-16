@@ -5,6 +5,7 @@ import { useContent } from '../../content/store';
 import { contentImage } from '../../content/image';
 import { HeroSlideshow } from '../components/HeroSlideshow';
 import { useUpcomingEvents } from '../../content/upcoming';
+import { ZoomablePhoto } from '../components/ZoomablePhoto';
 import { formatCurrency, formatTime } from '../../controllers/lib/utils';
 
 const LINKS = {
@@ -35,6 +36,7 @@ export default function Home() {
   const { hero, stats, philosophy, community, highlights } = useContent('home');
   const { partners } = useContent('site');
   const upcoming = useUpcomingEvents();
+  const communityPhotos = community.images.map(image => ({ src: contentImage(image, 2000), alt: 'Bokamoso choir members with the Mabopane community' }));
 
   return (
     <div>
@@ -73,7 +75,7 @@ export default function Home() {
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 md:py-28">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-20 items-center">
           <div className="frame aspect-[4/5]">
-            <img src={contentImage(philosophy.image, 1000)} alt="The Bokamoso choir singing" loading="lazy" decoding="async" className="w-full h-full object-cover" />
+            <ZoomablePhoto src={contentImage(philosophy.image, 1000)} largeSrc={contentImage(philosophy.image, 2000)} alt="The Bokamoso choir singing" />
           </div>
           <div>
             <h2 className="display text-5xl md:text-7xl mb-8">
@@ -99,7 +101,7 @@ export default function Home() {
             <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
               {community.images.map((image, i) => (
                 <li key={image + i} className={`group frame aspect-[4/5] ${i === 1 ? 'lg:translate-y-10' : ''}`}>
-                  <img src={contentImage(image)} alt="Bokamoso choir members with the Mabopane community" loading="lazy" decoding="async" className="w-full h-full object-cover photo-zoom" />
+                  <ZoomablePhoto src={contentImage(image)} largeSrc={contentImage(image, 2000)} alt="Bokamoso choir members with the Mabopane community" className="w-full h-full object-cover photo-zoom" group={communityPhotos} index={i} />
                 </li>
               ))}
             </ul>

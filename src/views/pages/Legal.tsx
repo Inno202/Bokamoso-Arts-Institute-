@@ -81,7 +81,7 @@ export default function Legal({ doc }: { doc: Doc }) {
               <li><strong>Tickets and orders:</strong> which events you booked, how many tickets, the price and its currency, the time of booking, how many tickets your account holds for each event, and when a ticket was scanned at the door and by which staff account.</li>
               <li><strong>Your bag:</strong> the tickets you have added but not yet booked, saved to your account and in your browser so they are still there when you come back.</li>
               <li><strong>Emails you send us:</strong> if you email us, we receive whatever you choose to send.</li>
-              <li><strong>Staff activity:</strong> for staff accounts, your role and a record of which account last changed site content or scanned a ticket.</li>
+              <li><strong>Staff activity:</strong> for staff accounts, your role and a record of which account last changed site content or scanned a ticket. If you ask for access to edit site content, we keep your name, email address, any note you add, when you asked, and who approved or declined it and when.</li>
             </UL>
             <P>We do not collect card or bank details on this site, and we do not use advertising or analytics trackers.</P>
 

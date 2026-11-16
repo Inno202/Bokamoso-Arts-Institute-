@@ -179,9 +179,9 @@ export default function MyTickets() {
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="ticket-title">
           <div onClick={() => setSelected(null)} className="absolute inset-0 bg-bai-black/80" aria-hidden="true" />
 
-          {/* The ticket itself: a fixed width, and everything inside fits it. */}
-          <div className="ticket-in relative w-full max-w-[22rem] max-h-[94dvh] overflow-y-auto rounded-[1.75rem] bg-white shadow-[0_32px_80px_-24px_rgb(0_0_0/0.6)]">
-            <div className="relative h-36 bg-bai-black">
+          {/* The ticket itself: the same width as an event card, and everything inside fits it. */}
+          <div className="ticket-in relative w-full max-w-[24rem] max-h-[94dvh] overflow-y-auto rounded-[1.75rem] bg-white shadow-[0_32px_80px_-24px_rgb(0_0_0/0.6)]">
+            <div className="relative h-24 bg-bai-black">
               <img src={image(selected)} alt="" onError={fallback} className="w-full h-full object-cover opacity-80" />
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-black/10" aria-hidden="true" />
               <button
@@ -192,31 +192,30 @@ export default function MyTickets() {
               >
                 <X size={20} aria-hidden="true" />
               </button>
-              <h2 id="ticket-title" className="absolute bottom-3 left-5 right-5 font-serif font-semibold text-3xl leading-tight text-white line-clamp-2">
+              <span className={`absolute top-3 left-4 text-xs font-bold px-2.5 py-1 rounded-full ${(STATUS[selected.status] || STATUS.VALID).className}`}>
+                {(STATUS[selected.status] || STATUS.VALID).label}
+              </span>
+              <h2 id="ticket-title" className="absolute bottom-3 left-5 right-14 font-serif font-semibold text-2xl leading-tight text-white line-clamp-2">
                 {eventName(selected)}
               </h2>
             </div>
 
-            <dl className="px-5 pt-4 pb-5 grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
-              <div className="col-span-2">
+            <dl className="px-5 pt-3 pb-3.5 grid grid-cols-2 gap-x-4 gap-y-2.5 text-sm">
+              <div className="min-w-0">
                 <dt className="text-bai-ink-soft">Ticket holder</dt>
                 <dd className="font-semibold truncate">{userData?.displayName || user?.displayName || user?.email}</dd>
               </div>
-              <div className="col-span-2">
+              <div className="min-w-0">
+                <dt className="text-bai-ink-soft">Ticket</dt>
+                <dd className="font-semibold truncate">{selected.ticketType}</dd>
+              </div>
+              <div className="min-w-0">
                 <dt className="text-bai-ink-soft flex items-center gap-1.5"><Calendar size={14} aria-hidden="true" />When</dt>
                 <dd className="num font-semibold">{when(selected)}</dd>
               </div>
-              <div className="col-span-2">
+              <div className="min-w-0">
                 <dt className="text-bai-ink-soft flex items-center gap-1.5"><MapPin size={14} aria-hidden="true" />Where</dt>
-                <dd className="font-semibold line-clamp-2">{[selected.event?.venue, selected.event?.city].filter(Boolean).join(', ') || 'Venue to be confirmed'}</dd>
-              </div>
-              <div>
-                <dt className="text-bai-ink-soft">Type</dt>
-                <dd className="font-semibold">{selected.ticketType}</dd>
-              </div>
-              <div>
-                <dt className="text-bai-ink-soft">Status</dt>
-                <dd className="font-semibold">{(STATUS[selected.status] || STATUS.VALID).label}</dd>
+                <dd className="font-semibold line-clamp-2 break-words">{[selected.event?.venue, selected.event?.city].filter(Boolean).join(', ') || 'Venue to be confirmed'}</dd>
               </div>
             </dl>
 
@@ -226,14 +225,14 @@ export default function MyTickets() {
               <span className="absolute -right-8 -top-[11px] w-5 h-5 rounded-full bg-bai-black/80" />
             </div>
 
-            <div className="px-5 pt-5 pb-5 flex flex-col items-center">
-              <TicketQR value={selected.id} size={400} className={`w-44 h-44 ${selected.status === 'VALID' ? '' : 'opacity-30'}`} />
-              <p className="num font-semibold text-bai-red-deep mt-2">{selected.id}</p>
+            <div className="px-5 pt-3.5 pb-5 flex flex-col items-center">
+              <TicketQR value={selected.id} size={400} className={`w-36 h-36 ${selected.status === 'VALID' ? '' : 'opacity-30'}`} />
+              <p className="num font-semibold text-bai-red-deep mt-1.5">{selected.id}</p>
               {selected.status !== 'VALID' && (
                 <p className="mt-1 text-sm font-semibold text-red-700">{selected.status === 'SCANNED' ? 'Already used at the door' : 'This ticket was cancelled'}</p>
               )}
-              <p className="text-sm text-center text-bai-ink-soft mt-2">Show this code at the door. It admits one person, once.</p>
-              <div className="no-print grid grid-cols-2 gap-3 w-full mt-5">
+              <p className="text-sm text-center text-bai-ink-soft mt-1">Show this code at the door. It admits one person, once.</p>
+              <div className="no-print grid grid-cols-2 gap-3 w-full mt-3.5">
                 <button onClick={() => handleDownload(selected)} className="btn btn-primary">
                   <Download size={18} aria-hidden="true" />
                   <span>Save QR</span>

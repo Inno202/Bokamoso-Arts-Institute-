@@ -12,6 +12,7 @@ import { PageHero } from '../components/PageHero';
 import { ROUTES } from '../../controllers/navigation';
 import { formatCurrency, formatDate, formatTime } from '../../controllers/lib/utils';
 import { FALLBACK_EVENT_IMAGE } from '../../config';
+import { ZoomablePhoto } from '../components/ZoomablePhoto';
 import { toast } from '../../services/toast';
 
 export default function Events() {
@@ -113,18 +114,18 @@ export default function Events() {
                 <li key={event.id} className="group lift panel overflow-hidden flex flex-col">
                   {/* Every picture is cropped to the same frame, whatever shape was uploaded. */}
                   <div className="relative aspect-[4/3] overflow-hidden bg-bai-sand">
-                    <img
+                    <ZoomablePhoto
                       src={cloudinaryService.getOptimizedUrl(event.bannerImageUrl || event.ticketImageUrl) || FALLBACK_EVENT_IMAGE}
-                      alt=""
-                      onError={(e) => { if (!e.currentTarget.dataset.fallback) { e.currentTarget.dataset.fallback = '1'; e.currentTarget.src = FALLBACK_EVENT_IMAGE; } }}
-                      loading="lazy"
-                      decoding="async"
+                      largeSrc={cloudinaryService.getOptimizedUrl(event.bannerImageUrl || event.ticketImageUrl, 2000) || FALLBACK_EVENT_IMAGE}
+                      alt={`Poster for ${event.name}`}
                       className={`w-full h-full object-cover photo-zoom ${soldOut ? 'grayscale' : ''}`}
+                      iconCorner="bottom-right"
+                      imgProps={{ onError: (e) => { if (!e.currentTarget.dataset.fallback) { e.currentTarget.dataset.fallback = '1'; e.currentTarget.src = FALLBACK_EVENT_IMAGE; } } }}
                     />
-                    <span className="num absolute top-4 right-4 bg-white px-3.5 py-1.5 rounded-full font-semibold text-sm">
+                    <span className="num pointer-events-none absolute top-4 right-4 bg-white px-3.5 py-1.5 rounded-full font-semibold text-sm">
                       {event.price > 0 ? formatCurrency(event.price, event.currency) : 'Free'}
                     </span>
-                    {soldOut && <span className="absolute top-4 left-4 bg-bai-black text-white text-sm font-semibold px-3.5 py-1.5 rounded-full">Sold out</span>}
+                    {soldOut && <span className="pointer-events-none absolute top-4 left-4 bg-bai-black text-white text-sm font-semibold px-3.5 py-1.5 rounded-full">Sold out</span>}
                   </div>
 
                   <div className="p-6 flex flex-col flex-grow">

@@ -296,7 +296,54 @@ service cloud.firestore {
     // One document per section of the site. Everyone can read it; only content
     // editors can change it, and every save records who made it and when.
 
-    function isContentEditor() { return hasAnyRole(['SUPER_ADMIN', 'PRO', 'CEO']); }
+    // Super admins and the CEO edit site content directly. PRO staff need an
+    // approved, unexpired request (see content_access below).
+    function contentAccessPath(uid) {
+      return /databases/$(database)/documents/content_access/$(uid);
+    }
+    function hasContentAccess() {
+      return exists(contentAccessPath(request.auth.uid))
+        && get(contentAccessPath(request.auth.uid)).data.status == 'APPROVED'
+        && get(contentAccessPath(request.auth.uid)).data.expiresAt > request.time;
+    }
+    function isContentEditor() {
+      return hasAnyRole(['SUPER_ADMIN', 'CEO']) || (hasAnyRole(['PRO']) && hasContentAccess());
+    }
+
+    // ---------- site content access requests ----------
+    // content_access/{uid}: one record per PRO. They ask; a super admin or the CEO
+    // approves for a limited time (at most 7 days), declines, or ends it early.
+    match /content_access/{uid} {
+      allow get: if isOwner(uid) || isUserAdmin();
+      allow list: if isUserAdmin();
+
+      // A PRO asks, or asks again once the last request is no longer waiting.
+      allow create, update: if isOwner(uid) && hasAnyRole(['PRO'])
+        && (resource == null || resource.data.status != 'PENDING')
+        && request.resource.data.keys().hasOnly(['uid', 'name', 'email', 'note', 'status', 'requestedAt'])
+        && request.resource.data.uid == uid
+        && request.resource.data.status == 'PENDING'
+        && request.resource.data.requestedAt == request.time
+        && request.resource.data.name is string && request.resource.data.name.size() <= 100
+        && request.resource.data.email == tokenEmail()
+        && request.resource.data.get('note', '') is string && request.resource.data.get('note', '').size() <= 300;
+
+      // A super admin or the CEO decides; nobody decides on their own access.
+      allow update: if isUserAdmin() && request.auth.uid != uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'decidedBy', 'decidedAt', 'expiresAt'])
+        && request.resource.data.decidedBy == request.auth.uid
+        && request.resource.data.decidedAt == request.time
+        && (
+          (resource.data.status == 'PENDING' && request.resource.data.status == 'APPROVED'
+            && request.resource.data.expiresAt is timestamp
+            && request.resource.data.expiresAt > request.time
+            && request.resource.data.expiresAt <= request.time + duration.value(7, 'd'))
+          || (resource.data.status == 'PENDING' && request.resource.data.status == 'DECLINED')
+          || (resource.data.status == 'APPROVED' && request.resource.data.status == 'ENDED'
+            && request.resource.data.expiresAt == request.time)
+        );
+      allow delete: if isSuperAdmin();
+    }
 
     match /content/{section} {
       allow read: if true;

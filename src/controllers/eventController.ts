@@ -15,6 +15,7 @@ import {
 import { db } from './lib/firebase';
 import { BAIEvent } from '../models/types';
 import { cacheService } from '../services/cacheService';
+import { toDate } from './lib/utils';
 import { logger } from '../services/loggerService';
 
 const COLLECTION = 'events';
@@ -25,6 +26,16 @@ export type EventInput = Pick<BAIEvent, 'name' | 'venue' | 'city' | 'price' | 'c
   bannerImageUrl?: string;
   ticketImageUrl?: string;
 };
+
+/**
+ * Lists the most recently added event first. Events saved before creation times
+ * were recorded go after those, by performance date.
+ */
+export function sortNewestFirst<T extends Pick<BAIEvent, 'createdAt' | 'date'>>(events: T[]): T[] {
+  const added = (e: T) => toDate(e.createdAt)?.getTime() ?? -Infinity;
+  const when = (e: T) => toDate(e.date)?.getTime() ?? Infinity;
+  return [...events].sort((x, y) => (added(y) - added(x)) || (when(x) - when(y)));
+}
 
 export const eventController = {
   subscribeToEvents(
@@ -37,7 +48,9 @@ export const eventController = {
       : [orderBy('date', 'asc'), limit(MAX_LISTED)];
 
     return onSnapshot(query(collection(db, COLLECTION), ...constraints), (snapshot) => {
-      const events = snapshot.docs.map(d => ({ id: d.id, ...d.data() })) as BAIEvent[];
+      // 'estimate' gives a just-created event its local time straight away, so it
+      // jumps to the top at once instead of waiting for the server's timestamp.
+      const events = sortNewestFirst(snapshot.docs.map(d => ({ id: d.id, ...d.data({ serverTimestamps: 'estimate' }) })) as BAIEvent[]);
       events.forEach(e => cacheService.set(`${COLLECTION}:${e.id}`, e));
       callback(events);
     }, (error) => {

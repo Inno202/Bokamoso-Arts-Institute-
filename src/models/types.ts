@@ -19,6 +19,23 @@ export const isUserAdmin = inRoles(['SUPER_ADMIN', 'CEO']);
 export const isEventManager = inRoles(['SUPER_ADMIN', 'PRO', 'CEO']);
 export const isScanner = inRoles(['SUPER_ADMIN', 'PRO', 'TICKET_SCANNER']);
 export const isFinance = inRoles(['SUPER_ADMIN', 'CEO', 'FINANCE_MANAGER']);
+/** Edits site content straight away. PRO staff can open Site content but must ask first. */
+export const editsContentDirectly = inRoles(['SUPER_ADMIN', 'CEO']);
+export const needsContentApproval = inRoles(['PRO']);
+
+export type ContentAccessStatus = 'PENDING' | 'APPROVED' | 'DECLINED' | 'ENDED';
+/** content_access/{uid}: a PRO's request to edit site content, and the decision on it. */
+export interface ContentAccess {
+  uid: string;
+  name: string;
+  email: string;
+  note?: string;
+  status: ContentAccessStatus;
+  requestedAt: DateLike;
+  decidedBy?: string;
+  decidedAt?: DateLike;
+  expiresAt?: DateLike;
+}
 
 /** Firestore timestamps arrive as Timestamp objects; older records may hold ISO strings. */
 export type DateLike = Timestamp | { seconds: number } | string | Date | null | undefined;
