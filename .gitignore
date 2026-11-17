@@ -6,6 +6,8 @@ coverage/
 *.log
 .env*
 !.env.example
+# Public build values only (see the file); never secrets.
+!.env.production
 firestore-debug.log
 firebase-debug.log
 test-results/

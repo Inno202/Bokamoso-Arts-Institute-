@@ -266,7 +266,9 @@ service cloud.firestore {
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'scannedAt', 'scannedBy'])
           && request.resource.data.scannedBy == request.auth.uid
           && request.resource.data.scannedAt == request.time
-          && existsAfter(/databases/$(database)/documents/ticket_scanned/$(ticketId)))
+          && existsAfter(/databases/$(database)/documents/ticket_scanned/$(ticketId))
+          // Not for an event that has passed (more than 12 hours after it started).
+          && request.time < get(eventPath(resource.data.eventId)).data.date + duration.value(12, 'h'))
         // Super admins may cancel or restore a ticket.
         || (resource != null
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt'])

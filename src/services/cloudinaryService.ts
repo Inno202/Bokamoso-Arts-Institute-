@@ -58,7 +58,9 @@ export const cloudinaryService = {
       const body = new FormData();
       body.append('file', blob, 'upload.jpg');
       body.append('upload_preset', UPLOAD_PRESET);
-      body.append('folder', folder.replace(/[^a-z0-9/_-]/gi, ''));
+      // Everything lives under the "bokamoso" asset folder (also set on the preset).
+      const sub = folder.replace(/[^a-z0-9/_-]/gi, '').replace(/^bokamoso\/?/, '');
+      body.append('folder', sub ? `bokamoso/${sub}` : 'bokamoso');
       const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`, { method: 'POST', body });
       if (!res.ok) throw new AppError('The image could not be uploaded. Please try again.');
       const data = await res.json();

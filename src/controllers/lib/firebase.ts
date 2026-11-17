@@ -1,5 +1,5 @@
 import { deleteApp, initializeApp } from 'firebase/app';
-import { initializeAppCheck, ReCaptchaV3Provider } from 'firebase/app-check';
+import { initializeAppCheck, ReCaptchaEnterpriseProvider } from 'firebase/app-check';
 import { connectAuthEmulator, getAuth, signOut, type Auth } from 'firebase/auth';
 import { connectFirestoreEmulator, initializeFirestore, type Firestore, memoryLocalCache, persistentLocalCache, persistentMultipleTabManager } from 'firebase/firestore';
 import firebaseConfig from '../../../firebase-applet-config.json';
@@ -16,7 +16,8 @@ export const APP_CHECK_ENABLED = Boolean(import.meta.env.VITE_RECAPTCHA_SITE_KEY
 const startAppCheck = (target: typeof app) => {
   if (APP_CHECK_ENABLED && typeof window !== 'undefined') {
     initializeAppCheck(target, {
-      provider: new ReCaptchaV3Provider(import.meta.env.VITE_RECAPTCHA_SITE_KEY as string),
+      // Fraud Defense (formerly reCAPTCHA Enterprise), as registered in the Firebase console.
+      provider: new ReCaptchaEnterpriseProvider(import.meta.env.VITE_RECAPTCHA_SITE_KEY as string),
       isTokenAutoRefreshEnabled: true,
     });
   }

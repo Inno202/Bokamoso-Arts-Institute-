@@ -334,6 +334,14 @@ test('door staff admit a ticket exactly once', async () => {
   await assertFails(scan(as('pro'), 'pro'));
 });
 
+test('tickets for an event that has passed cannot be admitted', async () => {
+  const hoursAgo = (h) => Timestamp.fromMillis(Date.now() - h * 3600e3);
+  await env.withSecurityRulesDisabled(ctx => setDoc(doc(ctx.firestore(), 'events/e1'), eventDoc({ date: hoursAgo(13) })));
+  await assertFails(scan(as('door'), 'door'), 'event started 13 hours ago');
+  await env.withSecurityRulesDisabled(ctx => setDoc(doc(ctx.firestore(), 'events/e1'), eventDoc({ date: hoursAgo(3) })));
+  await assertSucceeds(scan(as('door'), 'door'), 'event started 3 hours ago is still running');
+});
+
 test('only door staff can scan, and a scan must update the ticket', async () => {
   await assertFails(scan(as('alice'), 'alice'));
   await assertFails(scan(as('fin'), 'fin'));
