@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Camera, CheckCircle, XCircle, Keyboard, Calendar, Ticket as TicketIcon, RefreshCw, WifiOff } from 'lucide-react';
+import { Camera, Check, ChevronDown, Keyboard, Calendar, RefreshCw, WifiOff, X } from 'lucide-react';
 import { useAuth } from '../components/AuthProvider';
 import { EVENT_PASSED_AFTER_HOURS, ScanRefused, ticketController, type ScanRefusal } from '../../controllers/ticketController';
 import { eventController } from '../../controllers/eventController';
@@ -25,8 +25,12 @@ type CameraState = { kind: 'starting' } | { kind: 'running' } | { kind: 'failed'
 
 /** A code still in view is ignored until it has been out of sight this long. */
 const SAME_CODE_GAP_MS = 3000;
-/** The green/red result clears by itself so the next person starts from "Ready". */
-const RESULT_CLEARS_AFTER_MS = 8000;
+/** How long the green and red results stay up before sliding away. Refusals stay longer so they can be read. */
+const SUCCESS_SHOWS_MS = 3000;
+const REFUSAL_SHOWS_MS = 5000;
+const SHEET_EXIT_MS = 220;
+/** The scan frame's side as a share of the camera area's shorter side (matches .scan-frame in index.css). */
+const FRAME_SHARE = 0.7;
 
 function cameraProblem(err: unknown): string {
   const name = (err as { name?: string })?.name || '';
@@ -45,7 +49,7 @@ function cameraProblem(err: unknown): string {
 }
 
 export default function TicketScanner() {
-  const { user, userData } = useAuth();
+  const { user } = useAuth();
   const [manualId, setManualId] = useState('');
   const [result, setResult] = useState<Result | null>(null);
   const [checking, setChecking] = useState(false);
@@ -120,19 +124,20 @@ export default function TicketScanner() {
     return () => { window.removeEventListener('online', update); window.removeEventListener('offline', update); };
   }, []);
 
-  // Bring each new result on screen: on a phone it sits above the camera or the keypad.
-  const resultRef = useRef<HTMLDivElement>(null);
+  // Each result shows briefly, then slides away by itself (tap to dismiss sooner).
+  const [leaving, setLeaving] = useState(false);
+  const dismiss = useCallback(() => setLeaving(true), []);
   useEffect(() => {
     if (!result) return;
-    const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-    resultRef.current?.scrollIntoView({ block: 'nearest', behavior: reduce ? 'auto' : 'smooth' });
-  }, [result]);
-
-  useEffect(() => {
-    if (!result) return;
-    const timer = setTimeout(() => setResult(null), RESULT_CLEARS_AFTER_MS);
+    setLeaving(false);
+    const timer = setTimeout(() => setLeaving(true), result.kind === 'success' ? SUCCESS_SHOWS_MS : REFUSAL_SHOWS_MS);
     return () => clearTimeout(timer);
   }, [result]);
+  useEffect(() => {
+    if (!leaving) return;
+    const timer = setTimeout(() => { setResult(null); setLeaving(false); }, SHEET_EXIT_MS);
+    return () => clearTimeout(timer);
+  }, [leaving]);
 
   // The camera depends only on the mode (and Try again), never on sign-in refreshes.
   useEffect(() => {
@@ -149,7 +154,8 @@ export default function TicketScanner() {
           { facingMode: 'environment' },
           {
             fps: 12,
-            qrbox: (w, h) => { const side = Math.max(160, Math.floor(Math.min(w, h) * 0.7)); return { width: side, height: side }; },
+            // The code is read inside the same square the scan frame draws on screen.
+            qrbox: (w, h) => { const side = Math.max(160, Math.floor(Math.min(w, h) * FRAME_SHARE)); return { width: side, height: side }; },
             aspectRatio: 1,
           },
           (decoded) => verifyRef.current(decoded),
@@ -201,118 +207,88 @@ export default function TicketScanner() {
     void verify(manualId);
   };
 
-  const modeButton = (active: boolean) =>
-    `h-14 rounded-lg flex items-center justify-center gap-3 font-semibold border-2 transition-colors ${
-      active ? 'bg-white text-bai-black border-white' : 'border-white/30 text-white/80 hover:border-white/60'
-    }`;
+  const switchMode = () => {
+    setShowManual(m => !m);
+    setResult(null);
+  };
+
+  const tone = result?.kind === 'success' ? 'admit' : result?.kind === 'error' ? 'refuse' : checking ? 'checking' : 'idle';
 
   return (
-    <div className={`min-h-screen text-white p-4 flex flex-col transition-colors duration-300 ${
-      result?.kind === 'success' ? 'bg-green-950' : result?.kind === 'error' ? 'bg-red-950' : 'bg-bai-black'
-    }`}>
-      <div className="max-w-lg mx-auto w-full flex-grow flex flex-col">
-        <div className="pt-8 pb-6 text-center">
-          <h1 className="display text-2xl flex items-center justify-center gap-3">
-            <TicketIcon size={22} className="text-bai-red-soft" aria-hidden="true" />
-            Door scanner
-          </h1>
-          <p className="text-white/70 text-sm mt-2">Signed in as {userData?.displayName || user?.displayName || user?.email}</p>
-        </div>
+    // Exactly one screen below the site header: nothing on this page scrolls.
+    <div className="scanner-screen bg-bai-black text-white flex flex-col overflow-hidden">
+      <h1 className="sr-only">Door scanner</h1>
 
-        {!online && (
-          <p className="mb-4 p-4 rounded-2xl bg-amber-400 text-bai-black font-semibold flex items-center gap-3" role="alert">
-            <WifiOff size={20} className="shrink-0" aria-hidden="true" />
-            No connection. Tickets cannot be checked until the phone is back online.
-          </p>
-        )}
-
-        <div className="mb-5">
-          <label htmlFor="door-event" className="block text-sm font-bold text-white/80 mb-2">Event at the door</label>
+      <div className="shrink-0 w-full max-w-[480px] mx-auto px-4 pt-3 pb-3 flex items-center gap-2">
+        <div className="relative flex-grow min-w-0">
+          <label htmlFor="door-event" className="sr-only">Event at the door</label>
           {doorEvents === null ? (
-            <div className="h-12 rounded-lg bg-white/10 animate-pulse" role="status" aria-label="Loading events" />
+            <div className="h-[48px] rounded-full bg-white/10 animate-pulse" role="status" aria-label="Loading events" />
           ) : doorEvents.length === 0 ? (
-            <p className="text-white/75 text-sm">No upcoming events. Tickets are still checked, but not matched to a show.</p>
+            <p className="h-[48px] rounded-full bg-white/10 px-4 flex items-center gap-2 text-sm text-white/80">
+              <Calendar size={16} className="shrink-0" aria-hidden="true" />
+              <span className="truncate">No upcoming events. Tickets are not matched to a show.</span>
+            </p>
           ) : (
-            <select
-              id="door-event"
-              value={doorEventId}
-              onChange={(e) => { setDoorEventId(e.target.value); setResult(null); try { localStorage.setItem(DOOR_EVENT_KEY, e.target.value); } catch { /* not remembered */ } }}
-              className="w-full min-h-[48px] rounded-lg bg-white/10 border-2 border-white/30 text-white px-3 font-semibold focus:border-white"
-            >
-              {doorEvents.map(ev => (
-                <option key={ev.id} value={ev.id} className="text-bai-black">{ev.name}{formatDateTime(ev.date) ? ` · ${formatDateTime(ev.date)}` : ''}</option>
-              ))}
-            </select>
+            <>
+              <Calendar size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/70 pointer-events-none" aria-hidden="true" />
+              <select
+                id="door-event"
+                value={doorEventId}
+                onChange={(e) => { setDoorEventId(e.target.value); setResult(null); try { localStorage.setItem(DOOR_EVENT_KEY, e.target.value); } catch { /* not remembered */ } }}
+                className="w-full h-[48px] appearance-none rounded-full bg-white/10 hover:bg-white/15 border border-white/15 text-white pl-10 pr-10 text-sm font-semibold truncate focus:border-white transition-colors"
+              >
+                {doorEvents.map(ev => (
+                  <option key={ev.id} value={ev.id} className="text-bai-black">{ev.name}{formatDateTime(ev.date) ? ` · ${formatDateTime(ev.date)}` : ''}</option>
+                ))}
+              </select>
+              <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-white/70 pointer-events-none" aria-hidden="true" />
+            </>
           )}
         </div>
+        <button
+          type="button"
+          onClick={switchMode}
+          aria-label={showManual ? 'Scan with the camera' : 'Type the ticket reference'}
+          title={showManual ? 'Scan with the camera' : 'Type the ticket reference'}
+          className="shrink-0 w-[48px] h-[48px] rounded-full bg-white/10 hover:bg-white/15 border border-white/15 flex items-center justify-center transition-colors"
+        >
+          {showManual ? <Camera size={20} aria-hidden="true" /> : <Keyboard size={20} aria-hidden="true" />}
+        </button>
+      </div>
 
-        <div ref={resultRef} className="relative mb-6 min-h-[17.5rem] flex flex-col scroll-mt-24" aria-live="assertive">
-          {result?.kind === 'success' ? (
-            <div className="flex-grow bg-white text-bai-black rounded-2xl p-6 sm:p-8">
-              <div className="flex items-center gap-4 mb-5">
-                <div className="w-14 h-14 bg-green-700 text-white rounded-2xl flex items-center justify-center shrink-0">
-                  <CheckCircle size={32} aria-hidden="true" />
-                </div>
-                <div>
-                  <p className="font-display font-bold text-2xl leading-none text-green-800">Admit</p>
-                  <p className="num text-sm font-bold text-bai-black/70 mt-1">{result.ticket.id}</p>
-                </div>
-              </div>
-              <p className="font-display font-bold text-xl leading-tight break-words">{result.eventName}</p>
-              <dl className="mt-4 pt-4 border-t border-bai-black/10 space-y-2 text-sm">
-                <div className="flex justify-between gap-4"><dt className="text-bai-black/70">Ticket</dt><dd className="font-semibold text-right">{result.ticket.ticketType}</dd></div>
-                <div className="flex justify-between gap-4"><dt className="text-bai-black/70">Booked by</dt><dd className="font-semibold text-right break-all">{result.ticket.buyerEmail || 'Unknown'}</dd></div>
-                {result.eventDate && (
-                  <div className="flex justify-between gap-4"><dt className="text-bai-black/70 flex items-center gap-2"><Calendar size={14} aria-hidden="true" />Event</dt><dd className="num font-semibold text-right">{result.eventDate}</dd></div>
-                )}
-              </dl>
-            </div>
-          ) : result?.kind === 'error' ? (
-            <div className="flex-grow bg-bai-red text-white rounded-2xl p-8 text-center flex flex-col items-center justify-center">
-              <XCircle size={56} className="mx-auto mb-4" aria-hidden="true" />
-              <p className="text-sm font-bold uppercase tracking-[0.14em] text-white/85">Do not admit</p>
-              <p className="font-display font-bold text-3xl mt-1 mb-2">{result.title}</p>
-              <p className="font-semibold break-words">{result.message}</p>
-            </div>
-          ) : (
-            <div className="flex-grow flex items-center justify-center border-2 border-dashed border-white/25 rounded-2xl text-white/70 text-lg">
-              {checking ? 'Checking ticket' : 'Ready for the next ticket'}
-            </div>
-          )}
-          {checking && result && (
-            <div className="absolute inset-0 rounded-2xl bg-bai-black/80 flex items-center justify-center text-lg font-semibold" role="status">Checking ticket</div>
-          )}
-        </div>
-
-        <div className="flex-grow flex flex-col items-center">
+      <div className="scanner-body flex-grow min-h-0 w-full max-w-[480px] mx-auto px-4 pb-4 flex flex-col items-center gap-4">
+        <div className="scanner-stage relative shrink-0 aspect-square rounded-3xl overflow-hidden bg-white/[0.04]" data-tone={tone}>
           {/* The camera box stays on the page in both modes (hidden while typing),
               so the camera can always be switched off cleanly. */}
-          <div className="w-full" hidden={showManual}>
-              <div className="relative w-full aspect-square max-w-md mx-auto bg-white/5 rounded-2xl overflow-hidden">
-                <div id="qr-reader" className="w-full h-full" />
-                {camera.kind !== 'running' && (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 p-6 text-center" role={camera.kind === 'failed' ? 'alert' : 'status'}>
-                    {camera.kind === 'starting' ? (
-                      <>
-                        <span className="w-10 h-10 border-4 border-white/70 border-t-transparent rounded-full animate-spin" aria-hidden="true" />
-                        <p className="text-white/80">Starting the camera</p>
-                      </>
-                    ) : (
-                      <>
-                        <Camera size={36} className="text-white/60" aria-hidden="true" />
-                        <p className="text-white/90 max-w-xs">{camera.message}</p>
-                        <button type="button" onClick={() => setCameraAttempt(n => n + 1)} className="btn btn-light">
-                          <RefreshCw size={18} aria-hidden="true" />
-                          <span>Try again</span>
-                        </button>
-                      </>
-                    )}
-                  </div>
+          <div className="absolute inset-0" hidden={showManual}>
+            <div id="qr-reader" className="w-full h-full" />
+            {camera.kind === 'running' && (
+              <div className="scan-frame" aria-hidden="true"><span /><span /><span /><span /></div>
+            )}
+            {camera.kind !== 'running' && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 p-6 text-center" role={camera.kind === 'failed' ? 'alert' : 'status'}>
+                {camera.kind === 'starting' ? (
+                  <>
+                    <span className="w-10 h-10 border-4 border-white/70 border-t-transparent rounded-full animate-spin" aria-hidden="true" />
+                    <p className="text-white/80">Starting the camera</p>
+                  </>
+                ) : (
+                  <>
+                    <Camera size={36} className="text-white/60" aria-hidden="true" />
+                    <p className="text-white/90 max-w-xs">{camera.message}</p>
+                    <button type="button" onClick={() => setCameraAttempt(n => n + 1)} className="btn btn-light">
+                      <RefreshCw size={18} aria-hidden="true" />
+                      <span>Try again</span>
+                    </button>
+                  </>
                 )}
               </div>
-            </div>
+            )}
+          </div>
+
           {showManual && (
-            <form onSubmit={submitManual} className="w-full bg-white/5 rounded-2xl p-6 sm:p-8 space-y-5">
+            <form onSubmit={submitManual} className="absolute inset-0 flex flex-col justify-center gap-4 p-6 sm:p-8">
               <div>
                 <label htmlFor="manual-ticket" className="block text-sm font-bold text-white/80 mb-3">Ticket reference</label>
                 <input
@@ -324,29 +300,70 @@ export default function TicketScanner() {
                   autoCapitalize="characters"
                   autoComplete="off"
                   spellCheck={false}
-                  className="num w-full h-16 bg-white/10 border-2 border-white/30 text-white placeholder:text-white/50 rounded-lg px-5 focus:border-white font-mono text-lg"
+                  className="num w-full h-14 bg-white/10 border-2 border-white/25 text-white placeholder:text-white/45 rounded-2xl px-5 focus:border-white font-mono text-lg"
                 />
               </div>
-              <button
-                type="submit"
-                disabled={checking || !manualId.trim()}
-                className="btn btn-lg btn-light btn-block"
-              >
+              <button type="submit" disabled={checking || !manualId.trim()} className="btn btn-lg btn-light btn-block">
                 {checking ? 'Checking' : 'Check ticket'}
               </button>
             </form>
           )}
 
-          <div className="w-full grid grid-cols-2 gap-4 mt-6">
-            <button onClick={() => { setShowManual(false); setResult(null); }} aria-pressed={!showManual} className={modeButton(!showManual)}>
-              <Camera size={18} aria-hidden="true" />
-              <span>Camera</span>
-            </button>
-            <button onClick={() => { setShowManual(true); setResult(null); }} aria-pressed={showManual} className={modeButton(showManual)}>
-              <Keyboard size={18} aria-hidden="true" />
-              <span>Type it in</span>
-            </button>
+          {!online && (
+            <p className="absolute top-3 inset-x-3 mx-auto w-fit max-w-[calc(100%-1.5rem)] px-4 py-2 rounded-full bg-amber-400 text-bai-black text-sm font-semibold flex items-center gap-2 shadow-lg" role="alert">
+              <WifiOff size={16} className="shrink-0" aria-hidden="true" />
+              No connection. Tickets cannot be checked until the phone is back online.
+            </p>
+          )}
+
+        </div>
+
+        {/* Under the camera: what to do next, and the result card that rises in, then slides away by itself. */}
+        <div className="relative w-full flex-grow min-h-0">
+          {!result && (checking || showManual || camera.kind === 'running') && (
+            <p className="absolute inset-0 flex items-center justify-center text-center text-white/70" role={checking ? 'status' : undefined}>
+              {checking ? 'Checking ticket' : showManual ? 'Type the reference printed under the QR code' : 'Hold the QR code inside the frame'}
+            </p>
+          )}
+          <div className="absolute inset-x-0 bottom-0" aria-live="assertive">
+            {result && (
+              <div
+                onClick={dismiss}
+                className={`result-sheet w-full text-left cursor-pointer rounded-2xl overflow-hidden shadow-[0_20px_40px_-12px_rgb(0_0_0/0.6)] ${leaving ? 'is-leaving' : ''} ${
+                  result.kind === 'success' ? 'bg-white text-bai-black' : 'bg-bai-red-deep text-white'
+                }`}
+              >
+                <span className="flex items-start gap-4 p-4 sm:p-5">
+                  <span className={`result-badge shrink-0 w-12 h-12 rounded-full flex items-center justify-center ${result.kind === 'success' ? 'bg-green-700 text-white' : 'bg-white text-bai-red-deep'}`}>
+                    {result.kind === 'success' ? <Check size={26} strokeWidth={3} aria-hidden="true" /> : <X size={26} strokeWidth={3} aria-hidden="true" />}
+                  </span>
+                  {result.kind === 'success' ? (
+                    <span className="min-w-0 flex-grow">
+                      <span className="block font-display font-bold text-2xl leading-none text-green-800">Admit</span>
+                      <span className="block font-semibold mt-1.5 truncate">{result.ticket.ticketType} · {result.eventName}</span>
+                      <span className="block text-sm text-bai-black/70 truncate">{result.ticket.buyerEmail || 'Unknown'}</span>
+                      <span className="num block text-xs text-bai-black/60 mt-0.5">{result.ticket.id}</span>
+                    </span>
+                  ) : (
+                    <span className="min-w-0 flex-grow">
+                      <span className="block text-xs font-bold uppercase tracking-[0.14em] text-white/85">Do not admit</span>
+                      <span className="block font-display font-bold text-2xl leading-tight mt-0.5">{result.title}</span>
+                      <span className="block text-sm font-semibold text-white/90 mt-1 break-words">{result.message}</span>
+                    </span>
+                  )}
+                </span>
+                <span
+                  className={`result-timer block h-1 ${result.kind === 'success' ? 'bg-green-700/80' : 'bg-white/60'}`}
+                  style={{ animationDuration: `${result.kind === 'success' ? SUCCESS_SHOWS_MS : REFUSAL_SHOWS_MS}ms` }}
+                  aria-hidden="true"
+                />
+              </div>
+            )}
           </div>
+
+          {checking && result && (
+            <div className="absolute inset-x-0 bottom-0 h-full max-h-40 rounded-2xl bg-bai-black/80 flex items-center justify-center text-lg font-semibold" role="status">Checking ticket</div>
+          )}
         </div>
       </div>
     </div>

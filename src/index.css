@@ -295,6 +295,53 @@
 }
 #qr-reader a { color: var(--color-bai-blue-soft); }
 
+/* Door scanner: exactly one screen under the site header (5rem plus its 1px line). */
+.scanner-screen { height: calc(100vh - 5rem - 1px); height: calc(100dvh - 5rem - 1px); }
+/* The square camera is as large as fits (448px at most, where the camera library reads codes reliably),
+   leaving room for the result card below it. */
+.scanner-body { container-type: size; }
+.scanner-stage { width: min(100cqw, 100cqh - 10rem, 448px); }
+/* Our own frame replaces the library's shading; both mark the same 70% square where codes are read. */
+#qr-shaded-region { display: none !important; }
+.scan-frame {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 70%;
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  border-radius: 1.5rem;
+  box-shadow: 0 0 0 100vmax rgb(0 0 0 / 0.35);
+  pointer-events: none;
+  --frame: #fff;
+  transition: box-shadow 300ms ease;
+}
+.scan-frame span {
+  position: absolute;
+  width: 18%;
+  aspect-ratio: 1;
+  border: 4px solid var(--frame);
+  transition: border-color 200ms ease;
+}
+.scan-frame span:nth-child(1) { top: 0; left: 0; border-right: 0; border-bottom: 0; border-top-left-radius: 1.5rem; }
+.scan-frame span:nth-child(2) { top: 0; right: 0; border-left: 0; border-bottom: 0; border-top-right-radius: 1.5rem; }
+.scan-frame span:nth-child(3) { bottom: 0; left: 0; border-right: 0; border-top: 0; border-bottom-left-radius: 1.5rem; }
+.scan-frame span:nth-child(4) { bottom: 0; right: 0; border-left: 0; border-top: 0; border-bottom-right-radius: 1.5rem; }
+.scanner-stage[data-tone="admit"] .scan-frame { --frame: #22c55e; }
+.scanner-stage[data-tone="refuse"] .scan-frame { --frame: var(--color-bai-red); }
+.scanner-stage[data-tone="checking"] .scan-frame span { animation: frame-pulse 900ms ease-in-out infinite; }
+@keyframes frame-pulse { 50% { opacity: 0.45; } }
+
+/* The result card rises in, then slides away; the thin bar shows how long it stays. */
+.result-sheet { animation: sheet-in 320ms cubic-bezier(0.32, 0.72, 0, 1) both; }
+.result-sheet.is-leaving { animation: sheet-out 220ms cubic-bezier(0.4, 0, 1, 1) both; }
+.result-sheet .result-badge { animation: badge-pop 420ms cubic-bezier(0.34, 1.56, 0.64, 1) 80ms both; }
+.result-timer { transform-origin: left; animation-name: timer-drain; animation-timing-function: linear; animation-fill-mode: both; }
+@keyframes sheet-in { from { opacity: 0; transform: translateY(24px) scale(0.98); } }
+@keyframes sheet-out { to { opacity: 0; transform: translateY(16px); } }
+@keyframes badge-pop { from { transform: scale(0.6); opacity: 0; } }
+@keyframes timer-drain { to { transform: scaleX(0); } }
+
 @media print {
   nav, footer, .no-print { display: none !important; }
 }
@@ -309,6 +356,7 @@
   .squiggle path { stroke-dashoffset: 0; }
   .slide[data-active="true"] img { animation: none; }
   .progress-fill[data-state="running"] { animation: none; transform: scaleX(1); }
+  .result-timer { animation: none; }
   .animate-spin, .animate-pulse {
     animation-duration: 1.5s !important;
     animation-iteration-count: infinite !important;
