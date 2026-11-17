@@ -18,8 +18,8 @@ const TICKET = 'BAI-ABCDEFGH2345';
 const TICKET2 = 'BAI-ZZZZZZZZ9999';
 
 const nowSeconds = () => Math.floor(Date.now() / 1000);
-const as = (uid, email = `${uid}@example.com`, signedInSecondsAgo = 60) =>
-  env.authenticatedContext(uid, { email, auth_time: nowSeconds() - signedInSecondsAgo }).firestore();
+const as = (uid, email = `${uid}@example.com`, signedInSecondsAgo = 60, emailVerified = true) =>
+  env.authenticatedContext(uid, { email, auth_time: nowSeconds() - signedInSecondsAgo, email_verified: emailVerified }).firestore();
 const guest = () => env.unauthenticatedContext().firestore();
 
 const profile = (role, extra = {}) => ({
@@ -176,6 +176,11 @@ test('buyers can only move the sold counter up, within capacity', async () => {
 // ---------- tickets ----------
 
 test('a buyer can purchase a ticket at the real price', async () => {
+  await assertSucceeds(buy(as('alice'), 'alice'));
+});
+
+test('booking needs a confirmed email', async () => {
+  await assertFails(buy(as('alice', 'alice@example.com', 60, false), 'alice'), 'email not confirmed');
   await assertSucceeds(buy(as('alice'), 'alice'));
 });
 

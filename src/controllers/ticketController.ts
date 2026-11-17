@@ -79,6 +79,7 @@ export const ticketController = {
    */
   async purchase(user: User, items: CartItem[]): Promise<PurchaseResult> {
     if (items.length === 0) throw new AppError('Your bag is empty.');
+    if (!user.emailVerified) throw new AppError('Confirm your email address before booking: open the link we emailed you.');
 
     const wanted = new Map<string, number>();
     for (const item of items) wanted.set(item.eventId, (wanted.get(item.eventId) || 0) + item.quantity);

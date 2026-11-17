@@ -6,6 +6,7 @@ import {
   GoogleAuthProvider,
   signInWithPopup,
   sendPasswordResetEmail,
+  sendEmailVerification,
   type User,
 } from 'firebase/auth';
 import { doc, runTransaction, serverTimestamp, type Firestore } from 'firebase/firestore';
@@ -33,6 +34,10 @@ export async function ensureUserProfile(user: User, displayName?: string, databa
   });
 }
 
+/** After confirming, the link brings people back to sign in. */
+const verificationLink = () =>
+  typeof window === 'undefined' ? undefined : { url: `${window.location.origin}${import.meta.env.BASE_URL}login` };
+
 export const authController = {
   async login(email: string, password: string) {
     const credential = await signInWithEmailAndPassword(auth, email.trim(), password);
@@ -49,7 +54,16 @@ export const authController = {
       const name = displayName.trim();
       if (name) await updateProfile(credential.user, { displayName: name });
       await ensureUserProfile(credential.user, name, session.db);
+      // Booking needs a confirmed email (enforced in firestore.rules). If the email
+      // cannot be sent now, the person can ask for it again when they first book.
+      await sendEmailVerification(credential.user, verificationLink()).catch(() => undefined);
     });
+  },
+
+  /** Sends the confirmation link again to the signed-in person. */
+  async resendVerification() {
+    if (!auth.currentUser) throw new Error('Not signed in');
+    await sendEmailVerification(auth.currentUser, verificationLink());
   },
 
   async loginWithGoogle() {

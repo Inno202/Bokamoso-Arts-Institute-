@@ -13,9 +13,13 @@ interface AuthContextType {
   userData: Omit<UserProfile, 'uid'> | null;
   role: UserRole | null;
   loading: boolean;
+  /** True once the person has confirmed their email (Google sign-ins always have). */
+  emailVerified: boolean;
+  /** Re-checks with Firebase after they click the link in their inbox. */
+  refreshEmailVerified: () => Promise<boolean>;
 }
 
-const AuthContext = createContext<AuthContextType>({ user: null, userData: null, role: null, loading: true });
+const AuthContext = createContext<AuthContextType>({ user: null, userData: null, role: null, loading: true, emailVerified: false, refreshEmailVerified: async () => false });
 
 export const useAuth = () => useContext(AuthContext);
 
@@ -25,8 +29,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [userData, setUserData] = useState<AuthContextType['userData']>(null);
   const [profileLoading, setProfileLoading] = useState(true);
 
+  const [emailVerified, setEmailVerified] = useState(false);
+  const refreshEmailVerified = async () => {
+    const current = auth.currentUser;
+    if (!current) return false;
+    await current.reload();
+    // A fresh token carries the confirmed status to the database rules.
+    if (current.emailVerified) await current.getIdToken(true);
+    setEmailVerified(current.emailVerified);
+    return current.emailVerified;
+  };
+
   useEffect(() => onAuthStateChanged(auth, (next) => {
     setUser(next);
+    setEmailVerified(!!next?.emailVerified);
     setProfileLoading(!!next);
     if (!next) setUserData(null);
     setAuthLoading(false);
@@ -94,6 +110,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     userData,
     role: userData?.role ?? null,
     loading: authLoading || profileLoading,
+    emailVerified,
+    refreshEmailVerified,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

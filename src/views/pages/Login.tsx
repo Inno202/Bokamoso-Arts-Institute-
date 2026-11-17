@@ -21,7 +21,7 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(registered ? 'Your account has been created. Sign in to continue.' : null);
+  const [notice, setNotice] = useState<string | null>(registered ? 'Your account has been created. We have emailed you a link to confirm your address: confirm it before booking tickets. Sign in to continue.' : null);
   const navigate = useNavigate();
 
   const redirectAfterLogin = async (uid: string) => {
