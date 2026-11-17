@@ -184,6 +184,13 @@ test('booking needs a confirmed email', async () => {
   await assertSucceeds(buy(as('alice'), 'alice'));
 });
 
+test('a show that is over cannot be booked', async () => {
+  await env.withSecurityRulesDisabled(ctx => setDoc(doc(ctx.firestore(), 'events/e1'), eventDoc({ date: Timestamp.fromMillis(Date.now() - 13 * 3600e3) })));
+  await assertFails(buy(as('alice'), 'alice'), 'started 13 hours ago');
+  await env.withSecurityRulesDisabled(ctx => setDoc(doc(ctx.firestore(), 'events/e1'), eventDoc({ date: Timestamp.fromMillis(Date.now() + 24 * 3600e3) })));
+  await assertSucceeds(buy(as('alice'), 'alice'));
+});
+
 test('ticket purchases cannot be forged', async () => {
   const db = as('alice');
   await assertFails(buy(db, 'alice', { order: { unitPrice: 1 }, ticket: { price: 1 } }), 'wrong price');

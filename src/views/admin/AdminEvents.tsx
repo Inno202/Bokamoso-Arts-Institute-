@@ -7,6 +7,7 @@ import { BAIEvent } from '../../models/types';
 import { formatCurrency, formatDateTime, friendlyError } from '../../controllers/lib/utils';
 import { toast } from '../../services/toast';
 import { sellsElsewhere } from '../../models/currency';
+import { eventHasEnded } from '../../controllers/lib/utils';
 import { confirmAction } from '../../services/confirm';
 import { logger } from '../../services/loggerService';
 
@@ -77,6 +78,7 @@ export default function AdminEvents() {
                 <div className="flex flex-wrap items-center gap-3">
                   <h2 className="font-semibold text-lg break-words">{event.name}</h2>
                   <span className={`text-sm font-bold px-2.5 py-0.5 rounded-full ${STATUS_STYLE[event.status] || STATUS_STYLE.Closed}`}>{event.status}</span>
+                  {eventHasEnded(event.date) && <span className="text-sm font-bold px-2.5 py-0.5 rounded-full bg-bai-black/10 text-bai-black">Ended</span>}
                   {sellsElsewhere(event) && <span className="text-sm font-bold px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-900">Sold by {event.ticketProvider || 'outside seller'}</span>}
                 </div>
                 <p className="num text-bai-black/75 mt-1">{formatDateTime(event.date) || 'No date'} · {[event.venue, event.city].filter(Boolean).join(', ')}</p>

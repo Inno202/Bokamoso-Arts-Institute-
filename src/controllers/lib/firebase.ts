@@ -32,7 +32,8 @@ export const auth = getAuth(app);
 
 // Local testing only: `VITE_USE_EMULATORS=true npm run dev` with the Firebase emulators
 // running points the app at them instead of the live project. Never active in a build.
-const USE_EMULATORS = import.meta.env.DEV && import.meta.env.VITE_USE_EMULATORS === 'true' && typeof window !== 'undefined';
+// Dev server, or a test build made with `vite build --mode emulator`; never the published build.
+const USE_EMULATORS = (import.meta.env.DEV || import.meta.env.MODE === 'emulator') && import.meta.env.VITE_USE_EMULATORS === 'true' && typeof window !== 'undefined';
 if (USE_EMULATORS) {
   connectFirestoreEmulator(db, '127.0.0.1', 8080);
   connectAuthEmulator(auth, 'http://127.0.0.1:9099', { disableWarnings: true });

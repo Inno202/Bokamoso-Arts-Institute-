@@ -1,7 +1,7 @@
 import type React from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Ticket as TicketIcon, MapPin, Calendar, Download, ChevronRight, Share2, X, Loader2 } from 'lucide-react';
+import { Ticket as TicketIcon, MapPin, Calendar, Download, ChevronRight, Share2, X, Loader2, WifiOff } from 'lucide-react';
 import { PageHero } from '../components/PageHero';
 import { useAuth } from '../components/AuthProvider';
 import { ticketController } from '../../controllers/ticketController';
@@ -30,6 +30,13 @@ export default function MyTickets() {
   const [failed, setFailed] = useState(false);
   const [selected, setSelected] = useState<TicketWithEvent | null>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
+  const [online, setOnline] = useState(() => (typeof navigator === 'undefined' ? true : navigator.onLine));
+  useEffect(() => {
+    const update = () => setOnline(navigator.onLine);
+    window.addEventListener('online', update);
+    window.addEventListener('offline', update);
+    return () => { window.removeEventListener('online', update); window.removeEventListener('offline', update); };
+  }, []);
 
   useEffect(() => {
     if (!user) return;
@@ -137,6 +144,12 @@ export default function MyTickets() {
       <PageHero title="Your" accent="tickets" />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
+        {!online && (
+          <p className="mb-6 p-4 rounded-2xl bg-amber-50 text-amber-950 flex items-center gap-3" role="status">
+            <WifiOff size={20} className="shrink-0" aria-hidden="true" />
+            You are offline. These are the tickets saved on this device; their QR codes still work at the door.
+          </p>
+        )}
         {failed ? (
           <div className="panel py-20 px-6 text-center" role="alert">
             <h2 className="display text-3xl">Your tickets could not be loaded</h2>

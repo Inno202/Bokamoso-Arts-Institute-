@@ -209,6 +209,8 @@ service cloud.firestore {
         && request.resource.data.eventName is string
         && request.resource.data.eventName.size() <= 200
         && get(eventPath(request.resource.data.eventId)).data.status == 'On Sale'
+        // Not for an event that is over (more than 12 hours after it started).
+        && request.time < get(eventPath(request.resource.data.eventId)).data.date + duration.value(12, 'h')
         // Tickets for shows sold by an outside seller are never issued here.
         && get(eventPath(request.resource.data.eventId)).data.get('ticketUrl', '') == ''
         && request.resource.data.get('currency', 'ZAR') == get(eventPath(request.resource.data.eventId)).data.get('currency', 'ZAR')

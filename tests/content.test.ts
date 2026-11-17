@@ -353,3 +353,15 @@ describe('downloadable ticket PDF', () => {
     expect(text).toContain('/Title (Bokamoso on Tour Gaborone - BAI-ABCDEFGH2345)');
   });
 });
+
+describe('when an event is over', () => {
+  it('counts an event as over 12 hours after it starts', async () => {
+    const { eventHasEnded } = await import('../src/controllers/lib/utils');
+    const now = Date.parse('2026-11-17T12:00:00Z');
+    const at = (iso: string) => ({ seconds: Date.parse(iso) / 1000 });
+    expect(eventHasEnded(at('2026-11-17T09:00:00Z'), now)).toBe(false); // started 3 hours ago
+    expect(eventHasEnded(at('2026-11-16T23:59:00Z'), now)).toBe(true); // 12 hours and a minute ago
+    expect(eventHasEnded(at('2026-12-01T18:00:00Z'), now)).toBe(false); // still to come
+    expect(eventHasEnded(null, now)).toBe(false); // no date: not treated as over
+  });
+});

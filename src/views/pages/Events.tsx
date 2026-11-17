@@ -10,7 +10,7 @@ import { useAuth } from '../components/AuthProvider';
 import { useContent } from '../../content/store';
 import { PageHero } from '../components/PageHero';
 import { ROUTES } from '../../controllers/navigation';
-import { formatCurrency, formatDate, formatTime } from '../../controllers/lib/utils';
+import { eventHasEnded, formatCurrency, formatDate, formatTime } from '../../controllers/lib/utils';
 import { FALLBACK_EVENT_IMAGE } from '../../config';
 import { ZoomablePhoto } from '../components/ZoomablePhoto';
 import { toast } from '../../services/toast';
@@ -36,9 +36,11 @@ export default function Events() {
   }), []);
 
   const term = searchTerm.trim().toLowerCase();
+  // Shows that are over drop off the list by themselves, even if nobody closes them.
+  const current = events.filter(e => !eventHasEnded(e.date));
   const filteredEvents = term
-    ? events.filter(e => [e.name, e.city, e.venue].some(v => (v || '').toLowerCase().includes(term)))
-    : events;
+    ? current.filter(e => [e.name, e.city, e.venue].some(v => (v || '').toLowerCase().includes(term)))
+    : current;
 
   const handleAddToCart = (event: BAIEvent) => {
     if (!user) {

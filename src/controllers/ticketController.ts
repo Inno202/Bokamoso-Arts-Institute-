@@ -16,7 +16,7 @@ import {
 import type { User } from 'firebase/auth';
 import { db } from './lib/firebase';
 import { BAIEvent, CartItem, Ticket, TicketScan } from '../models/types';
-import { AppError, toDate } from './lib/utils';
+import { AppError, EVENT_OVER_AFTER_HOURS, eventHasEnded, toDate } from './lib/utils';
 import { MAX_PER_EVENT } from './cartController';
 import { CURRENCIES, DEFAULT_CURRENCY, currencyOf, sellsElsewhere, type CurrencyCode } from '../models/currency';
 import { cacheService } from '../services/cacheService';
@@ -58,7 +58,7 @@ const byNewest = (a: Ticket, b: Ticket) =>
   (toDate(b.createdAt)?.getTime() || 0) - (toDate(a.createdAt)?.getTime() || 0);
 
 /** An event counts as passed this long after its start time (events have no end time). */
-export const EVENT_PASSED_AFTER_HOURS = 12;
+export const EVENT_PASSED_AFTER_HOURS = EVENT_OVER_AFTER_HOURS;
 
 export type ScanRefusal = 'unknown' | 'wrong-event' | 'passed' | 'used' | 'cancelled';
 /** Why the door scanner refused a ticket, so the screen can say it plainly. */
@@ -95,6 +95,7 @@ export const ticketController = {
           if (!eventSnap.exists()) throw new AppError('One of the events in your bag is no longer available. Remove it and try again.');
           const event = { id: eventSnap.id, ...eventSnap.data() } as BAIEvent;
           if (event.status !== 'On Sale') throw new AppError(`Tickets for ${event.name} are no longer on sale.`);
+          if (eventHasEnded(event.date)) throw new AppError(`${event.name} has already taken place. Remove it from your bag to book the rest.`);
           if (sellsElsewhere(event)) throw new AppError(`Tickets for ${event.name} are sold by ${event.ticketProvider || 'the venue'}, not on this site. Remove it from your bag and use the link on the Events page.`);
 
           const remaining = (event.capacity || 0) - (event.ticketsSold || 0);

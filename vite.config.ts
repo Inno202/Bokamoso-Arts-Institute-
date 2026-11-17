@@ -9,7 +9,7 @@ import firebaseConfig from './firebase-applet-config.json';
 // alone because Vite's hot reload relies on inline scripts.
 // (frame-ancestors cannot be set from a <meta> tag; set it as a response header
 // wherever the host allows custom headers.)
-const csp = [
+const cspFor = (mode: string) => [
   "default-src 'self'",
   // google.com/recaptcha and gstatic.com/recaptcha are used by App Check.
   "script-src 'self' https://apis.google.com https://www.gstatic.com https://www.google.com/recaptcha/",
@@ -17,7 +17,8 @@ const csp = [
   "font-src 'self' https://fonts.gstatic.com",
   "img-src 'self' data: blob: https:",
   "media-src 'self' blob:",
-  "connect-src 'self' https://*.googleapis.com https://api.cloudinary.com",
+  // A local test build (`vite build --mode emulator`) may also reach the local emulators.
+  `connect-src 'self' https://*.googleapis.com https://api.cloudinary.com${mode === 'emulator' ? ' http://127.0.0.1:8080 http://127.0.0.1:9099' : ''}`,
   `frame-src https://${firebaseConfig.authDomain} https://www.google.com/recaptcha/ https://recaptcha.google.com/recaptcha/`,
   "worker-src 'self' blob:",
   "object-src 'none'",
@@ -26,16 +27,16 @@ const csp = [
   'upgrade-insecure-requests',
 ].join('; ');
 
-const cspPlugin = (): Plugin => ({
+const cspPlugin = (mode: string): Plugin => ({
   name: 'bai-csp',
   apply: 'build',
   transformIndexHtml: (html) =>
-    html.replace('<meta charset="UTF-8" />', `<meta charset="UTF-8" />\n    <meta http-equiv="Content-Security-Policy" content="${csp}" />`),
+    html.replace('<meta charset="UTF-8" />', `<meta charset="UTF-8" />\n    <meta http-equiv="Content-Security-Policy" content="${cspFor(mode)}" />`),
 });
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   base: '/Bokamoso-Arts-Institute-/',
-  plugins: [react(), tailwindcss(), cspPlugin()],
+  plugins: [react(), tailwindcss(), cspPlugin(mode)],
   resolve: {
     alias: {
       '@': path.resolve(__dirname, '.'),
@@ -59,4 +60,4 @@ export default defineConfig({
     // Do not modify: file watching is disabled to prevent flickering during agent edits.
     hmr: process.env.DISABLE_HMR !== 'true',
   },
-});
+}));
