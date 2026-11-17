@@ -63,7 +63,10 @@ export function EventFormDialog({ event, onClose }: Props) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const problems = validateEvent(form, event?.ticketsSold || 0);
+    const problems: Errors = { ...validateEvent(form, event?.ticketsSold || 0) };
+    // Both pictures are required: the banner shows on the event card, the artwork on tickets.
+    if (!bannerFile && !event?.bannerImageUrl) problems.banner = 'Add a banner photo for the event card.';
+    if (!ticketFile && !event?.ticketImageUrl) problems.ticket = 'Add the ticket artwork.';
     setErrors(problems);
     const first = Object.keys(problems)[0];
     if (first) {
@@ -116,13 +119,31 @@ export function EventFormDialog({ event, onClose }: Props) {
     </div>
   );
 
-  const fileInput = (id: string, label: string, onPick: (file: File | null) => void, current?: string) => (
-    <div>
-      <label htmlFor={id} className="field-label">{label} <span className="font-normal text-bai-black/70">(optional)</span></label>
-      <input id={id} type="file" accept="image/jpeg,image/png,image/webp" onChange={(e) => onPick(e.target.files?.[0] || null)} className="field py-2 text-sm file:mr-3 file:font-semibold" />
-      {current && <p className="field-help">A photo is already set. Choose a file only to replace it.</p>}
-    </div>
-  );
+  const fileInput = (key: 'banner' | 'ticket', label: string, onPick: (file: File | null) => void, current: string | undefined, sizeHint: string) => {
+    const id = `ev-${key}`;
+    const error = errors[key];
+    return (
+      <div>
+        <label htmlFor={id} className="field-label">{label}</label>
+        <input
+          id={id}
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          aria-required="true"
+          aria-invalid={!!error}
+          aria-describedby={[error && `${id}-error`, `${id}-size`].filter(Boolean).join(' ')}
+          onChange={(e) => {
+            onPick(e.target.files?.[0] || null);
+            if (e.target.files?.[0]) setErrors(({ [key]: _done, ...rest }) => rest);
+          }}
+          className="field py-2 text-sm file:mr-3 file:font-semibold"
+        />
+        {error && <p id={`${id}-error`} className="field-error">{error}</p>}
+        <p id={`${id}-size`} className="field-help">{sizeHint}</p>
+        {current && <p className="field-help">A photo is already set. Choose a file only to replace it.</p>}
+      </div>
+    );
+  };
 
   return (
     <div className="fixed inset-0 z-[90] flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="event-dialog-title">
@@ -166,8 +187,8 @@ export function EventFormDialog({ event, onClose }: Props) {
                 {input('ticketUrl', 'Link to their ticket page', { type: 'url', inputMode: 'url', maxLength: EVENT_LIMITS.ticketUrl, placeholder: 'https://', spellCheck: false, autoComplete: 'off' })}
               </div>
             </fieldset>
-            {fileInput('ev-banner', 'Banner photo', setBannerFile, event?.bannerImageUrl)}
-            {fileInput('ev-ticket', 'Ticket artwork', setTicketFile, event?.ticketImageUrl)}
+            {fileInput('banner', 'Banner photo', setBannerFile, event?.bannerImageUrl, 'Best size: 1600 × 1200, landscape (4:3). Square posters work too; keep text away from the top and bottom edges.')}
+            {fileInput('ticket', 'Ticket artwork', setTicketFile, event?.ticketImageUrl, 'Best size: 1200 × 1200, square.')}
             <div className="sm:col-span-2">
               <label htmlFor="ev-description" className="field-label">Description <span className="font-normal text-bai-black/70">(optional)</span></label>
               <textarea id="ev-description" rows={3} value={form.description} onChange={set('description')} aria-invalid={!!errors.description} className="field leading-relaxed" />
