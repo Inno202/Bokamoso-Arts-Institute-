@@ -132,7 +132,7 @@ export default function AdminEvents() {
                   <BarChart3 size={16} aria-hidden="true" /><span>Report</span>
                 </Link>
                 {event.status !== 'Cancelled' && (
-                  <button onClick={() => handleCancel(event)} className="btn btn-danger" aria-label={`Cancel ${event.name}`}>
+                  <button onClick={() => handleCancel(event)} className="btn btn-danger" aria-label={`Cancel event ${event.name}`}>
                     <Ban size={16} aria-hidden="true" /><span>Cancel event</span>
                   </button>
                 )}

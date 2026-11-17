@@ -27,7 +27,8 @@ const profile = (role, extra = {}) => ({
 });
 const eventDoc = (extra = {}) => ({
   name: 'Gala', venue: 'Hall', city: 'Pretoria', date: Timestamp.now(), price: 150,
-  capacity: 2, ticketsSold: 0, status: 'On Sale', description: '', ...extra,
+  capacity: 2, ticketsSold: 0, status: 'On Sale', description: '',
+  bannerImageUrl: 'https://res.cloudinary.com/demo/image/upload/banner.jpg', ticketImageUrl: 'https://res.cloudinary.com/demo/image/upload/ticket.jpg', ...extra,
 });
 const ticketDoc = (uid, extra = {}) => ({
   orderId: `${uid}_e1_1`, eventId: 'e1', eventName: 'Gala', ticketType: 'General Admission', buyerId: uid,
@@ -174,6 +175,15 @@ test('events are public to read and staff-only to manage', async () => {
   await assertSucceeds(setDoc(doc(as('pro'), 'events/x'), eventDoc()));
   await assertFails(setDoc(doc(as('pro'), 'events/y'), eventDoc({ price: -5 })));
   await assertSucceeds(updateDoc(doc(as('pro'), 'events/e1'), { price: 200 }));
+});
+
+test('new events need both pictures; older events without them can still be edited', async () => {
+  const pro = as('pro');
+  await assertFails(setDoc(doc(pro, 'events/nopic1'), eventDoc({ bannerImageUrl: '' })), 'no banner');
+  const { ticketImageUrl: _omit, ...noArtwork } = eventDoc();
+  await assertFails(setDoc(doc(pro, 'events/nopic2'), noArtwork), 'no ticket artwork');
+  await env.withSecurityRulesDisabled(ctx => setDoc(doc(ctx.firestore(), 'events/old'), { ...eventDoc(), bannerImageUrl: '', ticketImageUrl: '' }));
+  await assertSucceeds(updateDoc(doc(pro, 'events/old'), { status: 'Cancelled' }));
 });
 
 test('buyers can only move the sold counter up, within capacity', async () => {
