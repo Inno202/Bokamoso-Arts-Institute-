@@ -332,3 +332,24 @@ describe('upcoming events on the home page', () => {
     expect(list[0].currency).toBe('ZAR');
   });
 });
+
+describe('downloadable ticket PDF', () => {
+  it('wraps the ticket image in a valid one-page PDF of 210 x 95 mm', async () => {
+    const { jpegToPdf } = await import('../src/services/ticketDownload');
+    const fakeJpeg = new Uint8Array([0xff, 0xd8, 1, 2, 3, 0xff, 0xd9]);
+    const pdf = jpegToPdf(fakeJpeg, 2480, 1122, 'Bokamoso on Tour (Gaborone) - BAI-ABCDEFGH2345');
+    const text = new TextDecoder('latin1').decode(pdf);
+    expect(text.startsWith('%PDF-1.4')).toBe(true);
+    expect(text).toContain('/MediaBox [0 0 595.28 269.29]');
+    expect(text).toContain('/Width 2480 /Height 1122');
+    expect(text).toContain(`/Length ${fakeJpeg.length}`);
+    // The cross-reference table must point at each object, and startxref at the table.
+    const startxref = Number(text.match(/startxref\n(\d+)/)![1]);
+    expect(text.slice(startxref, startxref + 4)).toBe('xref');
+    const offsets = [...text.slice(startxref).matchAll(/(\d{10}) 00000 n/g)].map(m => Number(m[1]));
+    expect(offsets).toHaveLength(6);
+    offsets.forEach((o, i) => expect(text.slice(o, o + 7)).toBe(`${i + 1} 0 obj`));
+    // Brackets in titles would break the PDF string; they are removed.
+    expect(text).toContain('/Title (Bokamoso on Tour Gaborone - BAI-ABCDEFGH2345)');
+  });
+});

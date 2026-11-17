@@ -19,6 +19,3 @@ export function TicketQR({ value, size = 320, className }: { value: string; size
   if (!src) return <div className={className} aria-hidden="true" />;
   return <img src={src} alt={`QR code for ticket ${value}`} className={className} />;
 }
-
-export const ticketQrDataUrl = (value: string, size = 640) =>
-  QRCode.toDataURL(value, { width: size, margin: 2, errorCorrectionLevel: 'M' });
