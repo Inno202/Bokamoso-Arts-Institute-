@@ -104,10 +104,10 @@ export default function Legal({ doc }: { doc: Doc }) {
             </UL>
 
             <H>How long we keep it</H>
-            <P>We keep your account until you ask us to delete it. Ticket records are kept as a record of attendance and bookings. Ask us if you would like yours removed.</P>
+            <P>We keep your account until you delete it (on your Account page) or ask us to. Deleting it removes your profile, your bag and your sign-in. Ticket and order records are kept as a record of bookings and attendance. Ask us if you would like yours removed.</P>
 
             <H>Your rights</H>
-            <P>You can ask us for a copy of the information we hold about you, ask us to correct or delete it, or object to how we use it. Email {email}. If you are not satisfied with our answer, you can complain to the Information Regulator of South Africa.</P>
+            <P>You can change your name and password and delete your account yourself on your Account page. You can also ask us for a copy of the information we hold about you, ask us to correct or delete it, or object to how we use it. Email {email}. If you are not satisfied with our answer, you can complain to the Information Regulator of South Africa.</P>
 
             <H>Changes</H>
             <P>If what we collect or how we use it changes, we will update this page and the date above.</P>

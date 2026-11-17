@@ -24,6 +24,7 @@ const Dashboard = lazy(() => import('./views/pages/Dashboard'));
 const Cart = lazy(() => import('./views/pages/Cart'));
 const Checkout = lazy(() => import('./views/pages/Checkout'));
 const MyTickets = lazy(() => import('./views/pages/MyTickets'));
+const Account = lazy(() => import('./views/pages/Account'));
 const AdminEvents = lazy(() => import('./views/admin/AdminEvents'));
 const AdminContent = lazy(() => import('./views/admin/AdminContent'));
 const AdminUsers = lazy(() => import('./views/admin/AdminUsers'));
@@ -61,6 +62,7 @@ export default function App({ router: Router }: { router: (props: { children: Re
                     <Route path={ROUTES.CART} element={<Cart />} />
                     <Route path={ROUTES.CHECKOUT} element={<Protected><Checkout /></Protected>} />
                     <Route path={ROUTES.MY_TICKETS} element={<Protected><MyTickets /></Protected>} />
+                    <Route path={ROUTES.ACCOUNT} element={<Protected><Account /></Protected>} />
                     <Route path={ROUTES.DASHBOARD} element={<Protected allow={isAnyAdmin}><Dashboard /></Protected>} />
                     <Route path={ROUTES.SCANNER} element={<Protected allow={isScanner}><TicketScanner /></Protected>} />
                     <Route path={ROUTES.ADMIN_EVENTS} element={<Protected allow={isEventManager}><AdminEvents /></Protected>} />

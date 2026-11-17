@@ -11,6 +11,7 @@ export const ROUTES = {
   CART: '/cart',
   CHECKOUT: '/checkout',
   MY_TICKETS: '/my-tickets',
+  ACCOUNT: '/account',
   ADMIN_EVENTS: '/admin/events',
   ADMIN_CONTENT: '/admin/content',
   ADMIN_USERS: '/admin/users',

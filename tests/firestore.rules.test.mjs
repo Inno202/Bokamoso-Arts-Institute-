@@ -145,10 +145,17 @@ test('a deactivated admin has no admin powers', async () => {
   await assertFails(setDoc(doc(db, 'about/main'), { story: { title: 'hacked' } }));
 });
 
-test('only super admins delete profiles', async () => {
+test('only super admins delete other people\'s profiles', async () => {
   await assertFails(deleteDoc(doc(as('ceo'), 'users/alice')));
   await assertFails(deleteDoc(doc(as('root'), 'users/root')));
   await assertSucceeds(deleteDoc(doc(as('root'), 'users/alice')));
+});
+
+test('people can delete their own account, staff cannot delete themselves', async () => {
+  await assertFails(deleteDoc(doc(as('bob'), 'users/alice')), 'someone else');
+  await assertFails(deleteDoc(doc(as('alice', 'alice@example.com', 9 * 3600), 'users/alice')), 'sign-in older than 8 hours');
+  await assertFails(deleteDoc(doc(as('pro'), 'users/pro')), 'staff account');
+  await assertSucceeds(deleteDoc(doc(as('alice'), 'users/alice')));
 });
 
 // ---------- events ----------
