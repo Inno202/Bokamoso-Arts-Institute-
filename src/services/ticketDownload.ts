@@ -3,7 +3,7 @@
  *
  * Size: 210 x 95 mm, the width of an A4 page at the same proportions (about 2.2 : 1)
  * as the event tickets the institute's audience already knows (MojaTicket, Quicket).
- * Layout: event photo on the left, event and ticket-holder details in the middle,
+ * Layout: the whole event photo or poster on the left (never cropped), event and ticket-holder details in the middle,
  * the QR code on a tear-off stub on the right.
  *
  * The ticket is drawn on a canvas at 300 dpi in the site's own fonts, then wrapped in
@@ -84,17 +84,6 @@ function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: numbe
   ctx.closePath();
 }
 
-/**
- * Draws `img` to fill the box, cropping the overflow (like CSS object-fit: cover).
- * `focusX` picks which part survives a sideways crop: 0 keeps the left edge, 1 the right.
- */
-function drawCover(ctx: CanvasRenderingContext2D, img: HTMLImageElement, x: number, y: number, w: number, h: number, focusX = 0.5) {
-  const scale = Math.max(w / img.naturalWidth, h / img.naturalHeight);
-  const sw = w / scale, sh = h / scale;
-  const sx = (img.naturalWidth - sw) * focusX, sy = (img.naturalHeight - sh) / 2;
-  ctx.drawImage(img, sx, sy, sw, sh, x, y, w, h);
-}
-
 /** Shortens text with an ellipsis so it fits `maxWidth`. */
 function fit(ctx: CanvasRenderingContext2D, text: string, maxWidth: number) {
   if (ctx.measureText(text).width <= maxWidth) return text;
@@ -138,7 +127,7 @@ export async function drawTicket(t: PrintableTicket): Promise<HTMLCanvasElement>
   const [photo, logo, qrUrl] = await Promise.all([
     firstImage([t.imageUrl, t.fallbackImageUrl]),
     firstImage([t.logoUrl]),
-    QRCode.toDataURL(t.id, { width: Math.round(mm(36)), margin: 1, errorCorrectionLevel: 'M' }),
+    QRCode.toDataURL(t.id, { width: Math.round(mm(34)), margin: 1, errorCorrectionLevel: 'M' }),
   ]);
   const qr = await loadImage(qrUrl);
 
@@ -158,19 +147,29 @@ export async function drawTicket(t: PrintableTicket): Promise<HTMLCanvasElement>
   ctx.strokeStyle = HAIRLINE;
   ctx.stroke();
 
-  // ---- Left: event photo ----
-  // Wide enough that a square poster loses only a sliver, mostly from its left edge.
-  const photoX = edge, photoY = edge, photoW = mm(78), photoH = H - edge * 2;
+  // ---- Left: the whole event photo or poster ----
+  // Shown at its own proportions, as large as fits, never cropped or stretched: the
+  // panel takes the image's shape and the details start right after it.
+  const frameInset = mm(3);
+  const photoX = edge + frameInset;
+  const maxPhotoW = mm(80), maxPhotoH = H - (edge + frameInset) * 2;
+  let photoW = mm(60), photoH = maxPhotoH;
+  if (photo) {
+    const scale = Math.min(maxPhotoW / photo.naturalWidth, maxPhotoH / photo.naturalHeight);
+    photoW = photo.naturalWidth * scale;
+    photoH = photo.naturalHeight * scale;
+  }
+  const photoY = (H - photoH) / 2;
   ctx.save();
-  roundRect(ctx, photoX, photoY, photoW, photoH, [radius, 0, 0, radius]);
+  roundRect(ctx, photoX, photoY, photoW, photoH, mm(3));
   ctx.clip();
   ctx.fillStyle = SAND;
   ctx.fillRect(photoX, photoY, photoW, photoH);
-  if (photo) drawCover(ctx, photo, photoX, photoY, photoW, photoH, 0.75);
+  if (photo) ctx.drawImage(photo, photoX, photoY, photoW, photoH);
   ctx.restore();
 
   // ---- Stub divider: dashed tear-off line with notches ----
-  const stubX = mm(161);
+  const stubX = mm(165);
   ctx.save();
   ctx.setLineDash([mm(1.6), mm(1.4)]);
   ctx.lineWidth = mm(0.35);
@@ -225,9 +224,9 @@ export async function drawTicket(t: PrintableTicket): Promise<HTMLCanvasElement>
   ctx.fillStyle = HAIRLINE;
   ctx.fillRect(left, gridTop - mm(4.5), width, mm(0.25));
   // The holder column is wider so a full email address fits.
-  const col1W = width * 0.58 - mm(3);
-  const col2 = left + width * 0.58;
-  const col2W = width * 0.42;
+  const col1W = width * 0.56 - mm(3);
+  const col2 = left + width * 0.56;
+  const col2W = width * 0.44;
   const cell = (label: string, value: string, x: number, top: number, w: number, sub?: string) => {
     ctx.font = `400 ${mm(2.5)}px ${SANS}`;
     ctx.fillStyle = INK_SOFT;
@@ -250,7 +249,7 @@ export async function drawTicket(t: PrintableTicket): Promise<HTMLCanvasElement>
   // ---- Right: QR stub ----
   const stubLeft = stubX + mm(4);
   const stubW = W - edge - mm(4) - stubLeft;
-  const qrSize = Math.min(mm(36), stubW);
+  const qrSize = Math.min(mm(34), stubW);
   const qrX = stubLeft + (stubW - qrSize) / 2;
   const qrY = edge + mm(8);
   ctx.imageSmoothingEnabled = false; // keep the code's squares crisp
