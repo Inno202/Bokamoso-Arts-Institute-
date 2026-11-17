@@ -9,6 +9,7 @@ import { toast } from '../../services/toast';
 import { logger } from '../../services/loggerService';
 import { EVENT_LIMITS, validateEvent, type EventForm } from '../../content/eventValidation';
 import { CURRENCIES, currencyOf } from '../../models/currency';
+import { useActivity } from '../components/useActivity';
 import type { Errors } from '../../content/fields';
 
 /** datetime-local wants local wall-clock time, not UTC. */
@@ -41,6 +42,7 @@ interface Props {
 export function EventFormDialog({ event, onClose }: Props) {
   const { user } = useAuth();
   const [form, setForm] = useState<EventForm>(() => formFor(event));
+  const record = useActivity();
   const [errors, setErrors] = useState<Errors>({});
   const [saving, setSaving] = useState(false);
   const [bannerFile, setBannerFile] = useState<File | null>(null);
@@ -98,9 +100,11 @@ export function EventFormDialog({ event, onClose }: Props) {
       if (event?.id) {
         await eventController.updateEvent(event.id, data);
         toast.success('Event updated.');
+        void record('event.updated', `Edited the event "${data.name}" (${form.status}).`, event.id);
       } else {
-        await eventController.createEvent(data);
+        const id = await eventController.createEvent(data);
         toast.success(form.status === 'On Sale' ? 'Event created. It is now on sale.' : 'Event saved.');
+        void record('event.created', `Created the event "${data.name}" for ${data.date.toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })} (${form.status}).`, typeof id === 'string' ? id : '');
       }
       onClose();
     } catch (err) {

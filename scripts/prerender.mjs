@@ -33,7 +33,7 @@ const TITLES = {
 };
 
 // Signed-in and staff pages are never pre-rendered: they get the plain shell.
-const SHELL_ROUTES = ['/cart', '/checkout', '/my-tickets', '/account', '/dashboard', '/scanner', '/admin/events', '/admin/content', '/admin/users',
+const SHELL_ROUTES = ['/cart', '/checkout', '/my-tickets', '/account', '/dashboard', '/scanner', '/admin/events', '/admin/content', '/admin/users', '/admin/activity',
   ...['site', 'home', 'about', 'work', 'traditions'].map(s => `/admin/content/${s}`)];
 
 // ---------- 1. content ----------

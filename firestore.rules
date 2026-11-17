@@ -319,6 +319,26 @@ service cloud.firestore {
       return hasAnyRole(['SUPER_ADMIN', 'CEO']) || (hasAnyRole(['PRO']) && hasContentAccess());
     }
 
+    // ---------- staff activity log ----------
+    // Append-only: staff write entries in their own name and current role; nobody
+    // edits or deletes them; only super admins read them.
+    match /activity_log/{entryId} {
+      allow get, list: if isSuperAdmin();
+      allow create: if isStaff()
+        && request.resource.data.keys().hasOnly(['at', 'actorId', 'actorName', 'actorRole', 'action', 'area', 'summary', 'targetId'])
+        && request.resource.data.at == request.time
+        && request.resource.data.actorId == request.auth.uid
+        && request.resource.data.actorRole == get(profilePath()).data.role
+        && request.resource.data.actorName is string && request.resource.data.actorName.size() <= 100
+        && request.resource.data.action in ['user.created', 'user.role', 'user.deactivated', 'user.reactivated',
+             'event.created', 'event.updated', 'event.deleted', 'event.cancelled', 'content.saved',
+             'access.requested', 'access.approved', 'access.declined', 'access.ended', 'ticket.cancelled']
+        && request.resource.data.area in ['people', 'events', 'content', 'access', 'tickets']
+        && request.resource.data.summary is string && request.resource.data.summary.size() <= 300
+        && request.resource.data.targetId is string && request.resource.data.targetId.size() <= 200;
+      allow update, delete: if false;
+    }
+
     // ---------- site content access requests ----------
     // content_access/{uid}: one record per PRO. They ask; a super admin or the CEO
     // approves for a limited time (at most 7 days), declines, or ends it early.

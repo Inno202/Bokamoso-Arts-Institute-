@@ -6,11 +6,13 @@ import { formatDateTime, friendlyError } from '../../controllers/lib/utils';
 import { confirmAction } from '../../services/confirm';
 import { toast } from '../../services/toast';
 import { logger } from '../../services/loggerService';
+import { useActivity } from '../components/useActivity';
 import type { ContentAccess } from '../../models/types';
 
 /** For super admins and the CEO: PRO requests to edit site content, and who has access now. */
 export function ContentAccessRequests() {
   const { user } = useAuth();
+  const record = useActivity();
   const [all, setAll] = useState<ContentAccess[] | null>(null);
   const [failed, setFailed] = useState(false);
   const [durations, setDurations] = useState<Record<string, number>>({});
@@ -27,9 +29,11 @@ export function ContentAccessRequests() {
     try {
       await action();
       toast.success(done);
+      return true;
     } catch (err) {
       logger.error('Content access change failed', err);
       toast.error(friendlyError(err, fallback));
+      return false;
     } finally {
       setBusy(null);
     }
@@ -40,17 +44,23 @@ export function ContentAccessRequests() {
     const hours = durations[a.uid] ?? 24;
     const label = ACCESS_DURATIONS.find(d => d.hours === hours)?.label || `${hours} hours`;
     if (!await confirmAction({ title: `Let ${who(a)} edit site content?`, message: `They can change any page's content for ${label}. You can end it early here.`, confirmLabel: 'Approve' })) return;
-    await run(a.uid, () => contentAccessController.approve(a.uid, user.uid, hours), `${who(a)} can edit site content for ${label}.`, 'The request could not be approved.');
+    if (await run(a.uid, () => contentAccessController.approve(a.uid, user.uid, hours), `${who(a)} can edit site content for ${label}.`, 'The request could not be approved.')) {
+      void record('access.approved', `Let ${who(a)} edit site content for ${label}.`, a.uid);
+    }
   };
   const decline = async (a: ContentAccess) => {
     if (!user) return;
     if (!await confirmAction({ title: `Decline ${who(a)}'s request?`, message: 'They will see that it was declined and can ask again.', confirmLabel: 'Decline', tone: 'danger' })) return;
-    await run(a.uid, () => contentAccessController.decline(a.uid, user.uid), 'Request declined.', 'The request could not be declined.');
+    if (await run(a.uid, () => contentAccessController.decline(a.uid, user.uid), 'Request declined.', 'The request could not be declined.')) {
+      void record('access.declined', `Declined ${who(a)}'s request to edit site content.`, a.uid);
+    }
   };
   const end = async (a: ContentAccess) => {
     if (!user) return;
     if (!await confirmAction({ title: `End ${who(a)}'s access now?`, message: 'They will no longer be able to save changes to site content.', confirmLabel: 'End access', tone: 'danger' })) return;
-    await run(a.uid, () => contentAccessController.end(a.uid, user.uid), 'Access ended.', 'Access could not be ended.');
+    if (await run(a.uid, () => contentAccessController.end(a.uid, user.uid), 'Access ended.', 'Access could not be ended.')) {
+      void record('access.ended', `Ended ${who(a)}'s access to edit site content.`, a.uid);
+    }
   };
 
   return (

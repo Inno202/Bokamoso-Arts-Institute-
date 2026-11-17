@@ -10,6 +10,7 @@ import { toast } from '../../services/toast';
 import { friendlyError } from '../../controllers/lib/utils';
 import { RECENT_SIGN_IN_HOURS } from '../../config';
 import { confirmAction } from '../../services/confirm';
+import { useActivity } from '../components/useActivity';
 import { ROLE_LABELS, UserProfile, UserRole } from '../../models/types';
 
 const ROLE_OPTIONS = Object.keys(ROLE_LABELS) as UserRole[];
@@ -27,6 +28,7 @@ function accountChangeError(err: unknown, signedInAt: string | undefined, fallba
 /** Staff accounts: add, change roles, deactivate. Super admins and CEOs only (enforced in firestore.rules). */
 export default function AdminUsers() {
   const { user, role } = useAuth();
+  const record = useActivity();
   const isSuper = role === 'SUPER_ADMIN';
 
   const [users, setUsers] = useState<UserProfile[]>([]);
@@ -63,6 +65,7 @@ export default function AdminUsers() {
       await userController.setRole(target.uid, newRole);
       patchUser(target.uid, { role: newRole });
       toast.success(`${target.displayName || target.email} is now ${ROLE_LABELS[newRole]}.`);
+      void record('user.role', `Changed ${target.displayName || target.email}'s role from ${ROLE_LABELS[target.role] || target.role} to ${ROLE_LABELS[newRole]}.`, target.uid);
     } catch (err) {
       logger.error('Failed to update role', err);
       toast.error(accountChangeError(err, user?.metadata.lastSignInTime, 'The role could not be changed.'));
@@ -81,6 +84,7 @@ export default function AdminUsers() {
       await userController.setActive(target.uid, next);
       patchUser(target.uid, { isActive: next });
       toast.success(next ? 'Account reactivated.' : 'Account deactivated.');
+      void record(next ? 'user.reactivated' : 'user.deactivated', `${next ? 'Reactivated' : 'Deactivated'} ${target.displayName || target.email}'s account.`, target.uid);
     } catch (err) {
       logger.error('Failed to change account status', err);
       toast.error(accountChangeError(err, user?.metadata.lastSignInTime, 'The account status could not be changed.'));
@@ -93,6 +97,7 @@ export default function AdminUsers() {
     try {
       await userController.createUser(newUser);
       toast.success(`Account created for ${newUser.displayName}.`);
+      void record('user.created', `Added ${newUser.displayName} (${newUser.email.trim()}) as ${ROLE_LABELS[newUser.role]}.`);
       setNewUser(EMPTY_USER);
       void loadUsers();
     } catch (err) {

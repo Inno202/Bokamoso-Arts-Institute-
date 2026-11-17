@@ -8,7 +8,7 @@ import {
   assertSucceeds,
 } from '@firebase/rules-unit-testing';
 import {
-  doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, collection, query, where,
+  doc, getDoc, getDocs, setDoc, addDoc, updateDoc, deleteDoc, collection, query, where,
   writeBatch, serverTimestamp, Timestamp, increment,
 } from 'firebase/firestore';
 
@@ -410,6 +410,32 @@ test('content saves must be well-formed and signed by the person saving', async 
   await assertFails(setDoc(doc(db, 'content/traditions'), section('ceo', { role: 'SUPER_ADMIN' })), 'extra fields');
   await assertFails(setDoc(doc(db, 'content/traditions'), section('ceo', { data: 'text' })), 'data is not a map');
   await assertFails(setDoc(doc(db, 'content/anything-else'), section('ceo')), 'unknown section');
+});
+
+// ---------- staff activity log ----------
+
+const entry = (uid, extra = {}) => ({
+  at: serverTimestamp(), actorId: uid, actorName: 'Staff', actorRole: 'PRO', action: 'event.updated', area: 'events',
+  summary: 'Edited the event "Gala".', targetId: 'e1', ...extra,
+});
+
+test('staff write activity entries only in their own name and role', async () => {
+  await assertSucceeds(addDoc(collection(as('pro'), 'activity_log'), entry('pro')));
+  await assertFails(addDoc(collection(as('pro'), 'activity_log'), entry('ceo')), 'in someone else\'s name');
+  await assertFails(addDoc(collection(as('pro'), 'activity_log'), entry('pro', { actorRole: 'SUPER_ADMIN' })), 'claiming a higher role');
+  await assertFails(addDoc(collection(as('pro'), 'activity_log'), entry('pro', { at: Timestamp.fromMillis(0) })), 'back-dated');
+  await assertFails(addDoc(collection(as('pro'), 'activity_log'), entry('pro', { action: 'made.up' })), 'unknown action');
+  await assertFails(addDoc(collection(as('alice'), 'activity_log'), entry('alice', { actorRole: 'USER' })), 'not staff');
+});
+
+test('only super admins read the activity log, and nobody edits or deletes it', async () => {
+  let id;
+  await env.withSecurityRulesDisabled(async ctx => { id = (await addDoc(collection(ctx.firestore(), 'activity_log'), { ...entry('pro'), at: Timestamp.now() })).id; });
+  await assertSucceeds(getDocs(collection(as('root'), 'activity_log')));
+  await assertFails(getDocs(collection(as('ceo'), 'activity_log')));
+  await assertFails(getDocs(collection(as('pro'), 'activity_log')));
+  await assertFails(updateDoc(doc(as('root'), 'activity_log', id), { summary: 'changed' }));
+  await assertFails(deleteDoc(doc(as('root'), 'activity_log', id)));
 });
 
 // ---------- site content access requests ----------

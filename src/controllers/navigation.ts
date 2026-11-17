@@ -15,6 +15,7 @@ export const ROUTES = {
   ADMIN_EVENTS: '/admin/events',
   ADMIN_CONTENT: '/admin/content',
   ADMIN_USERS: '/admin/users',
+  ADMIN_ACTIVITY: '/admin/activity',
   TERMS: '/terms',
   PRIVACY: '/privacy',
   COOKIES: '/cookies',

@@ -9,6 +9,7 @@ import { toast } from '../../services/toast';
 import { sellsElsewhere } from '../../models/currency';
 import { eventHasEnded } from '../../controllers/lib/utils';
 import { confirmAction } from '../../services/confirm';
+import { useActivity } from '../components/useActivity';
 import { logger } from '../../services/loggerService';
 
 const STATUS_STYLE: Record<string, string> = {
@@ -18,6 +19,7 @@ const STATUS_STYLE: Record<string, string> = {
 };
 
 export default function AdminEvents() {
+  const record = useActivity();
   const [events, setEvents] = useState<BAIEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
@@ -42,6 +44,7 @@ export default function AdminEvents() {
     try {
       await eventController.deleteEvent(event.id);
       toast.success('Event deleted.');
+      void record('event.deleted', `Deleted the event "${event.name}"${event.ticketsSold ? ` (${event.ticketsSold} tickets had been issued)` : ''}.`, event.id);
     } catch (err) {
       logger.error('Failed to delete event', err);
       toast.error(friendlyError(err, 'The event could not be deleted.'));

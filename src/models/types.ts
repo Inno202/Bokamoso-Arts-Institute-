@@ -19,6 +19,7 @@ export const isUserAdmin = inRoles(['SUPER_ADMIN', 'CEO']);
 export const isEventManager = inRoles(['SUPER_ADMIN', 'PRO', 'CEO']);
 export const isScanner = inRoles(['SUPER_ADMIN', 'PRO', 'TICKET_SCANNER']);
 export const isFinance = inRoles(['SUPER_ADMIN', 'CEO', 'FINANCE_MANAGER']);
+export const isSuperAdminRole = inRoles(['SUPER_ADMIN']);
 /** Edits site content straight away. PRO staff can open Site content but must ask first. */
 export const editsContentDirectly = inRoles(['SUPER_ADMIN', 'CEO']);
 export const needsContentApproval = inRoles(['PRO']);
