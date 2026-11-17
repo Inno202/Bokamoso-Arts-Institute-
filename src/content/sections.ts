@@ -104,7 +104,7 @@ const site: SectionDef<'site'> = {
       { kind: 'tel', key: 'phone', label: 'Phone number', required: true },
       { kind: 'email', key: 'email', label: 'Email address', required: true },
     ] },
-    { kind: 'image', key: 'eventsHeroImage', label: 'Photo at the top of the Events page', required: true },
+    { kind: 'image', key: 'eventsHeroImage', label: 'Photo at the top of the Events page', required: true, help: 'Best size: 1600 × 900, landscape. Keep the subject in the centre and the bottom-left calm (the page title sits there).' },
     text('footerBlurb', 'Footer introduction', 200, long),
     text('copyrightLine', 'Line after the copyright notice', 100),
     { kind: 'list', key: 'socials', label: 'Social media links', itemLabel: 'Social link', titleKey: 'network', max: 8, fields: [
@@ -153,20 +153,20 @@ const home: SectionDef<'home'> = {
   fields: [
     { kind: 'group', key: 'hero', label: 'Top of the page', fields: [
       text('tagline', 'Line under the name', 80, { help: 'Bula Pelo is underlined by hand on the page.' }),
-      { kind: 'images', key: 'images', label: 'Slideshow photos', max: 6, help: 'Wide photos of the choir work best. The first photo shows first.' },
+      { kind: 'images', key: 'images', label: 'Slideshow photos', max: 6, help: 'Best size: 1600 × 1067, landscape, with the choir in the centre (phones trim the sides). The first photo shows first.' },
     ] },
     { kind: 'list', key: 'stats', label: 'Key figures', itemLabel: 'Figure', titleKey: 'label', max: 4, fields: statFields(true) },
     { kind: 'group', key: 'philosophy', label: 'Philosophy', fields: [
       text('headingLine1', 'Heading, first line', 40, required),
       text('headingLine2', 'Heading, second line', 40),
       text('quote', 'Quote', 400, { ...required, ...long }),
-      { kind: 'image', key: 'image', label: 'Photo', required: true },
+      { kind: 'image', key: 'image', label: 'Photo', required: true, help: 'Best size: 1280 × 1600, portrait (4:5).' },
       text('buttonLabel', 'Button label', 40, required),
     ] },
     { kind: 'group', key: 'community', label: 'Community', fields: [
       text('headingLine1', 'Heading, first word', 40, required),
       text('headingLine2', 'Heading, second word', 40),
-      { kind: 'images', key: 'images', label: 'Photos', max: 6, help: 'Three photos fit best.' },
+      { kind: 'images', key: 'images', label: 'Photos', max: 6, help: 'Three photos fit best. Best size: 1280 × 1600, portrait (4:5).' },
     ] },
     { kind: 'group', key: 'highlights', label: 'Highlights', fields: [
       text('headingLine1', 'Heading, first word', 40, required),
@@ -225,7 +225,7 @@ const about: SectionDef<'about'> = {
   preview: '/about',
   legacyPath: 'about/main',
   fields: [
-    { kind: 'image', key: 'heroImage', label: 'Photo at the top of the page', required: true },
+    { kind: 'image', key: 'heroImage', label: 'Photo at the top of the page', required: true, help: 'Best size: 1600 × 900, landscape. Keep the subject in the centre and the bottom-left calm (the page title sits there).' },
     { kind: 'group', key: 'story', label: 'Our story', fields: [
       text('title', 'Heading', 60, required),
       text('description', 'Story', 1500, { ...required, ...long }),
@@ -240,9 +240,9 @@ const about: SectionDef<'about'> = {
       text('name', 'Name', 80, { ...required, help: 'Shown exactly as typed, including capital letters.' }),
       text('role', 'Role', 80, required),
       text('desc', 'About them', 400, long),
-      { kind: 'image', key: 'image', label: 'Photo', help: 'A square photo works best.' },
+      { kind: 'image', key: 'image', label: 'Photo', help: 'Best size: 1600 × 1600, square, with the face in the upper middle.' },
     ] },
-    { kind: 'images', key: 'choirPictures', label: 'Choir photos', max: 24, help: 'The first photo also appears beside the story.' },
+    { kind: 'images', key: 'choirPictures', label: 'Choir photos', max: 24, help: 'Best size: 1600 × 1600, square. The first photo also appears beside the story, cropped to portrait (4:5), so keep its subject in the middle.' },
   ],
   defaults: {
     heroImage: 'assets/photos/choir-blue.jpg',
@@ -274,7 +274,7 @@ const work: SectionDef<'work'> = {
   preview: '/programs',
   legacyPath: 'work/main',
   fields: [
-    { kind: 'image', key: 'heroImage', label: 'Photo at the top of the page', required: true },
+    { kind: 'image', key: 'heroImage', label: 'Photo at the top of the page', required: true, help: 'Best size: 1600 × 900, landscape. Keep the subject in the centre and the bottom-left calm (the page title sits there).' },
     { kind: 'list', key: 'pillars', label: 'What we do', itemLabel: 'Area of work', titleKey: 'title', max: 6, fields: [
       text('title', 'Title', 60, required),
       text('desc', 'Description', 300, { ...required, ...long }),
@@ -285,12 +285,12 @@ const work: SectionDef<'work'> = {
     ] },
     { kind: 'list', key: 'projects', label: 'Projects', itemLabel: 'Project', titleKey: 'title', max: 24, fields: [
       text('title', 'Title', 80, required),
-      { kind: 'image', key: 'imageUrl', label: 'Photo' },
+      { kind: 'image', key: 'imageUrl', label: 'Photo', help: 'Best size: 1280 × 1600, portrait (4:5). The title sits along the bottom.' },
     ] },
     { kind: 'group', key: 'outreach', label: 'Outreach', fields: [
       text('title', 'Heading', 80, required),
       text('description', 'Description', 600, { ...required, ...long }),
-      { kind: 'image', key: 'imageUrl', label: 'Photo' },
+      { kind: 'image', key: 'imageUrl', label: 'Photo', help: 'Best size: 1600 × 1600, square.' },
       { kind: 'list', key: 'stats', label: 'Figures', itemLabel: 'Figure', titleKey: 'label', max: 4, fields: statFields(false) },
     ] },
   ],
@@ -328,7 +328,7 @@ const traditions: SectionDef<'traditions'> = {
   shownOn: 'The Traditions page.',
   preview: '/traditions',
   fields: [
-    { kind: 'image', key: 'heroImage', label: 'Photo at the top of the page', required: true },
+    { kind: 'image', key: 'heroImage', label: 'Photo at the top of the page', required: true, help: 'Best size: 1600 × 900, landscape. Keep the subject in the centre and the bottom-left calm (the page title sits there).' },
     { kind: 'list', key: 'items', label: 'Traditions', itemLabel: 'Tradition', titleKey: 'title', min: 1, max: 12, fields: [
       text('title', 'Name', 80, required),
       text('desc', 'Description', 600, { ...required, ...long }),

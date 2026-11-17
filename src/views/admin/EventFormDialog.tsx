@@ -116,10 +116,11 @@ export function EventFormDialog({ event, onClose }: Props) {
     </div>
   );
 
-  const fileInput = (id: string, label: string, onPick: (file: File | null) => void, current?: string) => (
+  const fileInput = (id: string, label: string, onPick: (file: File | null) => void, current: string | undefined, sizeHint: string) => (
     <div>
       <label htmlFor={id} className="field-label">{label} <span className="font-normal text-bai-black/70">(optional)</span></label>
-      <input id={id} type="file" accept="image/jpeg,image/png,image/webp" onChange={(e) => onPick(e.target.files?.[0] || null)} className="field py-2 text-sm file:mr-3 file:font-semibold" />
+      <input id={id} type="file" accept="image/jpeg,image/png,image/webp" aria-describedby={`${id}-size`} onChange={(e) => onPick(e.target.files?.[0] || null)} className="field py-2 text-sm file:mr-3 file:font-semibold" />
+      <p id={`${id}-size`} className="field-help">{sizeHint}</p>
       {current && <p className="field-help">A photo is already set. Choose a file only to replace it.</p>}
     </div>
   );
@@ -166,8 +167,8 @@ export function EventFormDialog({ event, onClose }: Props) {
                 {input('ticketUrl', 'Link to their ticket page', { type: 'url', inputMode: 'url', maxLength: EVENT_LIMITS.ticketUrl, placeholder: 'https://', spellCheck: false, autoComplete: 'off' })}
               </div>
             </fieldset>
-            {fileInput('ev-banner', 'Banner photo', setBannerFile, event?.bannerImageUrl)}
-            {fileInput('ev-ticket', 'Ticket artwork', setTicketFile, event?.ticketImageUrl)}
+            {fileInput('ev-banner', 'Banner photo', setBannerFile, event?.bannerImageUrl, 'Best size: 1600 × 1200, landscape (4:3). Square posters work too; keep text away from the top and bottom edges.')}
+            {fileInput('ev-ticket', 'Ticket artwork', setTicketFile, event?.ticketImageUrl, 'Best size: 1200 × 1200, square. Leave empty to use the banner.')}
             <div className="sm:col-span-2">
               <label htmlFor="ev-description" className="field-label">Description <span className="font-normal text-bai-black/70">(optional)</span></label>
               <textarea id="ev-description" rows={3} value={form.description} onChange={set('description')} aria-invalid={!!errors.description} className="field leading-relaxed" />
