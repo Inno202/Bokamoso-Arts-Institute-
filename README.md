@@ -115,6 +115,39 @@ No setup makes a system immune to every attack. These settings are not in the co
 
 Set `VITE_CLOUDINARY_CLOUD_NAME` and `VITE_CLOUDINARY_UPLOAD_PRESET` (see `.env.example`) so uploads go to Cloudinary. Without them, uploaded images are compressed and stored inside Firestore documents, which caps each page at roughly 1 MB of images.
 
+### Image sizes for uploads
+
+**For every upload:**
+
+- Use JPEG, PNG or WebP, under 10 MB.
+- Uploads are shrunk automatically to **1600 px on the longest side**, so there's no benefit in uploading anything bigger.
+- Most frames fill their space and trim the edges, so keep **faces, titles and dates in the middle**.
+- The **downloaded ticket** and the **full-screen photo viewer** always show the whole image, uncropped.
+
+**Events (Admin → Events)**
+
+| Image | Best size | Where it shows | Notes |
+| --- | --- | --- | --- |
+| Banner photo / poster | **1600 × 1200** (4:3 landscape) | Event card, top of the open ticket, downloaded ticket | 4:3 fits the event card exactly. A square poster (1080 × 1080) still works, but the card trims about 12% off the top and bottom, so keep text away from those edges. On the downloaded ticket any shape shows in full. |
+| Ticket artwork (optional) | **1200 × 1200** (square) | Thumbnail in the bag | If left empty, the banner is used everywhere. |
+
+The coloured strip at the top of an open ticket on screen is very wide and short, so only the **middle band** of the banner shows there. This is decorative and expected.
+
+**Site content (Admin → Site content)**
+
+| Image | Best size | Notes |
+| --- | --- | --- |
+| Page header photos (About, Our Work, Events, Traditions) | **1600 × 900** (16:9 landscape) | Desktop shows a wide strip (about 10:3); phones show a nearly square crop. Keep the subject in the centre and the bottom-left calm, because the page title sits there. |
+| Home slideshow | **1600 × 1067** (3:2 landscape) | Fills the whole screen. Phones trim a lot off the sides, so keep the subject centred. |
+| Portrait photos: Home (choir and community), About story, Our Work projects | **1280 × 1600** (4:5 portrait) | Fits exactly. |
+| Square photos: management team, "The choir" gallery, outreach | **1600 × 1600** (1:1) | Fits exactly. Put faces in the upper middle of team headshots. |
+
+**Quick version:**
+
+- Event posters: **1600 × 1200**
+- Header and slideshow photos: **landscape, subject centred**
+- Content photos: **1280 × 1600 portrait** or **1600 × 1600 square**
+
 ## Events in other countries
 
 Each event has its own currency (rand, pula, emalangeni, maloti, Namibian dollar, US dollar, euro or pound; rand if none is set). Prices show the local symbol, and the bag and checkout show one total per currency, never converted or added together. The list lives in `src/models/currency.ts` and must match the list in `firestore.rules`.
