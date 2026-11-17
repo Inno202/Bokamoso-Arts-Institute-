@@ -1,15 +1,15 @@
 import type React from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Ticket as TicketIcon, MapPin, Calendar, Download, ChevronRight, Share2, X } from 'lucide-react';
+import { Ticket as TicketIcon, MapPin, Calendar, Download, ChevronRight, Share2, X, Loader2 } from 'lucide-react';
 import { PageHero } from '../components/PageHero';
 import { useAuth } from '../components/AuthProvider';
 import { ticketController } from '../../controllers/ticketController';
 import { eventController } from '../../controllers/eventController';
 import { BAIEvent, Ticket, TicketStatus } from '../../models/types';
 import { cloudinaryService } from '../../services/cloudinaryService';
-import { formatDate, formatTime } from '../../controllers/lib/utils';
-import { TicketQR, ticketQrDataUrl } from '../components/TicketQR';
+import { formatCurrency, formatDate, formatTime } from '../../controllers/lib/utils';
+import { TicketQR } from '../components/TicketQR';
 import { ROUTES } from '../../controllers/navigation';
 import { FALLBACK_EVENT_IMAGE } from '../../config';
 import { toast } from '../../services/toast';
@@ -73,14 +73,33 @@ export default function MyTickets() {
 
   const eventName = (t: TicketWithEvent) => t.event?.name || t.eventName || 'Event';
 
+  const [downloading, setDownloading] = useState(false);
   const handleDownload = async (t: TicketWithEvent) => {
+    if (downloading) return;
+    setDownloading(true);
     try {
-      const link = document.createElement('a');
-      link.href = await ticketQrDataUrl(t.id);
-      link.download = `${t.id}.png`;
-      link.click();
-    } catch {
-      toast.error('The QR code could not be saved. Take a screenshot of this ticket instead.');
+      const { downloadTicket } = await import('../../services/ticketDownload');
+      await downloadTicket({
+        id: t.id,
+        eventName: eventName(t),
+        dateText: formatDate(t.event?.date, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }) || 'Date to be confirmed',
+        timeText: formatTime(t.event?.date) || '',
+        venueText: [t.event?.venue, t.event?.city].filter(Boolean).join(', ') || 'Venue to be confirmed',
+        ticketType: t.ticketType || 'General Admission',
+        priceText: t.price > 0 ? formatCurrency(t.price, t.currency) : 'Free',
+        holderName: userData?.displayName || user?.displayName || t.buyerEmail || '',
+        holderEmail: t.buyerEmail || user?.email || '',
+        issuedText: formatDate(t.createdAt, { day: 'numeric', month: 'short', year: 'numeric' }),
+        imageUrl: cloudinaryService.getOptimizedUrl(t.event?.bannerImageUrl || t.event?.ticketImageUrl, 1000),
+        fallbackImageUrl: FALLBACK_EVENT_IMAGE,
+        logoUrl: `${import.meta.env.BASE_URL}assets/brand/mark-192.png`,
+      });
+      toast.success('Ticket downloaded.');
+    } catch (err) {
+      logger.error('Ticket download failed', err);
+      toast.error('The ticket could not be downloaded. Take a screenshot of this ticket instead.');
+    } finally {
+      setDownloading(false);
     }
   };
 
@@ -232,14 +251,14 @@ export default function MyTickets() {
                 <p className="mt-1 text-sm font-semibold text-red-700">{selected.status === 'SCANNED' ? 'Already used at the door' : 'This ticket was cancelled'}</p>
               )}
               <p className="text-sm text-center text-bai-ink-soft mt-1">Show this code at the door. It admits one person, once.</p>
-              <div className="no-print grid grid-cols-2 gap-3 w-full mt-3.5">
-                <button onClick={() => handleDownload(selected)} className="btn btn-primary">
-                  <Download size={18} aria-hidden="true" />
-                  <span>Save QR</span>
+              {/* The main action gets the room; Share is a round icon button beside it. */}
+              <div className="no-print flex gap-3 w-full mt-3.5">
+                <button onClick={() => handleDownload(selected)} disabled={downloading} className="btn btn-primary flex-1 whitespace-nowrap">
+                  {downloading ? <Loader2 size={18} className="animate-spin" aria-hidden="true" /> : <Download size={18} aria-hidden="true" />}
+                  <span>{downloading ? 'Preparing ticket' : 'Download ticket'}</span>
                 </button>
-                <button onClick={() => handleShare(selected)} className="btn btn-outline">
+                <button onClick={() => handleShare(selected)} aria-label="Share ticket" title="Share ticket" className="btn btn-outline shrink-0 w-[48px] px-0">
                   <Share2 size={18} aria-hidden="true" />
-                  <span>Share</span>
                 </button>
               </div>
             </div>
