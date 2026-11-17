@@ -129,7 +129,7 @@ Set `VITE_CLOUDINARY_CLOUD_NAME` and `VITE_CLOUDINARY_UPLOAD_PRESET` (see `.env.
 | Image | Best size | Where it shows | Notes |
 | --- | --- | --- | --- |
 | Banner photo / poster (required) | **1600 × 1200** (4:3 landscape) | Event card, top of the open ticket, downloaded ticket | 4:3 fits the event card exactly. A square poster (1080 × 1080) still works, but the card trims about 12% off the top and bottom, so keep text away from those edges. On the downloaded ticket any shape shows in full. |
-| Ticket artwork (required) | **1200 × 1200** (square) | Thumbnail in the bag | An event cannot be saved without both pictures; older events without one are asked for it the next time they are edited. |
+| Ticket artwork (required) | **1200 × 1200** (square) | Your tickets (on screen and the downloaded PDF) and the thumbnail in the bag | An event cannot be saved without both pictures; older events without one are asked for it the next time they are edited. |
 
 The coloured strip at the top of an open ticket on screen is very wide and short, so only the **middle band** of the banner shows there. This is decorative and expected.
 

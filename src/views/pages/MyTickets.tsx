@@ -102,7 +102,7 @@ export default function MyTickets() {
         holderName: userData?.displayName || user?.displayName || t.buyerEmail || '',
         holderEmail: t.buyerEmail || user?.email || '',
         issuedText: formatDate(t.createdAt, { day: 'numeric', month: 'short', year: 'numeric' }),
-        imageUrl: cloudinaryService.getOptimizedUrl(t.event?.bannerImageUrl || t.event?.ticketImageUrl, 1000),
+        imageUrl: cloudinaryService.getOptimizedUrl(t.event?.ticketImageUrl || t.event?.bannerImageUrl, 1000),
         fallbackImageUrl: FALLBACK_EVENT_IMAGE,
         logoUrl: `${import.meta.env.BASE_URL}assets/brand/mark-192.png`,
       });
@@ -137,7 +137,7 @@ export default function MyTickets() {
     );
   }
 
-  const image = (t: TicketWithEvent) => cloudinaryService.getOptimizedUrl(t.event?.bannerImageUrl || t.event?.ticketImageUrl, 600) || FALLBACK_EVENT_IMAGE;
+  const image = (t: TicketWithEvent) => cloudinaryService.getOptimizedUrl(t.event?.ticketImageUrl || t.event?.bannerImageUrl, 600) || FALLBACK_EVENT_IMAGE;
   const fallback = (e: React.SyntheticEvent<HTMLImageElement>) => {
     if (!e.currentTarget.dataset.fallback) { e.currentTarget.dataset.fallback = '1'; e.currentTarget.src = FALLBACK_EVENT_IMAGE; }
   };

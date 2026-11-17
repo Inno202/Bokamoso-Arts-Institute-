@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Ban, BarChart3, Edit2, Plus, Trash2 } from 'lucide-react';
+import { Ban, BarChart3, Copy, Edit2, Plus, Trash2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { ROUTES } from '../../controllers/navigation';
 import { AdminShell } from './AdminShell';
@@ -24,6 +24,7 @@ const STATUS_STYLE: Record<string, string> = {
 
 export default function AdminEvents() {
   const record = useActivity();
+  const [copying, setCopying] = useState<BAIEvent | null>(null);
   const [events, setEvents] = useState<BAIEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
@@ -138,6 +139,9 @@ export default function AdminEvents() {
                 <button onClick={() => setEditing(event)} className="btn btn-outline">
                   <Edit2 size={16} aria-hidden="true" /><span>Edit</span>
                 </button>
+                <button onClick={() => setCopying(event)} className="btn btn-outline" aria-label={`Duplicate ${event.name}`}>
+                  <Copy size={16} aria-hidden="true" /><span>Duplicate</span>
+                </button>
                 <button onClick={() => handleDelete(event)} className="btn btn-danger" aria-label={`Delete ${event.name}`}>
                   <Trash2 size={16} aria-hidden="true" /><span>Delete</span>
                 </button>
@@ -148,6 +152,7 @@ export default function AdminEvents() {
       )}
 
       {editing && <EventFormDialog event={editing === 'new' ? null : editing} onClose={closeDialog} />}
+      {copying && <EventFormDialog copyFrom={copying} onClose={() => setCopying(null)} />}
     </AdminShell>
   );
 }
