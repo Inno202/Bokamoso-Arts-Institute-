@@ -87,6 +87,12 @@ export const eventController = {
     cacheService.invalidate(COLLECTION);
   },
 
+  /** Cancels a show: it leaves sale, its tickets show as cancelled and are refused at the door. */
+  async cancelEvent(eventId: string) {
+    await updateDoc(doc(db, COLLECTION, eventId), { status: 'Cancelled', updatedAt: serverTimestamp() });
+    cacheService.invalidate(COLLECTION);
+  },
+
   async deleteEvent(eventId: string) {
     await deleteDoc(doc(db, COLLECTION, eventId));
     cacheService.invalidate(COLLECTION);

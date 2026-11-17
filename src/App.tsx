@@ -29,6 +29,7 @@ const AdminEvents = lazy(() => import('./views/admin/AdminEvents'));
 const AdminContent = lazy(() => import('./views/admin/AdminContent'));
 const AdminUsers = lazy(() => import('./views/admin/AdminUsers'));
 const AdminActivity = lazy(() => import('./views/admin/AdminActivity'));
+const AdminEventReport = lazy(() => import('./views/admin/AdminEventReport'));
 const Legal = lazy(() => import('./views/pages/Legal'));
 
 /** The routes that are pre-rendered to HTML at build time (public, same for everyone). */
@@ -67,6 +68,7 @@ export default function App({ router: Router }: { router: (props: { children: Re
                     <Route path={ROUTES.DASHBOARD} element={<Protected allow={isAnyAdmin}><Dashboard /></Protected>} />
                     <Route path={ROUTES.SCANNER} element={<Protected allow={isScanner}><TicketScanner /></Protected>} />
                     <Route path={ROUTES.ADMIN_EVENTS} element={<Protected allow={isEventManager}><AdminEvents /></Protected>} />
+                    <Route path={`${ROUTES.ADMIN_EVENTS}/:eventId/report`} element={<Protected allow={isEventManager}><AdminEventReport /></Protected>} />
                     <Route path={ROUTES.ADMIN_CONTENT} element={<Protected allow={isEventManager}><AdminContent /></Protected>} />
                     <Route path={ROUTES.ADMIN_USERS} element={<Protected allow={isUserAdmin}><AdminUsers /></Protected>} />
                     <Route path={ROUTES.ADMIN_ACTIVITY} element={<Protected allow={isSuperAdminRole}><AdminActivity /></Protected>} />

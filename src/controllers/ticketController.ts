@@ -1,6 +1,7 @@
 import {
   collection,
   getDocs,
+  updateDoc,
   doc,
   query,
   where,
@@ -222,6 +223,7 @@ export const ticketController = {
       const whenText = when ? when.toLocaleString('en-ZA', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
 
       if (!event) throw new ScanRefused('cancelled', `${eventName} is no longer listed.`);
+      if (event.status === 'Cancelled') throw new ScanRefused('cancelled', `${eventName} was cancelled.`);
       if (when && when.getTime() + EVENT_PASSED_AFTER_HOURS * 3_600_000 < Date.now()) {
         throw new ScanRefused('passed', `This ticket was for ${eventName}${whenText ? ` on ${whenText}` : ''}.`);
       }
@@ -246,6 +248,17 @@ export const ticketController = {
     });
 
     return ticket;
+  },
+
+  /** Every ticket issued for one event, for its report and attendee list (staff only). */
+  async listForEvent(eventId: string) {
+    const snap = await getDocs(query(collection(db, TICKETS), where('eventId', '==', eventId)));
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }) as Ticket).sort(byNewest);
+  },
+
+  /** Cancels a ticket that has not been used, or restores one that was cancelled. */
+  async setTicketStatus(ticketId: string, status: 'VALID' | 'CANCELLED') {
+    await updateDoc(doc(db, TICKETS, ticketId), { status, updatedAt: serverTimestamp() });
   },
 
   /** How many tickets have been scanned at the door: one server-side count. */

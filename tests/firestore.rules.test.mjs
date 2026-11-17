@@ -413,6 +413,23 @@ test('tickets for an event that has passed cannot be admitted', async () => {
   await assertSucceeds(scan(as('door'), 'door'), 'event started 3 hours ago is still running');
 });
 
+test('tickets for a cancelled event cannot be admitted', async () => {
+  await env.withSecurityRulesDisabled(ctx => setDoc(doc(ctx.firestore(), 'events/e1'), eventDoc({ status: 'Cancelled' })));
+  await assertFails(scan(as('door'), 'door'));
+});
+
+test('event managers can cancel and restore an unused ticket; buyers cannot', async () => {
+  const cancel = (uid, status = 'CANCELLED') => updateDoc(doc(as(uid), 'tickets/BAI-EXISTING2345'), { status, updatedAt: serverTimestamp() });
+  await assertFails(cancel('alice'), 'the buyer');
+  await assertFails(cancel('fin'), 'finance');
+  await assertFails(cancel('door'), 'door staff');
+  await assertSucceeds(cancel('pro'));
+  await assertFails(scan(as('door'), 'door'), 'a cancelled ticket does not scan');
+  await assertSucceeds(cancel('ceo', 'VALID'));
+  await assertSucceeds(scan(as('door'), 'door'));
+  await assertFails(cancel('root'), 'a used ticket cannot be cancelled');
+});
+
 test('only door staff can scan, and a scan must update the ticket', async () => {
   await assertFails(scan(as('alice'), 'alice'));
   await assertFails(scan(as('fin'), 'fin'));

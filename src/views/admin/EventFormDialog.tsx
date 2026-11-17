@@ -239,6 +239,7 @@ export function EventFormDialog({ event, onClose }: Props) {
                 <option value="On Sale">On sale (listed on the Events page)</option>
                 <option value="Draft">Draft (hidden from visitors)</option>
                 <option value="Closed">Closed (hidden, sales ended)</option>
+                <option value="Cancelled">Cancelled (tickets not accepted at the door)</option>
               </select>
             </div>
             <fieldset className="sm:col-span-2 border-t border-bai-black/15 pt-5">

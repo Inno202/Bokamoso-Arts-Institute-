@@ -41,7 +41,7 @@ function seatsProblem(raw: string, sold: number): string | undefined {
   return undefined;
 }
 
-export const EVENT_STATUSES = ['On Sale', 'Draft', 'Closed'] as const;
+export const EVENT_STATUSES = ['On Sale', 'Draft', 'Closed', 'Cancelled'] as const;
 export const EVENT_LIMITS = { name: 200, venue: 200, city: 100, description: 5000, price: 100000, capacity: 1000000, ticketUrl: 500, ticketProvider: 60 };
 
 /** Mirrors the event checks in firestore.rules, with messages staff can act on. */

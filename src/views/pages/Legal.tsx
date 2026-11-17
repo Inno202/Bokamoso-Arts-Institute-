@@ -57,6 +57,7 @@ export default function Legal({ doc }: { doc: Doc }) {
               <li>Each ticket admits one person, once. It is checked and marked as used at the door.</li>
               <li>One account can hold up to {MAX_PER_EVENT} tickets for an event, while seats remain.</li>
               <li>Your ticket reference and QR code are your proof of booking. Anyone who has them can use the ticket, so only share them with the person attending.</li>
+              <li>If an event is cancelled, or a ticket is cancelled, it shows as cancelled in My Tickets and is not accepted at the door.</li>
               <li>Event dates, times and venues can change. The Events page and your ticket always show the current details.</li>
             </UL>
 

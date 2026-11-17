@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Edit2, Plus, Trash2 } from 'lucide-react';
+import { Ban, BarChart3, Edit2, Plus, Trash2 } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { ROUTES } from '../../controllers/navigation';
 import { AdminShell } from './AdminShell';
 import { EventFormDialog } from './EventFormDialog';
 import { eventController } from '../../controllers/eventController';
@@ -17,6 +19,7 @@ const STATUS_STYLE: Record<string, string> = {
   'On Sale': 'bg-green-100 text-green-900',
   Draft: 'bg-amber-100 text-amber-900',
   Closed: 'bg-bai-black/10 text-bai-black',
+  Cancelled: 'bg-red-100 text-red-900',
 };
 
 export default function AdminEvents() {
@@ -36,6 +39,25 @@ export default function AdminEvents() {
     setFailed(true);
     setLoading(false);
   }), []);
+
+  const handleCancel = async (event: BAIEvent) => {
+    const issued = event.ticketsSold || 0;
+    if (!await confirmAction({
+      title: `Cancel "${event.name}"?`,
+      message: `It leaves sale${issued ? `, its ${issued} ticket${issued === 1 ? '' : 's'} show as cancelled in My Tickets` : ''} and no ticket for it is accepted at the door. Download the attendee list from its report to contact ticket holders.`,
+      confirmLabel: 'Cancel event',
+      cancelLabel: 'Keep it',
+      tone: 'danger',
+    })) return;
+    try {
+      await eventController.cancelEvent(event.id);
+      toast.success('Event cancelled.');
+      void record('event.cancelled', `Cancelled the event "${event.name}"${issued ? ` (${issued} tickets had been issued)` : ''}.`, event.id);
+    } catch (err) {
+      logger.error('Failed to cancel event', err);
+      toast.error(friendlyError(err, 'The event could not be cancelled.'));
+    }
+  };
 
   const handleDelete = async (event: BAIEvent) => {
     const sold = event.ticketsSold > 0
@@ -104,7 +126,15 @@ export default function AdminEvents() {
                   <dd className="font-bold">{event.ticketsSold || 0} of {event.capacity}</dd>
                 </div>
               </dl>
-              <div className="flex gap-2 shrink-0">
+              <div className="flex flex-wrap gap-2 shrink-0">
+                <Link to={`${ROUTES.ADMIN_EVENTS}/${event.id}/report`} className="btn btn-outline">
+                  <BarChart3 size={16} aria-hidden="true" /><span>Report</span>
+                </Link>
+                {event.status !== 'Cancelled' && (
+                  <button onClick={() => handleCancel(event)} className="btn btn-danger" aria-label={`Cancel ${event.name}`}>
+                    <Ban size={16} aria-hidden="true" /><span>Cancel event</span>
+                  </button>
+                )}
                 <button onClick={() => setEditing(event)} className="btn btn-outline">
                   <Edit2 size={16} aria-hidden="true" /><span>Edit</span>
                 </button>

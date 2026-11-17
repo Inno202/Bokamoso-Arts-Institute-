@@ -17,11 +17,16 @@ import { logger } from '../../services/loggerService';
 
 type TicketWithEvent = Ticket & { event?: BAIEvent | null };
 
-const STATUS: Record<TicketStatus, { label: string; className: string }> = {
+const STATUS: Record<TicketStatus | 'EVENT_CANCELLED', { label: string; className: string }> = {
   VALID: { label: 'Valid', className: 'bg-green-100 text-green-900' },
   SCANNED: { label: 'Used', className: 'bg-bai-black/10 text-bai-black' },
   CANCELLED: { label: 'Cancelled', className: 'bg-red-100 text-red-900' },
+  EVENT_CANCELLED: { label: 'Event cancelled', className: 'bg-red-100 text-red-900' },
 };
+
+/** A valid ticket for a cancelled show reads as "Event cancelled". */
+const statusOf = (t: { status: TicketStatus; event?: { status?: string } | null }): TicketStatus | 'EVENT_CANCELLED' =>
+  t.status === 'VALID' && t.event?.status === 'Cancelled' ? 'EVENT_CANCELLED' : t.status;
 
 export default function MyTickets() {
   const { user, userData } = useAuth();
@@ -165,8 +170,8 @@ export default function MyTickets() {
         ) : (
           <ul className="grid grid-cols-1 lg:grid-cols-2 gap-5">
             {tickets.map((ticket) => {
-              const status = STATUS[ticket.status] || STATUS.VALID;
-              const used = ticket.status !== 'VALID';
+              const status = STATUS[statusOf(ticket)] || STATUS.VALID;
+              const used = statusOf(ticket) !== 'VALID';
               return (
                 <li key={ticket.id}>
                   {/* One fixed size for every ticket: long names are clipped, never stretch the card. */}
@@ -224,8 +229,8 @@ export default function MyTickets() {
               >
                 <X size={20} aria-hidden="true" />
               </button>
-              <span className={`absolute top-3 left-4 text-xs font-bold px-2.5 py-1 rounded-full ${(STATUS[selected.status] || STATUS.VALID).className}`}>
-                {(STATUS[selected.status] || STATUS.VALID).label}
+              <span className={`absolute top-3 left-4 text-xs font-bold px-2.5 py-1 rounded-full ${(STATUS[statusOf(selected)] || STATUS.VALID).className}`}>
+                {(STATUS[statusOf(selected)] || STATUS.VALID).label}
               </span>
               <h2 id="ticket-title" className="absolute bottom-3 left-5 right-14 font-serif font-semibold text-2xl leading-tight text-white line-clamp-2">
                 {eventName(selected)}
@@ -258,13 +263,15 @@ export default function MyTickets() {
             </div>
 
             <div className="px-5 pt-3.5 pb-5 flex flex-col items-center">
-              <TicketQR value={selected.id} size={400} className={`w-36 h-36 ${selected.status === 'VALID' ? '' : 'opacity-30'}`} />
+              <TicketQR value={selected.id} size={400} className={`w-36 h-36 ${statusOf(selected) === 'VALID' ? '' : 'opacity-30'}`} />
               <p className="num font-semibold text-bai-red-deep mt-1.5">{selected.id}</p>
-              {selected.status !== 'VALID' && (
-                <p className="mt-1 text-sm font-semibold text-red-700">{selected.status === 'SCANNED' ? 'Already used at the door' : 'This ticket was cancelled'}</p>
+              {statusOf(selected) !== 'VALID' && (
+                <p className="mt-1 text-sm font-semibold text-red-700">{selected.status === 'SCANNED' ? 'Already used at the door' : statusOf(selected) === 'EVENT_CANCELLED' ? 'This event was cancelled' : 'This ticket was cancelled'}</p>
               )}
-              <p className="text-sm text-center text-bai-ink-soft mt-1">Show this code at the door. It admits one person, once.</p>
-              {/* The main action gets the room; Share is a round icon button beside it. */}
+              {statusOf(selected) === 'VALID' && <p className="text-sm text-center text-bai-ink-soft mt-1">Show this code at the door. It admits one person, once.</p>}
+              {/* The main action gets the room; Share is a round icon button beside it.
+                  Only a ticket that can still be used can be downloaded. */}
+              {statusOf(selected) === 'VALID' && (
               <div className="no-print flex gap-3 w-full mt-3.5">
                 <button onClick={() => handleDownload(selected)} disabled={downloading} className="btn btn-primary flex-1 whitespace-nowrap">
                   {downloading ? <Loader2 size={18} className="animate-spin" aria-hidden="true" /> : <Download size={18} aria-hidden="true" />}
@@ -274,6 +281,7 @@ export default function MyTickets() {
                   <Share2 size={18} aria-hidden="true" />
                 </button>
               </div>
+              )}
             </div>
           </div>
         </div>
