@@ -38,6 +38,12 @@ export const PRERENDERED_ROUTES = [
   ROUTES.LOGIN, ROUTES.REGISTER, ROUTES.TERMS, ROUTES.PRIVACY, ROUTES.COOKIES,
 ];
 
+/** The door scanner is a single full screen, so it has no footer. */
+function SiteFooter() {
+  const { pathname } = useLocation();
+  return pathname === ROUTES.SCANNER ? null : <Footer />;
+}
+
 /** The router is supplied by the caller: BrowserRouter in the browser, StaticRouter at build time. */
 export default function App({ router: Router }: { router: (props: { children: ReactNode }) => ReactNode }) {
   return (
@@ -81,7 +87,7 @@ export default function App({ router: Router }: { router: (props: { children: Re
                 </Suspense>
               </ErrorBoundary>
             </main>
-            <Footer />
+            <SiteFooter />
           </div>
           <Toaster />
           <ConfirmDialog />
