@@ -295,7 +295,7 @@
 }
 #qr-reader a { color: var(--color-bai-blue-soft); }
 
-/* Door scanner: exactly one screen under the site header (5rem plus its 1px line). */
+/* Door scanner: fills the first screen under the site header (5rem plus its 1px line); the footer follows below. */
 .scanner-screen { height: calc(100vh - 5rem - 1px); height: calc(100dvh - 5rem - 1px); }
 /* The square camera is as large as fits (448px at most, where the camera library reads codes reliably),
    leaving room for the result card below it. */
