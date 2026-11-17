@@ -13,6 +13,7 @@ import { contentAccessController, hasLiveAccess, NOTE_LIMIT } from '../../contro
 import { needsContentApproval, type ContentAccess } from '../../models/types';
 import { toast } from '../../services/toast';
 import { confirmAction } from '../../services/confirm';
+import { useActivity } from '../components/useActivity';
 import { logger } from '../../services/loggerService';
 
 export default function AdminContent() {
@@ -59,6 +60,7 @@ function editorFor(key: SectionKey) {
  */
 function AccessGate({ children }: { children: React.ReactNode }) {
   const { user, userData } = useAuth();
+  const record = useActivity();
   const [access, setAccess] = useState<ContentAccess | null | undefined>(undefined);
   const [failed, setFailed] = useState(false);
   const [now, setNow] = useState(() => Date.now());
@@ -91,6 +93,7 @@ function AccessGate({ children }: { children: React.ReactNode }) {
       await contentAccessController.request(user, userData?.displayName || user.displayName || '', note);
       setNote('');
       toast.success('Request sent. You can edit as soon as it is approved.');
+      void record('access.requested', `Asked to edit site content${note.trim() ? `: "${note.trim().slice(0, 200)}"` : '.'}`, user.uid);
     } catch (err) {
       logger.error('Could not request content access', err);
       toast.error(friendlyError(err, 'Your request could not be sent. Please try again.'));
@@ -164,6 +167,7 @@ function SectionEditor({ sectionKey }: { sectionKey: SectionKey }) {
   const def = SECTIONS[sectionKey];
   const state = useContentState(sectionKey);
   const { user } = useAuth();
+  const record = useActivity();
   const [draft, setDraft] = useState<Data | null>(null);
   const [errors, setErrors] = useState<Errors>({});
   const [saving, setSaving] = useState(false);
@@ -196,6 +200,7 @@ function SectionEditor({ sectionKey }: { sectionKey: SectionKey }) {
       await saveSection(sectionKey, draft, user.uid);
       setErrors({});
       toast.success(`${def.title} saved and confirmed. Every visitor now sees your changes.`);
+      void record('content.saved', `Saved the "${def.title}" section of the site.`, sectionKey);
     } catch (err) {
       if (err instanceof ContentValidationError) {
         setErrors(err.errors);

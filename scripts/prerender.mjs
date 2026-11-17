@@ -18,6 +18,8 @@ import { pathToFileURL } from 'node:url';
 const DIST = 'dist';
 const config = JSON.parse(await readFile('firebase-applet-config.json', 'utf8'));
 const BASE = '/Bokamoso-Arts-Institute-';
+// Where the published site lives, for search engines (canonical links, sitemap, event data).
+const SITE = `https://inno202.github.io${BASE}`;
 
 const TITLES = {
   '/': 'Bokamoso Arts Institute | Choral excellence from Mabopane',
@@ -33,7 +35,7 @@ const TITLES = {
 };
 
 // Signed-in and staff pages are never pre-rendered: they get the plain shell.
-const SHELL_ROUTES = ['/cart', '/checkout', '/my-tickets', '/dashboard', '/scanner', '/admin/events', '/admin/content', '/admin/users',
+const SHELL_ROUTES = ['/cart', '/checkout', '/my-tickets', '/account', '/dashboard', '/scanner', '/admin/events', '/admin/content', '/admin/users', '/admin/activity',
   ...['site', 'home', 'about', 'work', 'traditions'].map(s => `/admin/content/${s}`)];
 
 // ---------- 1. content ----------
@@ -117,6 +119,41 @@ if (!template.includes('<div id="root"></div>')) throw new Error('dist/index.htm
 const seed = JSON.stringify({ ...content, upcomingEvents }).replace(/</g, '\\u003c');
 const seedTag = `<script type="application/json" id="bai-content">${seed}</script>`;
 
+// Events in the form search engines read (schema.org), so shows can appear with their dates.
+const absolute = (img) => !img ? `${SITE}/assets/hero.jpg` : /^https:\/\//.test(img) ? img : img.startsWith('assets/') ? `${SITE}/${img}` : '';
+const eventData = events
+  .filter(e => e.date && new Date(e.date).getTime() + 12 * 3600e3 > Date.now())
+  .map(e => {
+    const types = e.ticketTypes && typeof e.ticketTypes === 'object' ? Object.values(e.ticketTypes) : [];
+    const prices = types.length ? types.map(t => Number(t.price) || 0) : [Number(e.price) || 0];
+    const soldOut = (Number(e.capacity) || 0) - (Number(e.ticketsSold) || 0) <= 0;
+    const image = absolute(e.bannerImageUrl || e.ticketImageUrl);
+    return {
+      '@type': 'Event',
+      name: String(e.name || '').slice(0, 200),
+      startDate: new Date(e.date).toISOString(),
+      eventStatus: 'https://schema.org/EventScheduled',
+      eventAttendanceMode: 'https://schema.org/OfflineEventAttendanceMode',
+      location: { '@type': 'Place', name: String(e.venue || ''), address: { '@type': 'PostalAddress', addressLocality: String(e.city || '') } },
+      ...(image ? { image: [image] } : {}),
+      ...(e.description ? { description: String(e.description).slice(0, 500) } : {}),
+      organizer: { '@type': 'Organization', name: 'Bokamoso Arts Institute', url: SITE + '/' },
+      offers: {
+        '@type': 'AggregateOffer',
+        lowPrice: Math.min(...prices),
+        highPrice: Math.max(...prices),
+        priceCurrency: e.currency || 'ZAR',
+        availability: soldOut ? 'https://schema.org/SoldOut' : 'https://schema.org/InStock',
+        url: typeof e.ticketUrl === 'string' && e.ticketUrl.startsWith('https://') ? e.ticketUrl : `${SITE}/events/`,
+      },
+    };
+  });
+// A data block, never run as script; "<" escaped so content can never close the tag.
+const eventsLd = eventData.length
+  ? `<script type="application/ld+json">${JSON.stringify({ '@context': 'https://schema.org', '@graph': eventData }).replace(/</g, '\\u003c')}</script>`
+  : '';
+const canonical = (route) => `<link rel="canonical" href="${SITE}${route === '/' ? '/' : `${route}/`}" />`;
+
 const setTitle = (html, title) => html.replace(/<title>[^<]*<\/title>/, `<title>${title.replace(/</g, '&lt;')}</title>`);
 
 async function write(route, html) {
@@ -129,14 +166,26 @@ for (const route of server.PRERENDERED_ROUTES) {
   const body = await server.render(`${BASE}${route === '/' ? '/' : route}`, BASE);
   let html = template.replace('<div id="root"></div>', `<div id="root" data-route="${route}">${body}</div>${seedTag}`);
   html = setTitle(html, TITLES[route] || TITLES['/']);
+  html = html.replace('</head>', `    ${canonical(route)}\n${route === '/events' || route === '/' ? `    ${eventsLd}\n` : ''}  </head>`);
   await write(route, html);
   console.log(`prerender: ${route} (${Math.round(html.length / 1024)} kB)`);
 }
 
-const shell = template.replace('<div id="root"></div>', `<div id="root"></div>${seedTag}`);
+// Signed-in and staff pages are not for search engines.
+const shell = template
+  .replace('<div id="root"></div>', `<div id="root"></div>${seedTag}`)
+  .replace('</head>', '    <meta name="robots" content="noindex" />\n  </head>');
 for (const route of SHELL_ROUTES) await write(route, shell);
 await writeFile(join(DIST, '404.html'), shell);
 console.log(`prerender: ${SHELL_ROUTES.length} app shells and 404.html`);
+
+// A sitemap of the public pages, to submit once in Google Search Console.
+const today = new Date().toISOString().slice(0, 10);
+const publicRoutes = server.PRERENDERED_ROUTES.filter(r => !['/login', '/register'].includes(r));
+const sitemap = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${publicRoutes
+  .map(r => `  <url><loc>${SITE}${r === '/' ? '/' : `${r}/`}</loc><lastmod>${today}</lastmod></url>`).join('\n')}\n</urlset>\n`;
+await writeFile(join(DIST, 'sitemap.xml'), sitemap);
+console.log(`prerender: sitemap.xml (${publicRoutes.length} pages), ${eventData.length} event(s) described for search engines`);
 
 // Firebase keeps connections open; the work is done.
 process.exit(0);

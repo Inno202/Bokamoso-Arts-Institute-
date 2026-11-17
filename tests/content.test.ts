@@ -365,3 +365,32 @@ describe('when an event is over', () => {
     expect(eventHasEnded(null, now)).toBe(false); // no date: not treated as over
   });
 });
+
+describe('ticket types', () => {
+  const base: EventForm = { name: 'Gala', venue: 'Hall', city: 'Pretoria', date: '2027-05-29T10:00', price: '', capacity: '', description: '', status: 'On Sale', currency: 'ZAR', ticketUrl: '', ticketProvider: '' };
+  const row = (id: string, name: string, price: string, capacity: string, sold = 0) => ({ id, name, price, capacity, sold });
+
+  it('accepts several types with their own prices and seats', () => {
+    expect(validateEvent({ ...base, types: [row('t1', 'General Admission', '100', '200'), row('t2', 'VIP', '350', '20')] })).toEqual({});
+  });
+
+  it('checks each type: name, unique names, price and seats (not below what is sold)', () => {
+    const e = validateEvent({ ...base, types: [row('t1', '', 'x', '0'), row('t2', 'VIP', '-1', '5', 8), row('t3', 'vip', '10', '10')] });
+    expect(e['type-0-name']).toMatch(/name/);
+    expect(e['type-0-price']).toBeDefined();
+    expect(e['type-0-capacity']).toBeDefined();
+    expect(e['type-1-price']).toMatch(/negative/);
+    expect(e['type-1-capacity']).toMatch(/8 of these are already issued/);
+    expect(e['type-2-name']).toMatch(/same name/);
+    expect(validateEvent({ ...base, types: [] }).types).toBeDefined();
+  });
+
+  it('reads older events as one General Admission type, and lists newer ones in order', async () => {
+    const { ticketTypesOf, priceRange, typeOf } = await import('../src/models/ticketTypes');
+    expect(ticketTypesOf({ price: 150, capacity: 100, ticketsSold: 40 })).toEqual([{ id: 'general', name: 'General Admission', price: 150, capacity: 100, sold: 40, remaining: 60 }]);
+    const typed = { price: 100, capacity: 30, ticketTypes: { t2: { name: 'VIP', price: 350, capacity: 10 }, t1: { name: 'General Admission', price: 100, capacity: 20 } }, typeSold: { t2: 10 } };
+    expect(ticketTypesOf(typed).map(t => [t.id, t.remaining])).toEqual([['t1', 20], ['t2', 0]]);
+    expect(priceRange(typed)).toEqual({ min: 100, max: 350 });
+    expect(typeOf(typed, 'general')?.id).toBe('t1'); // a bag line from before the event had types
+  });
+});

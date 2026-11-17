@@ -45,7 +45,9 @@ export default function Checkout() {
         clearCart();
       } else if (result.ticketIds.length > 0) {
         // Some events were booked before one failed: keep only the unbooked lines in the bag.
-        items.filter(i => result.purchasedEventIds.includes(i.eventId)).forEach(i => removeFromCart(i.eventId, i.ticketType));
+        items
+          .filter(i => result.purchasedLines.some(l => l.eventId === i.eventId && l.ticketTypeId === (i.ticketTypeId || 'general')))
+          .forEach(i => removeFromCart(i.eventId, i.ticketType));
         setError(`${result.ticketIds.length} ${result.ticketIds.length === 1 ? 'ticket was' : 'tickets were'} issued and ${result.ticketIds.length === 1 ? 'is' : 'are'} in My Tickets. The rest of your bag was not booked: ${friendlyError(result.error, failed)}`);
       } else {
         setError(friendlyError(result.error, failed));

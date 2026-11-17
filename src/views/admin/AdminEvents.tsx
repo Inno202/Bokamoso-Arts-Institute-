@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Edit2, Plus, Trash2 } from 'lucide-react';
+import { Ban, BarChart3, Copy, Edit2, Plus, Trash2 } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { ROUTES } from '../../controllers/navigation';
 import { AdminShell } from './AdminShell';
 import { EventFormDialog } from './EventFormDialog';
 import { eventController } from '../../controllers/eventController';
@@ -7,17 +9,22 @@ import { BAIEvent } from '../../models/types';
 import { formatCurrency, formatDateTime, friendlyError } from '../../controllers/lib/utils';
 import { toast } from '../../services/toast';
 import { sellsElsewhere } from '../../models/currency';
+import { hasTicketTypes, priceRange, ticketTypesOf } from '../../models/ticketTypes';
 import { eventHasEnded } from '../../controllers/lib/utils';
 import { confirmAction } from '../../services/confirm';
+import { useActivity } from '../components/useActivity';
 import { logger } from '../../services/loggerService';
 
 const STATUS_STYLE: Record<string, string> = {
   'On Sale': 'bg-green-100 text-green-900',
   Draft: 'bg-amber-100 text-amber-900',
   Closed: 'bg-bai-black/10 text-bai-black',
+  Cancelled: 'bg-red-100 text-red-900',
 };
 
 export default function AdminEvents() {
+  const record = useActivity();
+  const [copying, setCopying] = useState<BAIEvent | null>(null);
   const [events, setEvents] = useState<BAIEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
@@ -34,6 +41,25 @@ export default function AdminEvents() {
     setLoading(false);
   }), []);
 
+  const handleCancel = async (event: BAIEvent) => {
+    const issued = event.ticketsSold || 0;
+    if (!await confirmAction({
+      title: `Cancel "${event.name}"?`,
+      message: `It leaves sale${issued ? `, its ${issued} ticket${issued === 1 ? '' : 's'} show as cancelled in My Tickets` : ''} and no ticket for it is accepted at the door. Download the attendee list from its report to contact ticket holders.`,
+      confirmLabel: 'Cancel event',
+      cancelLabel: 'Keep it',
+      tone: 'danger',
+    })) return;
+    try {
+      await eventController.cancelEvent(event.id);
+      toast.success('Event cancelled.');
+      void record('event.cancelled', `Cancelled the event "${event.name}"${issued ? ` (${issued} tickets had been issued)` : ''}.`, event.id);
+    } catch (err) {
+      logger.error('Failed to cancel event', err);
+      toast.error(friendlyError(err, 'The event could not be cancelled.'));
+    }
+  };
+
   const handleDelete = async (event: BAIEvent) => {
     const sold = event.ticketsSold > 0
       ? `${event.ticketsSold} ticket${event.ticketsSold === 1 ? ' has' : 's have'} already been issued for it, and those ticket holders will lose the event details. `
@@ -42,6 +68,7 @@ export default function AdminEvents() {
     try {
       await eventController.deleteEvent(event.id);
       toast.success('Event deleted.');
+      void record('event.deleted', `Deleted the event "${event.name}"${event.ticketsSold ? ` (${event.ticketsSold} tickets had been issued)` : ''}.`, event.id);
     } catch (err) {
       logger.error('Failed to delete event', err);
       toast.error(friendlyError(err, 'The event could not be deleted.'));
@@ -82,20 +109,38 @@ export default function AdminEvents() {
                   {sellsElsewhere(event) && <span className="text-sm font-bold px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-900">Sold by {event.ticketProvider || 'outside seller'}</span>}
                 </div>
                 <p className="num text-bai-black/75 mt-1">{formatDateTime(event.date) || 'No date'} · {[event.venue, event.city].filter(Boolean).join(', ')}</p>
+                {hasTicketTypes(event) && (
+                  <ul className="num flex flex-wrap gap-x-4 gap-y-1 mt-2 text-sm text-bai-black/75">
+                    {ticketTypesOf(event).map(t => (
+                      <li key={t.id}><span className="font-semibold text-bai-black">{t.name}</span> {t.price > 0 ? formatCurrency(t.price, event.currency) : 'Free'} · {t.sold} of {t.capacity}</li>
+                    ))}
+                  </ul>
+                )}
               </div>
               <dl className="num flex gap-8 shrink-0">
                 <div>
                   <dt className="text-sm text-bai-black/70">Price</dt>
-                  <dd className="font-bold">{event.price > 0 ? formatCurrency(event.price, event.currency) : 'Free'}</dd>
+                  <dd className="font-bold">{(() => { const r = priceRange(event); const f = (n: number) => (n > 0 ? formatCurrency(n, event.currency) : 'Free'); return r.min === r.max ? f(r.max) : `${f(r.min)} to ${f(r.max)}`; })()}</dd>
                 </div>
                 <div>
                   <dt className="text-sm text-bai-black/70">Issued</dt>
                   <dd className="font-bold">{event.ticketsSold || 0} of {event.capacity}</dd>
                 </div>
               </dl>
-              <div className="flex gap-2 shrink-0">
+              <div className="flex flex-wrap gap-2 shrink-0">
+                <Link to={`${ROUTES.ADMIN_EVENTS}/${event.id}/report`} className="btn btn-outline">
+                  <BarChart3 size={16} aria-hidden="true" /><span>Report</span>
+                </Link>
+                {event.status !== 'Cancelled' && (
+                  <button onClick={() => handleCancel(event)} className="btn btn-danger" aria-label={`Cancel event ${event.name}`}>
+                    <Ban size={16} aria-hidden="true" /><span>Cancel event</span>
+                  </button>
+                )}
                 <button onClick={() => setEditing(event)} className="btn btn-outline">
                   <Edit2 size={16} aria-hidden="true" /><span>Edit</span>
+                </button>
+                <button onClick={() => setCopying(event)} className="btn btn-outline" aria-label={`Duplicate ${event.name}`}>
+                  <Copy size={16} aria-hidden="true" /><span>Duplicate</span>
                 </button>
                 <button onClick={() => handleDelete(event)} className="btn btn-danger" aria-label={`Delete ${event.name}`}>
                   <Trash2 size={16} aria-hidden="true" /><span>Delete</span>
@@ -107,6 +152,7 @@ export default function AdminEvents() {
       )}
 
       {editing && <EventFormDialog event={editing === 'new' ? null : editing} onClose={closeDialog} />}
+      {copying && <EventFormDialog copyFrom={copying} onClose={() => setCopying(null)} />}
     </AdminShell>
   );
 }

@@ -83,7 +83,8 @@
   .btn-primary { @apply bg-bai-black text-white hover:bg-bai-red; }
   .btn-accent { @apply bg-bai-red text-white hover:bg-bai-black; }
   .btn-outline { @apply border border-bai-black/25 text-bai-black hover:border-bai-black hover:bg-bai-black hover:text-white; }
-  .btn-danger { @apply border border-bai-red/60 text-bai-red hover:bg-bai-red hover:text-white hover:border-bai-red; }
+  /* The deeper red keeps small button text at AA contrast on white. */
+  .btn-danger { @apply border border-bai-red-deep/60 text-bai-red-deep hover:bg-bai-red-deep hover:text-white hover:border-bai-red-deep; }
   .btn-danger-solid { @apply bg-bai-red-deep text-white hover:bg-bai-black; }
   /* On photographs and dark surfaces */
   .btn-light { @apply bg-white text-bai-black hover:bg-bai-red hover:text-white; }

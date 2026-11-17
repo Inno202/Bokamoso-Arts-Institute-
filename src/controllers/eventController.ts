@@ -21,7 +21,7 @@ import { logger } from '../services/loggerService';
 const COLLECTION = 'events';
 const MAX_LISTED = 100;
 
-export type EventInput = Pick<BAIEvent, 'name' | 'venue' | 'city' | 'price' | 'capacity' | 'description' | 'status' | 'createdBy' | 'currency' | 'ticketUrl' | 'ticketProvider'> & {
+export type EventInput = Pick<BAIEvent, 'name' | 'venue' | 'city' | 'price' | 'capacity' | 'description' | 'status' | 'createdBy' | 'currency' | 'ticketUrl' | 'ticketProvider' | 'ticketTypes' | 'typeSold'> & {
   date: Date;
   bannerImageUrl?: string;
   ticketImageUrl?: string;
@@ -84,6 +84,12 @@ export const eventController = {
 
   async updateEvent(eventId: string, data: Partial<EventInput>) {
     await updateDoc(doc(db, COLLECTION, eventId), { ...data, updatedAt: serverTimestamp() });
+    cacheService.invalidate(COLLECTION);
+  },
+
+  /** Cancels a show: it leaves sale, its tickets show as cancelled and are refused at the door. */
+  async cancelEvent(eventId: string) {
+    await updateDoc(doc(db, COLLECTION, eventId), { status: 'Cancelled', updatedAt: serverTimestamp() });
     cacheService.invalidate(COLLECTION);
   },
 

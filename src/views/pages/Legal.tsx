@@ -57,6 +57,7 @@ export default function Legal({ doc }: { doc: Doc }) {
               <li>Each ticket admits one person, once. It is checked and marked as used at the door.</li>
               <li>One account can hold up to {MAX_PER_EVENT} tickets for an event, while seats remain.</li>
               <li>Your ticket reference and QR code are your proof of booking. Anyone who has them can use the ticket, so only share them with the person attending.</li>
+              <li>If an event is cancelled, or a ticket is cancelled, it shows as cancelled in My Tickets and is not accepted at the door.</li>
               <li>Event dates, times and venues can change. The Events page and your ticket always show the current details.</li>
             </UL>
 
@@ -81,7 +82,7 @@ export default function Legal({ doc }: { doc: Doc }) {
               <li><strong>Tickets and orders:</strong> which events you booked, how many tickets, the price and its currency, the time of booking, how many tickets your account holds for each event, and when a ticket was scanned at the door and by which staff account.</li>
               <li><strong>Your bag:</strong> the tickets you have added but not yet booked, saved to your account and in your browser so they are still there when you come back.</li>
               <li><strong>Emails you send us:</strong> if you email us, we receive whatever you choose to send.</li>
-              <li><strong>Staff activity:</strong> for staff accounts, your role and a record of which account last changed site content or scanned a ticket. If you ask for access to edit site content, we keep your name, email address, any note you add, when you asked, and who approved or declined it and when.</li>
+              <li><strong>Staff activity:</strong> for staff accounts, your role, a record of which account last changed site content or scanned a ticket, and an activity log of staff actions (such as role changes, event and content edits, and access approvals) with your name, role and the time. Only super admins can see the activity log, and its entries cannot be changed or deleted. If you ask for access to edit site content, we keep your name, email address, any note you add, when you asked, and who approved or declined it and when.</li>
             </UL>
             <P>We do not collect card or bank details on this site, and we do not use advertising or analytics trackers.</P>
 
@@ -104,10 +105,10 @@ export default function Legal({ doc }: { doc: Doc }) {
             </UL>
 
             <H>How long we keep it</H>
-            <P>We keep your account until you ask us to delete it. Ticket records are kept as a record of attendance and bookings. Ask us if you would like yours removed.</P>
+            <P>We keep your account until you delete it (on your Account page) or ask us to. Deleting it removes your profile, your bag and your sign-in. Ticket and order records are kept as a record of bookings and attendance. Ask us if you would like yours removed.</P>
 
             <H>Your rights</H>
-            <P>You can ask us for a copy of the information we hold about you, ask us to correct or delete it, or object to how we use it. Email {email}. If you are not satisfied with our answer, you can complain to the Information Regulator of South Africa.</P>
+            <P>You can change your name and password and delete your account yourself on your Account page. You can also ask us for a copy of the information we hold about you, ask us to correct or delete it, or object to how we use it. Email {email}. If you are not satisfied with our answer, you can complain to the Information Regulator of South Africa.</P>
 
             <H>Changes</H>
             <P>If what we collect or how we use it changes, we will update this page and the date above.</P>

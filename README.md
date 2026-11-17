@@ -84,6 +84,19 @@ VITE_USE_EMULATORS=true npx vite
 
 `src/views/pages/Legal.tsx` holds the three policies. Update it, and its "last updated" date, in the same change as anything that alters what is charged, collected, stored or promised.
 
+## Settings only the owner can switch on
+
+These live in the Firebase, Cloudinary and Google consoles, not in this code:
+
+1. **App Check enforcement** (Firebase → App Check → APIs). After the site has run for a day, when most requests show as verified, press **Enforce** for Cloud Firestore and Authentication. Requests that do not come from the real website are then refused.
+2. **Password policy** (Firebase → Authentication → Settings → Password policy): require at least 8 characters with a mix of letters and numbers.
+3. **Email enumeration protection** (Firebase → Authentication → Settings → User actions): on, so sign-in errors never reveal whether an email has an account.
+4. **Authorised domains** (Firebase → Authentication → Settings): only `inno202.github.io` (and `localhost` for development).
+5. **Database backups** (needs the Blaze plan): Firebase → Firestore → Disaster recovery → scheduled backups, daily, kept for 7 to 14 days.
+6. **Cloudinary preset `bai_media`**: unsigned, asset folder `bokamoso`; if your plan offers them, also allowed formats `jpg, png, webp` and a 10 MB limit.
+7. **Google Search Console**: add the property `https://inno202.github.io/Bokamoso-Arts-Institute-/`, verify it, and submit `sitemap.xml`. GitHub Pages project sites cannot serve a root `robots.txt`; signed-in and staff pages carry `noindex` instead.
+8. **Dependabot** (`.github/dependabot.yml`) opens a pull request each week when a library needs updating: review and merge those.
+
 ## Security
 
 What protects the system, and where each protection lives.
@@ -129,7 +142,7 @@ Set `VITE_CLOUDINARY_CLOUD_NAME` and `VITE_CLOUDINARY_UPLOAD_PRESET` (see `.env.
 | Image | Best size | Where it shows | Notes |
 | --- | --- | --- | --- |
 | Banner photo / poster (required) | **1600 × 1200** (4:3 landscape) | Event card, top of the open ticket, downloaded ticket | 4:3 fits the event card exactly. A square poster (1080 × 1080) still works, but the card trims about 12% off the top and bottom, so keep text away from those edges. On the downloaded ticket any shape shows in full. |
-| Ticket artwork (required) | **1200 × 1200** (square) | Thumbnail in the bag | An event cannot be saved without both pictures; older events without one are asked for it the next time they are edited. |
+| Ticket artwork (required) | **1200 × 1200** (square) | Your tickets (on screen and the downloaded PDF) and the thumbnail in the bag | An event cannot be saved without both pictures; older events without one are asked for it the next time they are edited. |
 
 The coloured strip at the top of an open ticket on screen is very wide and short, so only the **middle band** of the banner shows there. This is decorative and expected.
 

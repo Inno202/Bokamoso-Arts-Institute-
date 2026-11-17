@@ -8,7 +8,7 @@ import {
   assertSucceeds,
 } from '@firebase/rules-unit-testing';
 import {
-  doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, collection, query, where,
+  doc, getDoc, getDocs, setDoc, addDoc, updateDoc, deleteDoc, collection, query, where,
   writeBatch, serverTimestamp, Timestamp, increment,
 } from 'firebase/firestore';
 
@@ -27,7 +27,8 @@ const profile = (role, extra = {}) => ({
 });
 const eventDoc = (extra = {}) => ({
   name: 'Gala', venue: 'Hall', city: 'Pretoria', date: Timestamp.now(), price: 150,
-  capacity: 2, ticketsSold: 0, status: 'On Sale', description: '', ...extra,
+  capacity: 2, ticketsSold: 0, status: 'On Sale', description: '',
+  bannerImageUrl: 'https://res.cloudinary.com/demo/image/upload/banner.jpg', ticketImageUrl: 'https://res.cloudinary.com/demo/image/upload/ticket.jpg', ...extra,
 });
 const ticketDoc = (uid, extra = {}) => ({
   orderId: `${uid}_e1_1`, eventId: 'e1', eventName: 'Gala', ticketType: 'General Admission', buyerId: uid,
@@ -84,7 +85,12 @@ const buy = (db, uid, o = {}) => {
   for (const id of (o.createIds ?? ids)) {
     b.set(doc(db, 'tickets', id), { ...ticketDoc(uid), orderId, eventId, ...(o.ticket || {}) });
   }
-  if (o.bump !== 0) b.update(doc(db, 'events', eventId), { ticketsSold: increment(o.bump ?? n) });
+  if (o.bump !== 0) {
+    b.update(doc(db, 'events', eventId), {
+      ticketsSold: increment(o.bump ?? n),
+      ...(o.typeSold ? { [`typeSold.${o.typeSold.key}`]: increment(o.typeSold.by ?? n) } : {}),
+    });
+  }
   if (o.holding !== false) {
     b.set(doc(db, 'ticket_holdings', `${uid}_${eventId}`), {
       buyerId: uid, eventId, count: held + n, updatedAt: serverTimestamp(), ...(o.holding || {}),
@@ -145,10 +151,17 @@ test('a deactivated admin has no admin powers', async () => {
   await assertFails(setDoc(doc(db, 'about/main'), { story: { title: 'hacked' } }));
 });
 
-test('only super admins delete profiles', async () => {
+test('only super admins delete other people\'s profiles', async () => {
   await assertFails(deleteDoc(doc(as('ceo'), 'users/alice')));
   await assertFails(deleteDoc(doc(as('root'), 'users/root')));
   await assertSucceeds(deleteDoc(doc(as('root'), 'users/alice')));
+});
+
+test('people can delete their own account, staff cannot delete themselves', async () => {
+  await assertFails(deleteDoc(doc(as('bob'), 'users/alice')), 'someone else');
+  await assertFails(deleteDoc(doc(as('alice', 'alice@example.com', 9 * 3600), 'users/alice')), 'sign-in older than 8 hours');
+  await assertFails(deleteDoc(doc(as('pro'), 'users/pro')), 'staff account');
+  await assertSucceeds(deleteDoc(doc(as('alice'), 'users/alice')));
 });
 
 // ---------- events ----------
@@ -162,6 +175,15 @@ test('events are public to read and staff-only to manage', async () => {
   await assertSucceeds(setDoc(doc(as('pro'), 'events/x'), eventDoc()));
   await assertFails(setDoc(doc(as('pro'), 'events/y'), eventDoc({ price: -5 })));
   await assertSucceeds(updateDoc(doc(as('pro'), 'events/e1'), { price: 200 }));
+});
+
+test('new events need both pictures; older events without them can still be edited', async () => {
+  const pro = as('pro');
+  await assertFails(setDoc(doc(pro, 'events/nopic1'), eventDoc({ bannerImageUrl: '' })), 'no banner');
+  const { ticketImageUrl: _omit, ...noArtwork } = eventDoc();
+  await assertFails(setDoc(doc(pro, 'events/nopic2'), noArtwork), 'no ticket artwork');
+  await env.withSecurityRulesDisabled(ctx => setDoc(doc(ctx.firestore(), 'events/old'), { ...eventDoc(), bannerImageUrl: '', ticketImageUrl: '' }));
+  await assertSucceeds(updateDoc(doc(pro, 'events/old'), { status: 'Cancelled' }));
 });
 
 test('buyers can only move the sold counter up, within capacity', async () => {
@@ -271,6 +293,53 @@ test('an event cannot be oversold', async () => {
   await assertFails(buy(as('bob'), 'bob', { n: 1, prefix: 'B' }));
 });
 
+// ---------- ticket types ----------
+
+const typedEvent = (extra = {}) => eventDoc({
+  price: 100, capacity: 30,
+  ticketTypes: { t1: { name: 'General Admission', price: 100, capacity: 20 }, t2: { name: 'VIP', price: 350, capacity: 10 } },
+  typeSold: { t1: 0, t2: 0 }, ...extra,
+});
+const vip = (o = {}) => ({
+  ...o,
+  order: { unitPrice: 350, ticketTypeId: 't2', ticketTypeName: 'VIP', ...(o.order || {}) },
+  ticket: { price: 350, ticketType: 'VIP', ...(o.ticket || {}) },
+  typeSold: o.typeSold ?? { key: 't2' },
+});
+
+test('a ticket type is bought at its own price, name and seat count', async () => {
+  await env.withSecurityRulesDisabled(ctx => setDoc(doc(ctx.firestore(), 'events/e1'), typedEvent()));
+  const db = as('alice');
+  await assertFails(buy(db, 'alice', vip({ order: { unitPrice: 100 }, ticket: { price: 100 } })), 'VIP at the general price');
+  await assertFails(buy(db, 'alice', vip({ order: { ticketTypeName: 'Gold' }, ticket: { ticketType: 'Gold' } })), 'renamed type');
+  await assertFails(buy(db, 'alice', vip({ order: { ticketTypeId: 't5' } })), 'type that does not exist');
+  await assertFails(buy(db, 'alice', vip({ typeSold: { key: 't1' } })), 'moves the general counter instead');
+  await assertFails(buy(db, 'alice', vip({ ticket: { ticketType: 'General Admission' } })), 'ticket names a different type');
+  await assertFails(buy(db, 'alice', { order: { unitPrice: 100 }, ticket: { price: 100 } }), 'no type on a typed event');
+  await assertSucceeds(buy(db, 'alice', vip()));
+});
+
+test('a ticket type cannot be oversold', async () => {
+  await env.withSecurityRulesDisabled(ctx => setDoc(doc(ctx.firestore(), 'events/e1'), typedEvent({ typeSold: { t1: 0, t2: 9 }, ticketsSold: 9 })));
+  await assertFails(buy(as('alice'), 'alice', vip({ n: 2 })), 'only one VIP seat left');
+  await assertSucceeds(buy(as('alice'), 'alice', vip({ n: 1 })));
+});
+
+test('event managers can set ticket types, within limits', async () => {
+  const pro = as('pro');
+  await assertSucceeds(setDoc(doc(pro, 'events/typed'), typedEvent()));
+  await assertFails(setDoc(doc(pro, 'events/bad1'), typedEvent({ ticketTypes: { t7: { name: 'X', price: 1, capacity: 1 } } })), 'unknown key');
+  await assertFails(setDoc(doc(pro, 'events/bad2'), typedEvent({ ticketTypes: { t1: { name: '', price: 1, capacity: 1 } } })), 'empty name');
+  await assertFails(setDoc(doc(pro, 'events/bad3'), typedEvent({ ticketTypes: { t1: { name: 'A', price: -1, capacity: 1 } } })), 'negative price');
+  await assertFails(setDoc(doc(pro, 'events/bad4'), typedEvent({ ticketTypes: { t1: { name: 'A', price: 1, capacity: 0 } } })), 'no seats');
+  await assertFails(setDoc(doc(pro, 'events/bad5'), typedEvent({ ticketTypes: { t1: { name: 'A', price: 1, capacity: 1, secret: true } } })), 'extra field');
+});
+
+test('a full order of 10 VIP tickets still goes through in one write', async () => {
+  await env.withSecurityRulesDisabled(ctx => setDoc(doc(ctx.firestore(), 'events/e1'), typedEvent({ ticketTypes: { t1: { name: 'General Admission', price: 100, capacity: 20 }, t2: { name: 'VIP', price: 350, capacity: 50 } }, capacity: 70 })));
+  await assertSucceeds(buy(as('alice'), 'alice', vip({ n: 10, order: { currency: 'ZAR' }, ticket: { currency: 'ZAR' } })));
+});
+
 test('a full order of 10 tickets goes through in one write', async () => {
   await env.withSecurityRulesDisabled(ctx => setDoc(doc(ctx.firestore(), 'events/e1'), eventDoc({ capacity: 500 })));
   await assertSucceeds(buy(as('alice'), 'alice', { n: 10 }));
@@ -354,6 +423,23 @@ test('tickets for an event that has passed cannot be admitted', async () => {
   await assertSucceeds(scan(as('door'), 'door'), 'event started 3 hours ago is still running');
 });
 
+test('tickets for a cancelled event cannot be admitted', async () => {
+  await env.withSecurityRulesDisabled(ctx => setDoc(doc(ctx.firestore(), 'events/e1'), eventDoc({ status: 'Cancelled' })));
+  await assertFails(scan(as('door'), 'door'));
+});
+
+test('event managers can cancel and restore an unused ticket; buyers cannot', async () => {
+  const cancel = (uid, status = 'CANCELLED') => updateDoc(doc(as(uid), 'tickets/BAI-EXISTING2345'), { status, updatedAt: serverTimestamp() });
+  await assertFails(cancel('alice'), 'the buyer');
+  await assertFails(cancel('fin'), 'finance');
+  await assertFails(cancel('door'), 'door staff');
+  await assertSucceeds(cancel('pro'));
+  await assertFails(scan(as('door'), 'door'), 'a cancelled ticket does not scan');
+  await assertSucceeds(cancel('ceo', 'VALID'));
+  await assertSucceeds(scan(as('door'), 'door'));
+  await assertFails(cancel('root'), 'a used ticket cannot be cancelled');
+});
+
 test('only door staff can scan, and a scan must update the ticket', async () => {
   await assertFails(scan(as('alice'), 'alice'));
   await assertFails(scan(as('fin'), 'fin'));
@@ -403,6 +489,32 @@ test('content saves must be well-formed and signed by the person saving', async 
   await assertFails(setDoc(doc(db, 'content/traditions'), section('ceo', { role: 'SUPER_ADMIN' })), 'extra fields');
   await assertFails(setDoc(doc(db, 'content/traditions'), section('ceo', { data: 'text' })), 'data is not a map');
   await assertFails(setDoc(doc(db, 'content/anything-else'), section('ceo')), 'unknown section');
+});
+
+// ---------- staff activity log ----------
+
+const entry = (uid, extra = {}) => ({
+  at: serverTimestamp(), actorId: uid, actorName: 'Staff', actorRole: 'PRO', action: 'event.updated', area: 'events',
+  summary: 'Edited the event "Gala".', targetId: 'e1', ...extra,
+});
+
+test('staff write activity entries only in their own name and role', async () => {
+  await assertSucceeds(addDoc(collection(as('pro'), 'activity_log'), entry('pro')));
+  await assertFails(addDoc(collection(as('pro'), 'activity_log'), entry('ceo')), 'in someone else\'s name');
+  await assertFails(addDoc(collection(as('pro'), 'activity_log'), entry('pro', { actorRole: 'SUPER_ADMIN' })), 'claiming a higher role');
+  await assertFails(addDoc(collection(as('pro'), 'activity_log'), entry('pro', { at: Timestamp.fromMillis(0) })), 'back-dated');
+  await assertFails(addDoc(collection(as('pro'), 'activity_log'), entry('pro', { action: 'made.up' })), 'unknown action');
+  await assertFails(addDoc(collection(as('alice'), 'activity_log'), entry('alice', { actorRole: 'USER' })), 'not staff');
+});
+
+test('only super admins read the activity log, and nobody edits or deletes it', async () => {
+  let id;
+  await env.withSecurityRulesDisabled(async ctx => { id = (await addDoc(collection(ctx.firestore(), 'activity_log'), { ...entry('pro'), at: Timestamp.now() })).id; });
+  await assertSucceeds(getDocs(collection(as('root'), 'activity_log')));
+  await assertFails(getDocs(collection(as('ceo'), 'activity_log')));
+  await assertFails(getDocs(collection(as('pro'), 'activity_log')));
+  await assertFails(updateDoc(doc(as('root'), 'activity_log', id), { summary: 'changed' }));
+  await assertFails(deleteDoc(doc(as('root'), 'activity_log', id)));
 });
 
 // ---------- site content access requests ----------

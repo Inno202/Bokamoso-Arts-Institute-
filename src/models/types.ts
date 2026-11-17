@@ -19,6 +19,7 @@ export const isUserAdmin = inRoles(['SUPER_ADMIN', 'CEO']);
 export const isEventManager = inRoles(['SUPER_ADMIN', 'PRO', 'CEO']);
 export const isScanner = inRoles(['SUPER_ADMIN', 'PRO', 'TICKET_SCANNER']);
 export const isFinance = inRoles(['SUPER_ADMIN', 'CEO', 'FINANCE_MANAGER']);
+export const isSuperAdminRole = inRoles(['SUPER_ADMIN']);
 /** Edits site content straight away. PRO staff can open Site content but must ask first. */
 export const editsContentDirectly = inRoles(['SUPER_ADMIN', 'CEO']);
 export const needsContentApproval = inRoles(['PRO']);
@@ -70,6 +71,10 @@ export interface BAIEvent {
   ticketUrl?: string;
   /** Who sells them there, e.g. MojaTicket. */
   ticketProvider?: string;
+  /** Ticket types under keys t1..t6 (see models/ticketTypes). Absent on older events. */
+  ticketTypes?: Partial<Record<string, { name: string; price: number; capacity: number }>>;
+  /** Seats sold per ticket type. */
+  typeSold?: Partial<Record<string, number>>;
   createdAt: DateLike;
   createdBy: string;
 }
@@ -127,6 +132,8 @@ export interface CartItem {
   venue: string;
   date: DateLike;
   ticketType: string;
+  /** Which of the event's ticket types (t1..t6, or "general" on older events). */
+  ticketTypeId?: string;
   price: number;
   currency?: string;
   quantity: number;

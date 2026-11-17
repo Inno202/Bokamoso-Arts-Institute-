@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Menu, X, ShoppingCart } from 'lucide-react';
+import { Menu, X, ShoppingCart, UserRound } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { ROUTES } from '../../controllers/navigation';
 import { useAuth } from './AuthProvider';
@@ -97,6 +97,18 @@ export default function Navbar() {
                     {totalItems}
                   </span>
                 )}
+              </Link>
+            )}
+
+            {user && (
+              <Link
+                to={ROUTES.ACCOUNT}
+                aria-label="Your account"
+                title="Your account"
+                aria-current={location.pathname === ROUTES.ACCOUNT ? 'page' : undefined}
+                className={`icon-btn text-bai-black hover:text-bai-red ${location.pathname === ROUTES.ACCOUNT ? 'bg-bai-black/[0.06]' : ''}`}
+              >
+                <UserRound size={20} strokeWidth={1.75} aria-hidden="true" />
               </Link>
             )}
 
