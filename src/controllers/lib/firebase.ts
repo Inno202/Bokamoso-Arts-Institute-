@@ -1,5 +1,5 @@
 import { deleteApp, initializeApp } from 'firebase/app';
-import { initializeAppCheck, ReCaptchaV3Provider } from 'firebase/app-check';
+import { initializeAppCheck, ReCaptchaEnterpriseProvider } from 'firebase/app-check';
 import { connectAuthEmulator, getAuth, signOut, type Auth } from 'firebase/auth';
 import { connectFirestoreEmulator, initializeFirestore, type Firestore, memoryLocalCache, persistentLocalCache, persistentMultipleTabManager } from 'firebase/firestore';
 import firebaseConfig from '../../../firebase-applet-config.json';
@@ -16,7 +16,8 @@ export const APP_CHECK_ENABLED = Boolean(import.meta.env.VITE_RECAPTCHA_SITE_KEY
 const startAppCheck = (target: typeof app) => {
   if (APP_CHECK_ENABLED && typeof window !== 'undefined') {
     initializeAppCheck(target, {
-      provider: new ReCaptchaV3Provider(import.meta.env.VITE_RECAPTCHA_SITE_KEY as string),
+      // Fraud Defense (formerly reCAPTCHA Enterprise), as registered in the Firebase console.
+      provider: new ReCaptchaEnterpriseProvider(import.meta.env.VITE_RECAPTCHA_SITE_KEY as string),
       isTokenAutoRefreshEnabled: true,
     });
   }
@@ -31,7 +32,8 @@ export const auth = getAuth(app);
 
 // Local testing only: `VITE_USE_EMULATORS=true npm run dev` with the Firebase emulators
 // running points the app at them instead of the live project. Never active in a build.
-const USE_EMULATORS = import.meta.env.DEV && import.meta.env.VITE_USE_EMULATORS === 'true' && typeof window !== 'undefined';
+// Dev server, or a test build made with `vite build --mode emulator`; never the published build.
+const USE_EMULATORS = (import.meta.env.DEV || import.meta.env.MODE === 'emulator') && import.meta.env.VITE_USE_EMULATORS === 'true' && typeof window !== 'undefined';
 if (USE_EMULATORS) {
   connectFirestoreEmulator(db, '127.0.0.1', 8080);
   connectAuthEmulator(auth, 'http://127.0.0.1:9099', { disableWarnings: true });

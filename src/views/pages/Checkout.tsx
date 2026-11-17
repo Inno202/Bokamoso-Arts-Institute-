@@ -4,6 +4,7 @@ import { ArrowRight, Loader2, CheckCircle, Info } from 'lucide-react';
 import { useCart, TICKETING_FEE } from '../../hooks/useCart';
 import { useAuth } from '../components/AuthProvider';
 import { PageHero } from '../components/PageHero';
+import { VerifyEmailNotice } from '../components/VerifyEmailNotice';
 import { ROUTES } from '../../controllers/navigation';
 import { ticketController } from '../../controllers/ticketController';
 import { formatCurrency, friendlyError } from '../../controllers/lib/utils';
@@ -16,7 +17,7 @@ const CURRENCY_NAME = (code: CurrencyCode) => (code === 'EUR' ? 'euros' : CURREN
 
 export default function Checkout() {
   const { items, totals, clearCart, removeFromCart, loading: cartLoading } = useCart();
-  const { user } = useAuth();
+  const { user, emailVerified } = useAuth();
   const navigate = useNavigate();
   const [submitting, setSubmitting] = useState(false);
   const [issued, setIssued] = useState(0);
@@ -122,6 +123,12 @@ export default function Checkout() {
             </dl>
           </section>
 
+          {user && !emailVerified ? (
+            <div className="md:col-span-2 space-y-5">
+              <VerifyEmailNotice />
+              <Link to={ROUTES.CART} className="block text-center link py-2">Back to your bag</Link>
+            </div>
+          ) : (
           <form onSubmit={handleConfirm} className="md:col-span-2 space-y-5">
             {!PAYMENTS_LIVE && (
               <div className="p-4 bg-blue-50 text-blue-950 rounded-lg flex items-start gap-3">
@@ -159,6 +166,7 @@ export default function Checkout() {
             </button>
             <Link to={ROUTES.CART} className="block text-center link py-2">Back to your bag</Link>
           </form>
+          )}
         </div>
       </div>
     </div>

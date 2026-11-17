@@ -16,7 +16,7 @@ import {
 import type { User } from 'firebase/auth';
 import { db } from './lib/firebase';
 import { BAIEvent, CartItem, Ticket, TicketScan } from '../models/types';
-import { AppError, toDate } from './lib/utils';
+import { AppError, EVENT_OVER_AFTER_HOURS, eventHasEnded, toDate } from './lib/utils';
 import { MAX_PER_EVENT } from './cartController';
 import { CURRENCIES, DEFAULT_CURRENCY, currencyOf, sellsElsewhere, type CurrencyCode } from '../models/currency';
 import { cacheService } from '../services/cacheService';
@@ -57,6 +57,17 @@ export function normalizeTicketId(input: string) {
 const byNewest = (a: Ticket, b: Ticket) =>
   (toDate(b.createdAt)?.getTime() || 0) - (toDate(a.createdAt)?.getTime() || 0);
 
+/** An event counts as passed this long after its start time (events have no end time). */
+export const EVENT_PASSED_AFTER_HOURS = EVENT_OVER_AFTER_HOURS;
+
+export type ScanRefusal = 'unknown' | 'wrong-event' | 'passed' | 'used' | 'cancelled';
+/** Why the door scanner refused a ticket, so the screen can say it plainly. */
+export class ScanRefused extends AppError {
+  constructor(public kind: ScanRefusal, message: string) {
+    super(message);
+  }
+}
+
 export const ticketController = {
   /**
    * Checks out the bag, one event at a time. For each event a single transaction
@@ -68,6 +79,7 @@ export const ticketController = {
    */
   async purchase(user: User, items: CartItem[]): Promise<PurchaseResult> {
     if (items.length === 0) throw new AppError('Your bag is empty.');
+    if (!user.emailVerified) throw new AppError('Confirm your email address before booking: open the link we emailed you.');
 
     const wanted = new Map<string, number>();
     for (const item of items) wanted.set(item.eventId, (wanted.get(item.eventId) || 0) + item.quantity);
@@ -83,6 +95,7 @@ export const ticketController = {
           if (!eventSnap.exists()) throw new AppError('One of the events in your bag is no longer available. Remove it and try again.');
           const event = { id: eventSnap.id, ...eventSnap.data() } as BAIEvent;
           if (event.status !== 'On Sale') throw new AppError(`Tickets for ${event.name} are no longer on sale.`);
+          if (eventHasEnded(event.date)) throw new AppError(`${event.name} has already taken place. Remove it from your bag to book the rest.`);
           if (sellsElsewhere(event)) throw new AppError(`Tickets for ${event.name} are sold by ${event.ticketProvider || 'the venue'}, not on this site. Remove it from your bag and use the link on the Events page.`);
 
           const remaining = (event.capacity || 0) - (event.ticketsSold || 0);
@@ -167,21 +180,39 @@ export const ticketController = {
    * transaction, and the scan record is keyed by the ticket id, so a ticket can
    * be admitted once only, even with two scanners on the same code.
    */
-  async admit(rawTicketId: string, scannerId: string) {
+  /**
+   * Admits a ticket at the door, once. With `doorEventId`, a ticket for any other event
+   * is refused as the wrong event. A ticket for an event that has passed is refused too
+   * (the rules enforce that part as well).
+   */
+  async admit(rawTicketId: string, scannerId: string, doorEventId?: string) {
     const ticketId = normalizeTicketId(rawTicketId);
-    if (!/^BAI-[A-Z0-9]{6,20}$/.test(ticketId)) throw new AppError('That is not a Bokamoso ticket reference.');
+    if (!/^BAI-[A-Z0-9]{6,20}$/.test(ticketId)) throw new ScanRefused('unknown', 'That is not a Bokamoso ticket reference.');
 
     const ticketRef = doc(db, TICKETS, ticketId);
     const ticket = await runTransaction(db, async (tx) => {
       const snap = await tx.get(ticketRef);
-      if (!snap.exists()) throw new AppError('No ticket matches that reference.');
+      if (!snap.exists()) throw new ScanRefused('unknown', 'No ticket matches that reference.');
       const data = { id: snap.id, ...snap.data() } as Ticket;
 
-      if (data.status === 'SCANNED') {
-        const when = toDate(data.scannedAt);
-        throw new AppError(when ? `Already admitted at ${when.toLocaleString('en-ZA')}.` : 'This ticket has already been admitted.');
+      const eventSnap = await tx.get(doc(db, 'events', data.eventId));
+      const event = eventSnap.exists() ? (eventSnap.data() as BAIEvent) : null;
+      const eventName = event?.name || data.eventName || 'another event';
+      const when = toDate(event?.date);
+      const whenText = when ? when.toLocaleString('en-ZA', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
+
+      if (!event) throw new ScanRefused('cancelled', `${eventName} is no longer listed.`);
+      if (when && when.getTime() + EVENT_PASSED_AFTER_HOURS * 3_600_000 < Date.now()) {
+        throw new ScanRefused('passed', `This ticket was for ${eventName}${whenText ? ` on ${whenText}` : ''}.`);
       }
-      if (data.status !== 'VALID') throw new AppError('This ticket has been cancelled.');
+      if (doorEventId && data.eventId !== doorEventId) {
+        throw new ScanRefused('wrong-event', `This ticket is for ${eventName}${whenText ? `, ${whenText}` : ''}.`);
+      }
+      if (data.status === 'SCANNED') {
+        const at = toDate(data.scannedAt);
+        throw new ScanRefused('used', at ? `Already admitted at ${at.toLocaleString('en-ZA')}.` : 'This ticket has already been admitted.');
+      }
+      if (data.status !== 'VALID') throw new ScanRefused('cancelled', 'This ticket has been cancelled.');
 
       tx.set(doc(db, SCANS, ticketId), {
         ticketId,

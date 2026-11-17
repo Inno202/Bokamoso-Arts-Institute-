@@ -18,8 +18,8 @@ const TICKET = 'BAI-ABCDEFGH2345';
 const TICKET2 = 'BAI-ZZZZZZZZ9999';
 
 const nowSeconds = () => Math.floor(Date.now() / 1000);
-const as = (uid, email = `${uid}@example.com`, signedInSecondsAgo = 60) =>
-  env.authenticatedContext(uid, { email, auth_time: nowSeconds() - signedInSecondsAgo }).firestore();
+const as = (uid, email = `${uid}@example.com`, signedInSecondsAgo = 60, emailVerified = true) =>
+  env.authenticatedContext(uid, { email, auth_time: nowSeconds() - signedInSecondsAgo, email_verified: emailVerified }).firestore();
 const guest = () => env.unauthenticatedContext().firestore();
 
 const profile = (role, extra = {}) => ({
@@ -179,6 +179,18 @@ test('a buyer can purchase a ticket at the real price', async () => {
   await assertSucceeds(buy(as('alice'), 'alice'));
 });
 
+test('booking needs a confirmed email', async () => {
+  await assertFails(buy(as('alice', 'alice@example.com', 60, false), 'alice'), 'email not confirmed');
+  await assertSucceeds(buy(as('alice'), 'alice'));
+});
+
+test('a show that is over cannot be booked', async () => {
+  await env.withSecurityRulesDisabled(ctx => setDoc(doc(ctx.firestore(), 'events/e1'), eventDoc({ date: Timestamp.fromMillis(Date.now() - 13 * 3600e3) })));
+  await assertFails(buy(as('alice'), 'alice'), 'started 13 hours ago');
+  await env.withSecurityRulesDisabled(ctx => setDoc(doc(ctx.firestore(), 'events/e1'), eventDoc({ date: Timestamp.fromMillis(Date.now() + 24 * 3600e3) })));
+  await assertSucceeds(buy(as('alice'), 'alice'));
+});
+
 test('ticket purchases cannot be forged', async () => {
   const db = as('alice');
   await assertFails(buy(db, 'alice', { order: { unitPrice: 1 }, ticket: { price: 1 } }), 'wrong price');
@@ -332,6 +344,14 @@ test('door staff admit a ticket exactly once', async () => {
   await assertSucceeds(scan(as('door'), 'door'));
   await assertFails(scan(as('door'), 'door'));
   await assertFails(scan(as('pro'), 'pro'));
+});
+
+test('tickets for an event that has passed cannot be admitted', async () => {
+  const hoursAgo = (h) => Timestamp.fromMillis(Date.now() - h * 3600e3);
+  await env.withSecurityRulesDisabled(ctx => setDoc(doc(ctx.firestore(), 'events/e1'), eventDoc({ date: hoursAgo(13) })));
+  await assertFails(scan(as('door'), 'door'), 'event started 13 hours ago');
+  await env.withSecurityRulesDisabled(ctx => setDoc(doc(ctx.firestore(), 'events/e1'), eventDoc({ date: hoursAgo(3) })));
+  await assertSucceeds(scan(as('door'), 'door'), 'event started 3 hours ago is still running');
 });
 
 test('only door staff can scan, and a scan must update the ticket', async () => {

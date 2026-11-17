@@ -29,9 +29,19 @@ function Root() {
   );
 }
 
+// Keeps a copy of the site on the phone so tickets open without a signal at the door.
+function registerOfflineCopy() {
+  const allowed = import.meta.env.PROD || import.meta.env.MODE === 'emulator';
+  if (!allowed || !('serviceWorker' in navigator)) return;
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`, { scope: import.meta.env.BASE_URL }).catch(() => undefined);
+  });
+}
+
 if (framed) {
   document.body.textContent = 'For your security, Bokamoso Arts Institute does not open inside another website. Open it in its own tab.';
 } else {
+  registerOfflineCopy();
   const root = document.getElementById('root')!;
   // Pages pre-rendered at build time carry the content they were built with;
   // start from exactly that so the first render matches the HTML, then go live.

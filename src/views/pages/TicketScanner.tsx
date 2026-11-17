@@ -1,16 +1,25 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Camera, CheckCircle, XCircle, Keyboard, Calendar, Ticket as TicketIcon, RefreshCw } from 'lucide-react';
+import { Camera, CheckCircle, XCircle, Keyboard, Calendar, Ticket as TicketIcon, RefreshCw, WifiOff } from 'lucide-react';
 import { useAuth } from '../components/AuthProvider';
-import { ticketController } from '../../controllers/ticketController';
+import { EVENT_PASSED_AFTER_HOURS, ScanRefused, ticketController, type ScanRefusal } from '../../controllers/ticketController';
 import { eventController } from '../../controllers/eventController';
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
 import { logger } from '../../services/loggerService';
-import { formatDateTime, friendlyError } from '../../controllers/lib/utils';
-import { Ticket } from '../../models/types';
+import { formatDateTime, friendlyError, toDate } from '../../controllers/lib/utils';
+import { BAIEvent, Ticket } from '../../models/types';
 
 type Result =
   | { kind: 'success'; ticket: Ticket; eventName: string; eventDate: string }
-  | { kind: 'error'; message: string };
+  | { kind: 'error'; title: string; message: string };
+
+const DOOR_EVENT_KEY = 'bai-door-event';
+const REFUSAL_TITLE: Record<ScanRefusal, string> = {
+  passed: 'Event has passed',
+  'wrong-event': 'Wrong event',
+  used: 'Already used',
+  cancelled: 'Cancelled',
+  unknown: 'Not a valid ticket',
+};
 
 type CameraState = { kind: 'starting' } | { kind: 'running' } | { kind: 'failed'; message: string };
 
@@ -41,6 +50,10 @@ export default function TicketScanner() {
   const [result, setResult] = useState<Result | null>(null);
   const [checking, setChecking] = useState(false);
   const [showManual, setShowManual] = useState(false);
+  // The show being checked in tonight; tickets for any other event are refused.
+  const [doorEvents, setDoorEvents] = useState<BAIEvent[] | null>(null);
+  const [doorEventId, setDoorEventId] = useState<string>(() => { try { return localStorage.getItem(DOOR_EVENT_KEY) || ''; } catch { return ''; } });
+  const [online, setOnline] = useState(() => (typeof navigator === 'undefined' ? true : navigator.onLine));
   const [camera, setCamera] = useState<CameraState>({ kind: 'starting' });
   const [cameraAttempt, setCameraAttempt] = useState(0);
   // The camera reports the same code many times a second; these keep one check per code.
@@ -62,7 +75,8 @@ export default function TicketScanner() {
     busy.current = true;
     setChecking(true);
     try {
-      const ticket = await ticketController.admit(code, user.uid);
+      if (!navigator.onLine) throw new ScanRefused('unknown', 'No connection. Tickets can only be checked online. Try again once the phone is back online.');
+      const ticket = await ticketController.admit(code, user.uid, doorEventId || undefined);
       const event = await eventController.getEventById(ticket.eventId).catch(() => null);
       setResult({
         kind: 'success',
@@ -73,16 +87,46 @@ export default function TicketScanner() {
       navigator.vibrate?.(80);
     } catch (err) {
       logger.error('Ticket check failed', err);
-      setResult({ kind: 'error', message: friendlyError(err, 'The ticket could not be checked. Check the connection and scan again.') });
+      const kind: ScanRefusal | undefined = err instanceof ScanRefused ? err.kind : undefined;
+      setResult({
+        kind: 'error',
+        title: !navigator.onLine ? 'No connection' : (kind && REFUSAL_TITLE[kind]) || 'Do not admit',
+        message: friendlyError(err, 'The ticket could not be checked. Check the connection and scan again.'),
+      });
       navigator.vibrate?.([60, 60, 60]);
     } finally {
       busy.current = false;
       setChecking(false);
       lastSeen.current = { code, at: Date.now() };
     }
-  }, [user]);
+  }, [user, doorEventId]);
 
   useEffect(() => { verifyRef.current = (code) => { void verify(code); }; }, [verify]);
+
+  // Events still to happen (or started within the last few hours), soonest first.
+  useEffect(() => eventController.subscribeToEvents((events) => {
+    const cutoff = Date.now() - EVENT_PASSED_AFTER_HOURS * 3_600_000;
+    const current = events
+      .filter(ev => ev.status !== 'Draft' && (toDate(ev.date)?.getTime() ?? 0) > cutoff)
+      .sort((a, b) => (toDate(a.date)?.getTime() ?? 0) - (toDate(b.date)?.getTime() ?? 0));
+    setDoorEvents(current);
+    setDoorEventId(id => (current.some(ev => ev.id === id) ? id : current[0]?.id || ''));
+  }, false, () => setDoorEvents([])), []);
+
+  useEffect(() => {
+    const update = () => setOnline(navigator.onLine);
+    window.addEventListener('online', update);
+    window.addEventListener('offline', update);
+    return () => { window.removeEventListener('online', update); window.removeEventListener('offline', update); };
+  }, []);
+
+  // Bring each new result on screen: on a phone it sits above the camera or the keypad.
+  const resultRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!result) return;
+    const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    resultRef.current?.scrollIntoView({ block: 'nearest', behavior: reduce ? 'auto' : 'smooth' });
+  }, [result]);
 
   useEffect(() => {
     if (!result) return;
@@ -175,7 +219,34 @@ export default function TicketScanner() {
           <p className="text-white/70 text-sm mt-2">Signed in as {userData?.displayName || user?.displayName || user?.email}</p>
         </div>
 
-        <div className="relative mb-6 min-h-[17.5rem] flex flex-col" aria-live="assertive">
+        {!online && (
+          <p className="mb-4 p-4 rounded-2xl bg-amber-400 text-bai-black font-semibold flex items-center gap-3" role="alert">
+            <WifiOff size={20} className="shrink-0" aria-hidden="true" />
+            No connection. Tickets cannot be checked until the phone is back online.
+          </p>
+        )}
+
+        <div className="mb-5">
+          <label htmlFor="door-event" className="block text-sm font-bold text-white/80 mb-2">Event at the door</label>
+          {doorEvents === null ? (
+            <div className="h-12 rounded-lg bg-white/10 animate-pulse" role="status" aria-label="Loading events" />
+          ) : doorEvents.length === 0 ? (
+            <p className="text-white/75 text-sm">No upcoming events. Tickets are still checked, but not matched to a show.</p>
+          ) : (
+            <select
+              id="door-event"
+              value={doorEventId}
+              onChange={(e) => { setDoorEventId(e.target.value); setResult(null); try { localStorage.setItem(DOOR_EVENT_KEY, e.target.value); } catch { /* not remembered */ } }}
+              className="w-full min-h-[48px] rounded-lg bg-white/10 border-2 border-white/30 text-white px-3 font-semibold focus:border-white"
+            >
+              {doorEvents.map(ev => (
+                <option key={ev.id} value={ev.id} className="text-bai-black">{ev.name}{formatDateTime(ev.date) ? ` · ${formatDateTime(ev.date)}` : ''}</option>
+              ))}
+            </select>
+          )}
+        </div>
+
+        <div ref={resultRef} className="relative mb-6 min-h-[17.5rem] flex flex-col scroll-mt-24" aria-live="assertive">
           {result?.kind === 'success' ? (
             <div className="flex-grow bg-white text-bai-black rounded-2xl p-6 sm:p-8">
               <div className="flex items-center gap-4 mb-5">
@@ -199,8 +270,9 @@ export default function TicketScanner() {
           ) : result?.kind === 'error' ? (
             <div className="flex-grow bg-bai-red text-white rounded-2xl p-8 text-center flex flex-col items-center justify-center">
               <XCircle size={56} className="mx-auto mb-4" aria-hidden="true" />
-              <p className="font-display font-bold text-3xl mb-2">Do not admit</p>
-              <p className="font-semibold">{result.message}</p>
+              <p className="text-sm font-bold uppercase tracking-[0.14em] text-white/85">Do not admit</p>
+              <p className="font-display font-bold text-3xl mt-1 mb-2">{result.title}</p>
+              <p className="font-semibold break-words">{result.message}</p>
             </div>
           ) : (
             <div className="flex-grow flex items-center justify-center border-2 border-dashed border-white/25 rounded-2xl text-white/70 text-lg">

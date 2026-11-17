@@ -8,7 +8,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { cloudinaryService } from '../../services/cloudinaryService';
 import { eventController } from '../../controllers/eventController';
 import { MAX_PER_EVENT } from '../../controllers/cartController';
-import { formatCurrency, formatDate } from '../../controllers/lib/utils';
+import { eventHasEnded, formatCurrency, formatDate } from '../../controllers/lib/utils';
 import { CURRENCIES, type CurrencyCode } from '../../models/currency';
 import { confirmAction } from '../../services/confirm';
 import { FALLBACK_EVENT_IMAGE, PAYMENTS_LIVE } from '../../config';
@@ -34,6 +34,7 @@ export default function Cart() {
   }, [eventIds]);
 
   const fee = items.length > 0 && PAYMENTS_LIVE ? TICKETING_FEE : 0;
+  const hasEnded = items.some(item => eventHasEnded(item.date));
 
   const handleCheckout = () => {
     if (!user) navigate(ROUTES.LOGIN, { state: { from: ROUTES.CHECKOUT } });
@@ -87,6 +88,7 @@ export default function Cart() {
                       <div className="min-w-0">
                         <h2 className="font-serif font-semibold text-base md:text-xl leading-tight break-words">{item.eventName}</h2>
                         <p className="text-bai-black/70 text-sm mt-1">{[item.venue, formatDate(item.date)].filter(Boolean).join(' · ')}</p>
+                        {eventHasEnded(item.date) && <p className="text-sm font-semibold text-bai-red-deep mt-1">This event has already taken place. Remove it to check out.</p>}
                       </div>
                       <button onClick={() => removeFromCart(item.eventId, item.ticketType)} aria-label={`Remove ${item.eventName} from your bag`} className="icon-btn -mt-2 -mr-2 text-bai-black/60 hover:text-bai-red-deep">
                         <Trash2 size={18} aria-hidden="true" />
@@ -146,7 +148,8 @@ export default function Cart() {
                   );
                 })}
               </dl>
-              <button onClick={handleCheckout} className="btn btn-lg btn-primary btn-block">
+              {hasEnded && <p className="text-sm text-bai-red-deep font-semibold mb-3" role="status">Remove events that have already taken place to check out.</p>}
+              <button onClick={handleCheckout} disabled={hasEnded} className="btn btn-lg btn-primary btn-block">
                 <span>{user ? 'Checkout' : 'Sign in to checkout'}</span>
                 <ArrowRight size={20} aria-hidden="true" />
               </button>

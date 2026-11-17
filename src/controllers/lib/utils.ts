@@ -15,6 +15,13 @@ export function toDate(date: DateLike): Date | null {
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
+/** Events have a start time but no end time: one counts as over this long after it starts. */
+export const EVENT_OVER_AFTER_HOURS = 12;
+export function eventHasEnded(date: DateLike, now = Date.now()) {
+  const start = toDate(date);
+  return !!start && start.getTime() + EVENT_OVER_AFTER_HOURS * 3_600_000 < now;
+}
+
 export function formatDate(date: DateLike, options: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'long', year: 'numeric' }) {
   const d = toDate(date);
   return d ? d.toLocaleDateString('en-ZA', options) : '';

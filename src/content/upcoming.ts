@@ -5,7 +5,7 @@
  */
 import { useSyncExternalStore } from 'react';
 import { eventController } from '../controllers/eventController';
-import { toDate } from '../controllers/lib/utils';
+import { EVENT_OVER_AFTER_HOURS, toDate } from '../controllers/lib/utils';
 import type { BAIEvent } from '../models/types';
 import { currencyOf, sellsElsewhere, type CurrencyCode } from '../models/currency';
 
@@ -22,8 +22,8 @@ export interface UpcomingEvent {
 }
 
 export const UPCOMING_LIMIT = 3;
-/** An event stays listed until a few hours after it starts. */
-const GRACE_MS = 6 * 60 * 60 * 1000;
+/** An event stays listed until it is over (12 hours after it starts, as everywhere else). */
+const GRACE_MS = EVENT_OVER_AFTER_HOURS * 60 * 60 * 1000;
 
 /** Picks the next events still to happen, soonest first. Pure, so the build and the browser agree. */
 export function pickUpcoming(events: Array<Partial<BAIEvent> & { id: string }>, now = Date.now()): UpcomingEvent[] {

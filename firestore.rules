@@ -196,6 +196,8 @@ service cloud.firestore {
         && request.resource.data.keys().hasOnly(['buyerId', 'buyerEmail', 'eventId', 'eventName', 'unitPrice', 'currency', 'quantity', 'ticketIds', 'createdAt'])
         && request.resource.data.buyerId == request.auth.uid
         && request.resource.data.buyerEmail == tokenEmail()
+        // Only people who have confirmed their email can book (Google sign-ins are confirmed).
+        && request.auth.token.get('email_verified', false) == true
         && request.resource.data.createdAt == request.time
         && request.resource.data.eventId is string
         && request.resource.data.quantity is int
@@ -207,6 +209,8 @@ service cloud.firestore {
         && request.resource.data.eventName is string
         && request.resource.data.eventName.size() <= 200
         && get(eventPath(request.resource.data.eventId)).data.status == 'On Sale'
+        // Not for an event that is over (more than 12 hours after it started).
+        && request.time < get(eventPath(request.resource.data.eventId)).data.date + duration.value(12, 'h')
         // Tickets for shows sold by an outside seller are never issued here.
         && get(eventPath(request.resource.data.eventId)).data.get('ticketUrl', '') == ''
         && request.resource.data.get('currency', 'ZAR') == get(eventPath(request.resource.data.eventId)).data.get('currency', 'ZAR')
@@ -266,7 +270,9 @@ service cloud.firestore {
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'scannedAt', 'scannedBy'])
           && request.resource.data.scannedBy == request.auth.uid
           && request.resource.data.scannedAt == request.time
-          && existsAfter(/databases/$(database)/documents/ticket_scanned/$(ticketId)))
+          && existsAfter(/databases/$(database)/documents/ticket_scanned/$(ticketId))
+          // Not for an event that has passed (more than 12 hours after it started).
+          && request.time < get(eventPath(resource.data.eventId)).data.date + duration.value(12, 'h'))
         // Super admins may cancel or restore a ticket.
         || (resource != null
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt'])
