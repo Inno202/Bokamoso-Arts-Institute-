@@ -19,6 +19,7 @@ import { BAIEvent, CartItem, Ticket, TicketScan } from '../models/types';
 import { AppError, EVENT_OVER_AFTER_HOURS, eventHasEnded, toDate } from './lib/utils';
 import { MAX_PER_EVENT } from './cartController';
 import { CURRENCIES, DEFAULT_CURRENCY, currencyOf, sellsElsewhere, type CurrencyCode } from '../models/currency';
+import { LEGACY_TYPE_ID, hasTicketTypes, typeOf } from '../models/ticketTypes';
 import { cacheService } from '../services/cacheService';
 import { logger } from '../services/loggerService';
 
@@ -35,6 +36,8 @@ export interface PurchaseResult {
   purchasedEventIds: string[];
   /** Set when an event in the bag could not be booked. */
   error?: unknown;
+  /** Which bag lines (event + ticket type) were booked, when part of a bag fails. */
+  purchasedLines: Array<{ eventId: string; ticketTypeId: string }>;
 }
 
 // No 0/O/1/I, so a reference can be read aloud at the door without mistakes.
@@ -81,11 +84,18 @@ export const ticketController = {
     if (items.length === 0) throw new AppError('Your bag is empty.');
     if (!user.emailVerified) throw new AppError('Confirm your email address before booking: open the link we emailed you.');
 
-    const wanted = new Map<string, number>();
-    for (const item of items) wanted.set(item.eventId, (wanted.get(item.eventId) || 0) + item.quantity);
+    // One order per event and ticket type (older bag lines have no type: General Admission).
+    const wanted = new Map<string, { eventId: string; typeId: string; quantity: number }>();
+    for (const item of items) {
+      const typeId = item.ticketTypeId || LEGACY_TYPE_ID;
+      const key = `${item.eventId}|${typeId}`;
+      const line = wanted.get(key) || { eventId: item.eventId, typeId, quantity: 0 };
+      line.quantity += item.quantity;
+      wanted.set(key, line);
+    }
 
-    const result: PurchaseResult = { ticketIds: [], purchasedEventIds: [] };
-    for (const [eventId, quantity] of wanted) {
+    const result: PurchaseResult = { ticketIds: [], purchasedEventIds: [], purchasedLines: [] };
+    for (const { eventId, typeId, quantity } of wanted.values()) {
       try {
         const ids = await runTransaction(db, async (tx) => {
           const eventRef = doc(db, EVENTS, eventId);
@@ -98,11 +108,15 @@ export const ticketController = {
           if (eventHasEnded(event.date)) throw new AppError(`${event.name} has already taken place. Remove it from your bag to book the rest.`);
           if (sellsElsewhere(event)) throw new AppError(`Tickets for ${event.name} are sold by ${event.ticketProvider || 'the venue'}, not on this site. Remove it from your bag and use the link on the Events page.`);
 
-          const remaining = (event.capacity || 0) - (event.ticketsSold || 0);
+          const typed = hasTicketTypes(event);
+          const type = typeOf(event, typeId);
+          if (!type) throw new AppError(`That ticket type is no longer offered for ${event.name}. Remove it from your bag and choose again.`);
+          const label = typed ? `${type.name} for ${event.name}` : event.name;
+          const remaining = Math.min(type.remaining, (event.capacity || 0) - (event.ticketsSold || 0));
           if (quantity > remaining) {
             throw new AppError(remaining > 0
-              ? `Only ${remaining} ${remaining === 1 ? 'ticket is' : 'tickets are'} left for ${event.name}. Lower the quantity and try again.`
-              : `${event.name} is sold out.`);
+              ? `Only ${remaining} ${remaining === 1 ? 'ticket is' : 'tickets are'} left: ${label}. Lower the quantity and try again.`
+              : `${label} is sold out.`);
           }
 
           const held = holdingSnap.exists() ? Number(holdingSnap.data().count) || 0 : 0;
@@ -126,8 +140,10 @@ export const ticketController = {
             buyerEmail,
             eventId,
             eventName: event.name,
-            unitPrice: event.price,
+            unitPrice: type.price,
             ...currencyField,
+            // Older events without ticket types leave these out (General Admission).
+            ...(typed ? { ticketTypeId: type.id, ticketTypeName: type.name } : {}),
             quantity,
             ticketIds,
             createdAt: serverTimestamp(),
@@ -137,22 +153,26 @@ export const ticketController = {
               orderId,
               eventId,
               eventName: event.name,
-              ticketType: 'General Admission',
+              ticketType: type.name,
               buyerId: user.uid,
               buyerEmail,
-              price: event.price,
+              price: type.price,
               ...currencyField,
               quantity: 1,
               status: 'VALID',
               createdAt: serverTimestamp(),
             });
           }
-          tx.update(eventRef, { ticketsSold: (event.ticketsSold || 0) + quantity });
+          tx.update(eventRef, {
+            ticketsSold: (event.ticketsSold || 0) + quantity,
+            ...(typed ? { [`typeSold.${type.id}`]: type.sold + quantity } : {}),
+          });
           tx.set(holdingRef, { buyerId: user.uid, eventId, count: held + quantity, updatedAt: serverTimestamp() });
           return ticketIds;
         });
         result.ticketIds.push(...ids);
         result.purchasedEventIds.push(eventId);
+        result.purchasedLines.push({ eventId, ticketTypeId: typeId });
       } catch (error) {
         // Earlier events in the bag are already booked; report those along with the problem.
         result.error = error;

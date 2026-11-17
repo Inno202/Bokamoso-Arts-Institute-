@@ -21,7 +21,7 @@ import { logger } from '../services/loggerService';
 const COLLECTION = 'events';
 const MAX_LISTED = 100;
 
-export type EventInput = Pick<BAIEvent, 'name' | 'venue' | 'city' | 'price' | 'capacity' | 'description' | 'status' | 'createdBy' | 'currency' | 'ticketUrl' | 'ticketProvider'> & {
+export type EventInput = Pick<BAIEvent, 'name' | 'venue' | 'city' | 'price' | 'capacity' | 'description' | 'status' | 'createdBy' | 'currency' | 'ticketUrl' | 'ticketProvider' | 'ticketTypes' | 'typeSold'> & {
   date: Date;
   bannerImageUrl?: string;
   ticketImageUrl?: string;

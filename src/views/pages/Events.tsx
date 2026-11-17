@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Calendar, Ticket, MapPin, Search, CheckCircle2, ExternalLink } from 'lucide-react';
 import { currencyOf, sellsElsewhere } from '../../models/currency';
+import { priceRange, ticketTypesOf, type EventTicketType } from '../../models/ticketTypes';
 import { eventController } from '../../controllers/eventController';
 import { BAIEvent } from '../../models/types';
 import { cloudinaryService } from '../../services/cloudinaryService';
@@ -42,7 +43,10 @@ export default function Events() {
     ? current.filter(e => [e.name, e.city, e.venue].some(v => (v || '').toLowerCase().includes(term)))
     : current;
 
-  const handleAddToCart = (event: BAIEvent) => {
+  // The ticket type chosen on each card (cards with one type need no choice).
+  const [chosenType, setChosenType] = useState<Record<string, string>>({});
+
+  const handleAddToCart = (event: BAIEvent, type: EventTicketType) => {
     if (!user) {
       toast.info('Sign in to book tickets.');
       navigate(ROUTES.LOGIN, { state: { from: ROUTES.EVENTS } });
@@ -53,8 +57,9 @@ export default function Events() {
       eventName: event.name,
       venue: event.venue,
       date: event.date,
-      ticketType: 'General Admission',
-      price: event.price,
+      ticketType: type.name,
+      ticketTypeId: type.id,
+      price: type.price,
       currency: currencyOf(event.currency),
       quantity: 1,
     });
@@ -107,9 +112,14 @@ export default function Events() {
           <ul className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredEvents.map((event) => {
               const elsewhere = sellsElsewhere(event);
-              const remaining = Math.max(0, (event.capacity || 0) - (event.ticketsSold || 0));
+              const types = ticketTypesOf(event);
+              const multi = types.length > 1;
+              const type = types.find(t => t.id === chosenType[event.id]) || types.find(t => t.remaining > 0) || types[0];
+              const eventLeft = Math.max(0, (event.capacity || 0) - (event.ticketsSold || 0));
+              const remaining = Math.min(type.remaining, eventLeft);
+              const range = priceRange(event);
               // Seats for shows sold elsewhere are counted by that seller, not here.
-              const soldOut = !elsewhere && remaining === 0;
+              const soldOut = !elsewhere && (eventLeft === 0 || types.every(t => t.remaining === 0));
               const added = addedIds.has(event.id);
               const when = formatDate(event.date, { weekday: 'short', day: 'numeric', month: 'short' });
               return (
@@ -125,7 +135,7 @@ export default function Events() {
                       imgProps={{ onError: (e) => { if (!e.currentTarget.dataset.fallback) { e.currentTarget.dataset.fallback = '1'; e.currentTarget.src = FALLBACK_EVENT_IMAGE; } } }}
                     />
                     <span className="num pointer-events-none absolute top-4 right-4 bg-white px-3.5 py-1.5 rounded-full font-semibold text-sm">
-                      {event.price > 0 ? formatCurrency(event.price, event.currency) : 'Free'}
+                      {range.max === 0 ? 'Free' : multi && range.min !== range.max ? `From ${range.min > 0 ? formatCurrency(range.min, event.currency) : 'Free'}` : formatCurrency(range.max, event.currency)}
                     </span>
                     {soldOut && <span className="pointer-events-none absolute top-4 left-4 bg-bai-black text-white text-sm font-semibold px-3.5 py-1.5 rounded-full">Sold out</span>}
                   </div>
@@ -155,11 +165,36 @@ export default function Events() {
                           <span className="sr-only">(opens in a new tab)</span>
                         </a>
                       ) : (<>
+                      {multi && !soldOut && (
+                        <fieldset className="mb-4">
+                          <legend className="text-sm font-semibold mb-2">Ticket type</legend>
+                          <div className="space-y-2">
+                            {types.map(t => {
+                              const out = t.remaining === 0;
+                              return (
+                                <label key={t.id} className={`flex items-center gap-3 min-h-[44px] px-3 rounded-xl border transition-colors ${out ? 'opacity-50 cursor-not-allowed border-bai-black/10' : type.id === t.id ? 'border-bai-black bg-bai-sand/60' : 'border-bai-black/15 hover:border-bai-black/40 cursor-pointer'}`}>
+                                  <input
+                                    type="radio"
+                                    name={`type-${event.id}`}
+                                    value={t.id}
+                                    checked={type.id === t.id}
+                                    disabled={out}
+                                    onChange={() => setChosenType(c => ({ ...c, [event.id]: t.id }))}
+                                    className="accent-bai-red w-4 h-4 shrink-0"
+                                  />
+                                  <span className="flex-grow min-w-0 truncate font-medium">{t.name}</span>
+                                  <span className="num text-sm font-semibold shrink-0">{out ? 'Sold out' : t.price > 0 ? formatCurrency(t.price, event.currency) : 'Free'}</span>
+                                </label>
+                              );
+                            })}
+                          </div>
+                        </fieldset>
+                      )}
                       {!soldOut && remaining <= 20 && (
                         <p className="num text-sm font-semibold text-bai-red-deep mb-3">Only {remaining} {remaining === 1 ? 'seat' : 'seats'} left</p>
                       )}
                       <button
-                        onClick={() => handleAddToCart(event)}
+                        onClick={() => handleAddToCart(event, type)}
                         disabled={soldOut || added}
                         className={`btn btn-block ${added ? 'bg-green-700 text-white' : 'btn-primary'}`}
                       >

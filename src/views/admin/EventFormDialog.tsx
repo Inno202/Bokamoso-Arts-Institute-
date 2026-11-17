@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Loader2, X } from 'lucide-react';
+import { Loader2, Plus, X } from 'lucide-react';
 import { eventController } from '../../controllers/eventController';
 import { useAuth } from '../components/AuthProvider';
 import { BAIEvent } from '../../models/types';
@@ -9,6 +9,7 @@ import { toast } from '../../services/toast';
 import { logger } from '../../services/loggerService';
 import { EVENT_LIMITS, validateEvent, type EventForm } from '../../content/eventValidation';
 import { CURRENCIES, currencyOf } from '../../models/currency';
+import { LEGACY_TYPE_NAME, MAX_TYPES, TYPE_IDS, TYPE_NAME_LIMIT, hasTicketTypes, ticketTypesOf } from '../../models/ticketTypes';
 import { useActivity } from '../components/useActivity';
 import type { Errors } from '../../content/fields';
 
@@ -32,6 +33,10 @@ const formFor = (event?: BAIEvent | null): EventForm => ({
   currency: currencyOf(event?.currency),
   ticketUrl: event?.ticketUrl ?? '',
   ticketProvider: event?.ticketProvider ?? '',
+  // Older events (no ticket types) become one "General Admission" row, keeping what was sold.
+  types: event
+    ? ticketTypesOf(event).map((t, i) => ({ id: hasTicketTypes(event) ? t.id : TYPE_IDS[i], name: t.name, price: String(t.price), capacity: String(t.capacity), sold: t.sold }))
+    : [{ id: 't1', name: LEGACY_TYPE_NAME, price: '', capacity: '100', sold: 0 }],
 });
 
 interface Props {
@@ -80,14 +85,20 @@ export function EventFormDialog({ event, onClose }: Props) {
     try {
       const bannerUrl = bannerFile ? (await cloudinaryService.upload(bannerFile, 'events')).url : event?.bannerImageUrl;
       const ticketArtUrl = ticketFile ? (await cloudinaryService.upload(ticketFile, 'events')).url : (event?.ticketImageUrl || bannerUrl);
+      const rows = form.types || [];
       const data = {
         name: form.name.trim(),
         venue: form.venue.trim(),
         city: form.city.trim(),
         description: form.description.trim(),
         status: form.status,
-        price: Number(form.price),
-        capacity: Number(form.capacity),
+        // The event's own price is the lowest ticket price (for "From ..."), its capacity the total.
+        price: Math.min(...rows.map(t => Number(t.price))),
+        capacity: rows.reduce((sum, t) => sum + Number(t.capacity), 0),
+        ticketTypes: Object.fromEntries(rows.map(t => [t.id, { name: t.name.trim(), price: Number(t.price), capacity: Number(t.capacity) }])),
+        // Sales counts are only set on a new event, or when an older event first gets ticket
+        // types. Ordinary edits never write them, so a sale during editing is never undone.
+        ...(!event || !hasTicketTypes(event) ? { typeSold: Object.fromEntries(rows.map(t => [t.id, t.sold])) } : {}),
         date: new Date(form.date),
         currency: form.currency,
         // Empty when tickets are sold on this site; cleared values are saved as empty.
@@ -115,7 +126,27 @@ export function EventFormDialog({ event, onClose }: Props) {
     }
   };
 
-  const input = (key: keyof EventForm, label: string, props: React.InputHTMLAttributes<HTMLInputElement> = {}, ref?: React.Ref<HTMLInputElement>) => (
+  const setType = (i: number, field: 'name' | 'price' | 'capacity', value: string) =>
+    setForm(current => ({ ...current, types: (current.types || []).map((t, n) => (n === i ? { ...t, [field]: value } : t)) }));
+  const addType = () => setForm(current => {
+    const used = new Set((current.types || []).map(t => t.id));
+    const id = TYPE_IDS.find(x => !used.has(x));
+    return id ? { ...current, types: [...(current.types || []), { id, name: '', price: '', capacity: '50', sold: 0 }] } : current;
+  });
+  const removeType = (i: number) => setForm(current => ({ ...current, types: (current.types || []).filter((_, n) => n !== i) }));
+  const typeInput = (i: number, field: 'name' | 'price' | 'capacity', label: string, props: React.InputHTMLAttributes<HTMLInputElement>) => {
+    const key = `type-${i}-${field}`;
+    const t = (form.types || [])[i];
+    return (
+      <div>
+        <label htmlFor={`ev-${key}`} className="field-label">{label}</label>
+        <input id={`ev-${key}`} value={t[field]} onChange={e => setType(i, field, e.target.value)} aria-invalid={!!errors[key]} aria-describedby={errors[key] ? `ev-${key}-error` : undefined} className="field" {...props} />
+        {errors[key] && <p id={`ev-${key}-error`} className="field-error">{errors[key]}</p>}
+      </div>
+    );
+  };
+
+  const input = (key: Exclude<keyof EventForm, 'types'>, label: string, props: React.InputHTMLAttributes<HTMLInputElement> = {}, ref?: React.Ref<HTMLInputElement>) => (
     <div>
       <label htmlFor={`ev-${key}`} className="field-label">{label}</label>
       <input ref={ref} id={`ev-${key}`} value={form[key]} onChange={set(key)} aria-invalid={!!errors[key]} aria-describedby={errors[key] ? `ev-${key}-error` : undefined} className="field" {...props} />
@@ -173,8 +204,35 @@ export function EventFormDialog({ event, onClose }: Props) {
               </select>
               {errors.currency && <p className="field-error">{errors.currency}</p>}
             </div>
-            {input('price', `Ticket price in ${form.currency === 'EUR' ? 'euros' : CURRENCIES.find(c => c.code === form.currency)?.name || 'rand'}`, { type: 'number', inputMode: 'decimal', min: 0, step: '0.01', placeholder: 'For example 200' })}
-            {input('capacity', 'Seats available', { type: 'number', inputMode: 'numeric', min: 1, step: 1 })}
+            <fieldset className="sm:col-span-2 border-t border-bai-black/10 pt-5">
+              <legend className="font-semibold pr-3">Ticket types</legend>
+              <p className="field-help mb-4">Prices in {form.currency === 'EUR' ? 'euros' : CURRENCIES.find(c => c.code === form.currency)?.name || 'rand'}. Add types such as VIP or Early bird, each with its own price and seats.</p>
+              {errors.types && <p className="field-error mb-3">{errors.types}</p>}
+              <ul className="space-y-4">
+                {(form.types || []).map((t, i) => (
+                  <li key={t.id} className="rounded-2xl border border-bai-black/10 p-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-[1fr_8rem_7rem] gap-3">
+                      {typeInput(i, 'name', 'Name', { maxLength: TYPE_NAME_LIMIT, placeholder: 'For example VIP' })}
+                      {typeInput(i, 'price', 'Price', { type: 'number', inputMode: 'decimal', min: 0, step: '0.01', placeholder: '200' })}
+                      {typeInput(i, 'capacity', 'Seats', { type: 'number', inputMode: 'numeric', min: 1, step: 1 })}
+                    </div>
+                    <div className="flex items-center justify-between gap-3 mt-2">
+                      <p className="text-sm text-bai-black/70">{t.sold > 0 ? `${t.sold} already issued` : ''}</p>
+                      {(form.types || []).length > 1 && (
+                        t.sold > 0
+                          ? <p className="text-sm text-bai-black/70">Cannot be removed: tickets are issued.</p>
+                          : <button type="button" onClick={() => removeType(i)} className="text-sm font-semibold text-bai-red-deep underline min-h-[44px]">Remove {t.name.trim() || 'this type'}</button>
+                      )}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+              {(form.types || []).length < MAX_TYPES && (
+                <button type="button" onClick={addType} className="btn btn-outline mt-4">
+                  <Plus size={16} aria-hidden="true" /><span>Add a ticket type</span>
+                </button>
+              )}
+            </fieldset>
             <div className="sm:col-span-2">
               <label htmlFor="ev-status" className="field-label">Status</label>
               <select id="ev-status" value={form.status} onChange={set('status')} className="field">

@@ -7,6 +7,7 @@ import { BAIEvent } from '../../models/types';
 import { formatCurrency, formatDateTime, friendlyError } from '../../controllers/lib/utils';
 import { toast } from '../../services/toast';
 import { sellsElsewhere } from '../../models/currency';
+import { hasTicketTypes, priceRange, ticketTypesOf } from '../../models/ticketTypes';
 import { eventHasEnded } from '../../controllers/lib/utils';
 import { confirmAction } from '../../services/confirm';
 import { useActivity } from '../components/useActivity';
@@ -85,11 +86,18 @@ export default function AdminEvents() {
                   {sellsElsewhere(event) && <span className="text-sm font-bold px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-900">Sold by {event.ticketProvider || 'outside seller'}</span>}
                 </div>
                 <p className="num text-bai-black/75 mt-1">{formatDateTime(event.date) || 'No date'} · {[event.venue, event.city].filter(Boolean).join(', ')}</p>
+                {hasTicketTypes(event) && (
+                  <ul className="num flex flex-wrap gap-x-4 gap-y-1 mt-2 text-sm text-bai-black/75">
+                    {ticketTypesOf(event).map(t => (
+                      <li key={t.id}><span className="font-semibold text-bai-black">{t.name}</span> {t.price > 0 ? formatCurrency(t.price, event.currency) : 'Free'} · {t.sold} of {t.capacity}</li>
+                    ))}
+                  </ul>
+                )}
               </div>
               <dl className="num flex gap-8 shrink-0">
                 <div>
                   <dt className="text-sm text-bai-black/70">Price</dt>
-                  <dd className="font-bold">{event.price > 0 ? formatCurrency(event.price, event.currency) : 'Free'}</dd>
+                  <dd className="font-bold">{(() => { const r = priceRange(event); const f = (n: number) => (n > 0 ? formatCurrency(n, event.currency) : 'Free'); return r.min === r.max ? f(r.max) : `${f(r.min)} to ${f(r.max)}`; })()}</dd>
                 </div>
                 <div>
                   <dt className="text-sm text-bai-black/70">Issued</dt>

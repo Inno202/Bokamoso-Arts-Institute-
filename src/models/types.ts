@@ -71,6 +71,10 @@ export interface BAIEvent {
   ticketUrl?: string;
   /** Who sells them there, e.g. MojaTicket. */
   ticketProvider?: string;
+  /** Ticket types under keys t1..t6 (see models/ticketTypes). Absent on older events. */
+  ticketTypes?: Partial<Record<string, { name: string; price: number; capacity: number }>>;
+  /** Seats sold per ticket type. */
+  typeSold?: Partial<Record<string, number>>;
   createdAt: DateLike;
   createdBy: string;
 }
@@ -128,6 +132,8 @@ export interface CartItem {
   venue: string;
   date: DateLike;
   ticketType: string;
+  /** Which of the event's ticket types (t1..t6, or "general" on older events). */
+  ticketTypeId?: string;
   price: number;
   currency?: string;
   quantity: number;

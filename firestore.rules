@@ -125,7 +125,41 @@ service cloud.firestore {
         // Shows sold by an outside seller (for example abroad) link to that seller's page.
         && data.get('ticketUrl', '') is string
         && (data.get('ticketUrl', '') == '' || data.get('ticketUrl', '').matches('^https://[^\\s]{4,490}$'))
-        && data.get('ticketProvider', '') is string && data.get('ticketProvider', '').size() <= 60;
+        && data.get('ticketProvider', '') is string && data.get('ticketProvider', '').size() <= 60
+        // Optional ticket types (General, VIP, Early bird...) under the keys t1..t6.
+        && (data.get('ticketTypes', null) == null || validTicketTypes(data.ticketTypes))
+        && data.get('typeSold', {}) is map;
+    }
+
+    function validTicketType(types, key) {
+      return !(key in types)
+        || (types[key].keys().hasOnly(['name', 'price', 'capacity'])
+          && types[key].name is string && types[key].name.size() >= 1 && types[key].name.size() <= 40
+          && types[key].price is number && types[key].price >= 0 && types[key].price <= 100000
+          && types[key].capacity is int && types[key].capacity >= 1 && types[key].capacity <= 1000000);
+    }
+
+    function validTicketTypes(types) {
+      return types is map && types.keys().size() >= 1
+        && types.keys().hasOnly(['t1', 't2', 't3', 't4', 't5', 't6'])
+        && validTicketType(types, 't1') && validTicketType(types, 't2') && validTicketType(types, 't3')
+        && validTicketType(types, 't4') && validTicketType(types, 't5') && validTicketType(types, 't6');
+    }
+
+    // The ordered ticket type exists, the price and name match it, and its own seat
+    // count moves up by exactly the order's quantity without passing its capacity.
+    // Events without ticket types have one implicit "General Admission" type.
+    function orderTypeMatches(order, before, after) {
+      return before.get('ticketTypes', null) == null
+        ? (order.get('ticketTypeId', 'general') == 'general'
+          && order.get('ticketTypeName', 'General Admission') == 'General Admission'
+          && order.unitPrice == before.price
+          && after.get('typeSold', {}) == before.get('typeSold', {}))
+        : (order.get('ticketTypeId', '') in before.ticketTypes
+          && order.unitPrice == before.ticketTypes[order.ticketTypeId].price
+          && order.get('ticketTypeName', '') == before.ticketTypes[order.ticketTypeId].name
+          && after.typeSold[order.ticketTypeId] == before.get('typeSold', {}).get(order.ticketTypeId, 0) + order.quantity
+          && after.typeSold[order.ticketTypeId] <= before.ticketTypes[order.ticketTypeId].capacity);
     }
 
     function eventPath(eventId) {
@@ -152,7 +186,10 @@ service cloud.firestore {
         // (Checked first, so an ordinary checkout costs no staff-profile lookups.)
         (isSignedIn()
           && resource.data.status == 'On Sale'
-          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['ticketsSold'])
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['ticketsSold', 'typeSold'])
+          // At most one ticket type's counter moves; the order rule checks it is the
+          // ordered type and that it moves by exactly the order's quantity.
+          && request.resource.data.get('typeSold', {}).diff(resource.data.get('typeSold', {})).affectedKeys().size() <= 1
           && request.resource.data.ticketsSold is int
           && request.resource.data.ticketsSold > resource.data.ticketsSold
           && request.resource.data.ticketsSold <= resource.data.ticketsSold + 10
@@ -196,7 +233,7 @@ service cloud.firestore {
       allow list: if isSignedIn() && (resource.data.buyerId == request.auth.uid || isAnyAdmin());
       // Orders are a permanent record: created once at checkout, never edited.
       allow create: if isSignedIn()
-        && request.resource.data.keys().hasOnly(['buyerId', 'buyerEmail', 'eventId', 'eventName', 'unitPrice', 'currency', 'quantity', 'ticketIds', 'createdAt'])
+        && request.resource.data.keys().hasOnly(['buyerId', 'buyerEmail', 'eventId', 'eventName', 'unitPrice', 'currency', 'ticketTypeId', 'ticketTypeName', 'quantity', 'ticketIds', 'createdAt'])
         && request.resource.data.buyerId == request.auth.uid
         && request.resource.data.buyerEmail == tokenEmail()
         // Only people who have confirmed their email can book (Google sign-ins are confirmed).
@@ -217,7 +254,8 @@ service cloud.firestore {
         // Tickets for shows sold by an outside seller are never issued here.
         && get(eventPath(request.resource.data.eventId)).data.get('ticketUrl', '') == ''
         && request.resource.data.get('currency', 'ZAR') == get(eventPath(request.resource.data.eventId)).data.get('currency', 'ZAR')
-        && request.resource.data.unitPrice == get(eventPath(request.resource.data.eventId)).data.price
+        && orderTypeMatches(request.resource.data, get(eventPath(request.resource.data.eventId)).data,
+             getAfter(eventPath(request.resource.data.eventId)).data)
         && getAfter(eventPath(request.resource.data.eventId)).data.ticketsSold
              == get(eventPath(request.resource.data.eventId)).data.ticketsSold + request.resource.data.quantity
         // The order's id is fixed by the account's new holding, so one checkout
@@ -239,7 +277,8 @@ service cloud.firestore {
         && ticket.eventId == order.eventId
         && ticket.eventName == order.eventName
         && ticket.price == order.unitPrice
-        && ticket.get('currency', 'ZAR') == order.get('currency', 'ZAR');
+        && ticket.get('currency', 'ZAR') == order.get('currency', 'ZAR')
+        && ticket.ticketType == order.get('ticketTypeName', 'General Admission');
     }
 
     match /tickets/{ticketId} {
@@ -258,7 +297,6 @@ service cloud.firestore {
         && request.resource.data.keys().hasOnly(['orderId', 'eventId', 'eventName', 'ticketType', 'buyerId', 'buyerEmail', 'price', 'currency', 'quantity', 'status', 'createdAt'])
         && request.resource.data.status == 'VALID'
         && request.resource.data.quantity == 1
-        && request.resource.data.ticketType == 'General Admission'
         && request.resource.data.createdAt == request.time
         && ticketMatchesOrder(ticketId, request.resource.data, getAfter(orderPath(request.resource.data.orderId)).data);
 

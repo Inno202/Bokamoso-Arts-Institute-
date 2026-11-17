@@ -84,7 +84,12 @@ const buy = (db, uid, o = {}) => {
   for (const id of (o.createIds ?? ids)) {
     b.set(doc(db, 'tickets', id), { ...ticketDoc(uid), orderId, eventId, ...(o.ticket || {}) });
   }
-  if (o.bump !== 0) b.update(doc(db, 'events', eventId), { ticketsSold: increment(o.bump ?? n) });
+  if (o.bump !== 0) {
+    b.update(doc(db, 'events', eventId), {
+      ticketsSold: increment(o.bump ?? n),
+      ...(o.typeSold ? { [`typeSold.${o.typeSold.key}`]: increment(o.typeSold.by ?? n) } : {}),
+    });
+  }
   if (o.holding !== false) {
     b.set(doc(db, 'ticket_holdings', `${uid}_${eventId}`), {
       buyerId: uid, eventId, count: held + n, updatedAt: serverTimestamp(), ...(o.holding || {}),
@@ -276,6 +281,53 @@ test('tickets cannot outnumber what the order and the sold counter record', asyn
 test('an event cannot be oversold', async () => {
   await assertSucceeds(buy(as('alice'), 'alice', { n: 2 }));
   await assertFails(buy(as('bob'), 'bob', { n: 1, prefix: 'B' }));
+});
+
+// ---------- ticket types ----------
+
+const typedEvent = (extra = {}) => eventDoc({
+  price: 100, capacity: 30,
+  ticketTypes: { t1: { name: 'General Admission', price: 100, capacity: 20 }, t2: { name: 'VIP', price: 350, capacity: 10 } },
+  typeSold: { t1: 0, t2: 0 }, ...extra,
+});
+const vip = (o = {}) => ({
+  ...o,
+  order: { unitPrice: 350, ticketTypeId: 't2', ticketTypeName: 'VIP', ...(o.order || {}) },
+  ticket: { price: 350, ticketType: 'VIP', ...(o.ticket || {}) },
+  typeSold: o.typeSold ?? { key: 't2' },
+});
+
+test('a ticket type is bought at its own price, name and seat count', async () => {
+  await env.withSecurityRulesDisabled(ctx => setDoc(doc(ctx.firestore(), 'events/e1'), typedEvent()));
+  const db = as('alice');
+  await assertFails(buy(db, 'alice', vip({ order: { unitPrice: 100 }, ticket: { price: 100 } })), 'VIP at the general price');
+  await assertFails(buy(db, 'alice', vip({ order: { ticketTypeName: 'Gold' }, ticket: { ticketType: 'Gold' } })), 'renamed type');
+  await assertFails(buy(db, 'alice', vip({ order: { ticketTypeId: 't5' } })), 'type that does not exist');
+  await assertFails(buy(db, 'alice', vip({ typeSold: { key: 't1' } })), 'moves the general counter instead');
+  await assertFails(buy(db, 'alice', vip({ ticket: { ticketType: 'General Admission' } })), 'ticket names a different type');
+  await assertFails(buy(db, 'alice', { order: { unitPrice: 100 }, ticket: { price: 100 } }), 'no type on a typed event');
+  await assertSucceeds(buy(db, 'alice', vip()));
+});
+
+test('a ticket type cannot be oversold', async () => {
+  await env.withSecurityRulesDisabled(ctx => setDoc(doc(ctx.firestore(), 'events/e1'), typedEvent({ typeSold: { t1: 0, t2: 9 }, ticketsSold: 9 })));
+  await assertFails(buy(as('alice'), 'alice', vip({ n: 2 })), 'only one VIP seat left');
+  await assertSucceeds(buy(as('alice'), 'alice', vip({ n: 1 })));
+});
+
+test('event managers can set ticket types, within limits', async () => {
+  const pro = as('pro');
+  await assertSucceeds(setDoc(doc(pro, 'events/typed'), typedEvent()));
+  await assertFails(setDoc(doc(pro, 'events/bad1'), typedEvent({ ticketTypes: { t7: { name: 'X', price: 1, capacity: 1 } } })), 'unknown key');
+  await assertFails(setDoc(doc(pro, 'events/bad2'), typedEvent({ ticketTypes: { t1: { name: '', price: 1, capacity: 1 } } })), 'empty name');
+  await assertFails(setDoc(doc(pro, 'events/bad3'), typedEvent({ ticketTypes: { t1: { name: 'A', price: -1, capacity: 1 } } })), 'negative price');
+  await assertFails(setDoc(doc(pro, 'events/bad4'), typedEvent({ ticketTypes: { t1: { name: 'A', price: 1, capacity: 0 } } })), 'no seats');
+  await assertFails(setDoc(doc(pro, 'events/bad5'), typedEvent({ ticketTypes: { t1: { name: 'A', price: 1, capacity: 1, secret: true } } })), 'extra field');
+});
+
+test('a full order of 10 VIP tickets still goes through in one write', async () => {
+  await env.withSecurityRulesDisabled(ctx => setDoc(doc(ctx.firestore(), 'events/e1'), typedEvent({ ticketTypes: { t1: { name: 'General Admission', price: 100, capacity: 20 }, t2: { name: 'VIP', price: 350, capacity: 50 } }, capacity: 70 })));
+  await assertSucceeds(buy(as('alice'), 'alice', vip({ n: 10, order: { currency: 'ZAR' }, ticket: { currency: 'ZAR' } })));
 });
 
 test('a full order of 10 tickets goes through in one write', async () => {

@@ -20,6 +20,7 @@ export function sanitizeCartItems(raw: unknown): CartItem[] {
       venue: String(i.venue || '').slice(0, 200),
       date: i.date ?? null,
       ticketType: String(i.ticketType || 'General Admission'),
+      ...(typeof i.ticketTypeId === 'string' && /^(t[1-6]|general)$/.test(i.ticketTypeId) ? { ticketTypeId: i.ticketTypeId } : {}),
       price: Number(i.price),
       currency: currencyOf(i.currency),
       quantity: Math.max(1, Math.min(MAX_PER_EVENT, Math.floor(Number(i.quantity) || 1))),

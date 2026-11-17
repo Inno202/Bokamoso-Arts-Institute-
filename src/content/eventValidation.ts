@@ -1,5 +1,6 @@
 import { isSafeUrl, type Errors } from './fields';
 import { formatMoney, isCurrency } from '../models/currency';
+import { MAX_TYPES, TYPE_NAME_LIMIT } from '../models/ticketTypes';
 
 /** What the event form holds while staff are typing: every value is still text. */
 export interface EventForm {
@@ -15,6 +16,29 @@ export interface EventForm {
   /** Optional: where tickets are sold instead of this site. */
   ticketUrl: string;
   ticketProvider: string;
+  /** Ticket types being edited. When present they replace the single price and capacity. */
+  types?: FormTicketType[];
+}
+
+/** One ticket type row in the form; `sold` is how many of it are already issued. */
+export interface FormTicketType { id: string; name: string; price: string; capacity: string; sold: number }
+
+function priceProblem(raw: string, currency: string): string | undefined {
+  const price = Number(raw);
+  if (raw.trim() === '' || !Number.isFinite(price)) return 'Enter the price. Use 0 if it is free.';
+  if (price < 0) return 'The price cannot be negative.';
+  if (price > EVENT_LIMITS.price) return `The price cannot be more than ${formatMoney(EVENT_LIMITS.price, currency).replace(/[,.]00$/, '')}.`;
+  if (Math.round(price * 100) !== price * 100) return 'Use at most two decimal places.';
+  return undefined;
+}
+
+function seatsProblem(raw: string, sold: number): string | undefined {
+  const seats = Number(raw);
+  if (raw.trim() === '' || !Number.isInteger(seats)) return 'Enter the number of seats as a whole number.';
+  if (seats < 1) return 'There must be at least 1 seat.';
+  if (seats > EVENT_LIMITS.capacity) return `Seats cannot be more than ${EVENT_LIMITS.capacity}.`;
+  if (seats < sold) return `${sold} of these are already issued, so the seats cannot go below that.`;
+  return undefined;
 }
 
 export const EVENT_STATUSES = ['On Sale', 'Draft', 'Closed'] as const;
@@ -34,18 +58,32 @@ export function validateEvent(form: EventForm, ticketsSold = 0): Errors {
 
   if (!form.date || Number.isNaN(new Date(form.date).getTime())) errors.date = 'Choose the date and time.';
 
-  // An empty price must never quietly become R0.
-  const price = Number(form.price);
-  if (form.price.trim() === '' || !Number.isFinite(price)) errors.price = 'Enter the ticket price. Use 0 for a free event.';
-  else if (price < 0) errors.price = 'The price cannot be negative.';
-  else if (price > EVENT_LIMITS.price) errors.price = `The price cannot be more than ${formatMoney(EVENT_LIMITS.price, form.currency).replace(/[,.]00$/, '')}.`;
-  else if (Math.round(price * 100) !== price * 100) errors.price = 'Use at most two decimal places.';
-
-  const capacity = Number(form.capacity);
-  if (form.capacity.trim() === '' || !Number.isInteger(capacity)) errors.capacity = 'Enter the number of seats as a whole number.';
-  else if (capacity < 1) errors.capacity = 'There must be at least 1 seat.';
-  else if (capacity > EVENT_LIMITS.capacity) errors.capacity = `Capacity cannot be more than ${EVENT_LIMITS.capacity}.`;
-  else if (capacity < ticketsSold) errors.capacity = `${ticketsSold} tickets are already issued, so capacity cannot go below that.`;
+  if (form.types) {
+    // Each ticket type has its own name, price and seats.
+    if (form.types.length === 0) errors.types = 'Add at least one ticket type.';
+    if (form.types.length > MAX_TYPES) errors.types = `An event can have at most ${MAX_TYPES} ticket types.`;
+    const seen = new Set<string>();
+    form.types.forEach((t, i) => {
+      const name = t.name.trim();
+      if (!name) errors[`type-${i}-name`] = 'Give this ticket type a name, for example VIP.';
+      else if (name.length > TYPE_NAME_LIMIT) errors[`type-${i}-name`] = `Keep the name to ${TYPE_NAME_LIMIT} characters or fewer.`;
+      else if (seen.has(name.toLowerCase())) errors[`type-${i}-name`] = 'Two ticket types cannot have the same name.';
+      seen.add(name.toLowerCase());
+      const price = priceProblem(t.price, form.currency);
+      if (price) errors[`type-${i}-price`] = price;
+      const seats = seatsProblem(t.capacity, t.sold);
+      if (seats) errors[`type-${i}-capacity`] = seats;
+    });
+  } else {
+    // An empty price must never quietly become R0.
+    const price = priceProblem(form.price, form.currency);
+    if (price) errors.price = price === 'Enter the price. Use 0 if it is free.' ? 'Enter the ticket price. Use 0 for a free event.' : price;
+    const capacity = Number(form.capacity);
+    if (form.capacity.trim() === '' || !Number.isInteger(capacity)) errors.capacity = 'Enter the number of seats as a whole number.';
+    else if (capacity < 1) errors.capacity = 'There must be at least 1 seat.';
+    else if (capacity > EVENT_LIMITS.capacity) errors.capacity = `Capacity cannot be more than ${EVENT_LIMITS.capacity}.`;
+    else if (capacity < ticketsSold) errors.capacity = `${ticketsSold} tickets are already issued, so capacity cannot go below that.`;
+  }
 
   if (form.description.length > EVENT_LIMITS.description) errors.description = `Keep the description to ${EVENT_LIMITS.description} characters or fewer.`;
   if (!(EVENT_STATUSES as readonly string[]).includes(form.status)) errors.status = 'Choose a status.';
