@@ -3,7 +3,7 @@
  *
  * Size: 210 x 95 mm, the width of an A4 page at the same proportions (about 2.2 : 1)
  * as the event tickets the institute's audience already knows (MojaTicket, Quicket).
- * Layout: the whole event photo or poster on the left, event and ticket-holder details in the middle,
+ * Layout: event photo on the left, event and ticket-holder details in the middle,
  * the QR code on a tear-off stub on the right.
  *
  * The ticket is drawn on a canvas at 300 dpi in the site's own fonts, then wrapped in
@@ -92,28 +92,6 @@ function drawCover(ctx: CanvasRenderingContext2D, img: HTMLImageElement, x: numb
   ctx.drawImage(img, sx, sy, sw, sh, x, y, w, h);
 }
 
-/**
- * Shows the whole image (posters carry text that must not be cropped). The space it
- * leaves is filled with a soft, blurred copy of the same image, so the panel never
- * looks empty. Where the browser cannot blur a canvas, a dimmed copy is used instead.
- */
-function drawWhole(ctx: CanvasRenderingContext2D, img: HTMLImageElement, x: number, y: number, w: number, h: number) {
-  ctx.save();
-  const canBlur = 'filter' in ctx && (() => { ctx.filter = 'blur(2px)'; const ok = ctx.filter === 'blur(2px)'; ctx.filter = 'none'; return ok; })();
-  if (canBlur) ctx.filter = `blur(${Math.round(mm(4))}px) saturate(1.1)`;
-  // Draw the backdrop a little larger than the panel so blurred edges stay solid.
-  const bleed = mm(6);
-  drawCover(ctx, img, x - bleed, y - bleed, w + bleed * 2, h + bleed * 2);
-  ctx.filter = 'none';
-  ctx.fillStyle = canBlur ? 'rgba(11, 11, 12, 0.28)' : 'rgba(11, 11, 12, 0.55)';
-  ctx.fillRect(x, y, w, h);
-  ctx.restore();
-
-  const scale = Math.min(w / img.naturalWidth, h / img.naturalHeight);
-  const dw = img.naturalWidth * scale, dh = img.naturalHeight * scale;
-  ctx.drawImage(img, x + (w - dw) / 2, y + (h - dh) / 2, dw, dh);
-}
-
 /** Shortens text with an ellipsis so it fits `maxWidth`. */
 function fit(ctx: CanvasRenderingContext2D, text: string, maxWidth: number) {
   if (ctx.measureText(text).width <= maxWidth) return text;
@@ -184,7 +162,7 @@ export async function drawTicket(t: PrintableTicket): Promise<HTMLCanvasElement>
   ctx.clip();
   ctx.fillStyle = SAND;
   ctx.fillRect(photoX, photoY, photoW, photoH);
-  if (photo) drawWhole(ctx, photo, photoX, photoY, photoW, photoH);
+  if (photo) drawCover(ctx, photo, photoX, photoY, photoW, photoH);
   ctx.restore();
 
   // ---- Stub divider: dashed tear-off line with notches ----
