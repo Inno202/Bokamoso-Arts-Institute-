@@ -410,3 +410,37 @@ describe('ticket types', () => {
     expect(typeOf(typed, 'general')?.id).toBe('t1'); // a bag line from before the event had types
   });
 });
+
+describe('fresh data before the copy saved on this device', () => {
+  const snap = (fromCache: boolean, v: string) => ({ metadata: { fromCache, hasPendingWrites: false, isEqual: () => false }, v });
+
+  it('shows the server answer and never the older saved copy when the server is quick', async () => {
+    const { vi } = await import('vitest');
+    vi.useFakeTimers();
+    const { preferServer } = await import('../src/controllers/lib/preferServer');
+    const seen: string[] = [];
+    const h = preferServer((s: ReturnType<typeof snap>) => seen.push(s.v), 1500);
+    h(snap(true, 'saved'));
+    vi.advanceTimersByTime(400);
+    h(snap(false, 'server'));
+    vi.advanceTimersByTime(5000);
+    expect(seen).toEqual(['server']);
+    h(snap(true, 'later local change'));
+    expect(seen).toEqual(['server', 'later local change']);
+    vi.useRealTimers();
+  });
+
+  it('falls back to the saved copy when the server is slow', async () => {
+    const { vi } = await import('vitest');
+    vi.useFakeTimers();
+    const { preferServer } = await import('../src/controllers/lib/preferServer');
+    const seen: string[] = [];
+    const h = preferServer((s: ReturnType<typeof snap>) => seen.push(s.v), 1500);
+    h(snap(true, 'saved'));
+    vi.advanceTimersByTime(1600);
+    expect(seen).toEqual(['saved']);
+    h(snap(false, 'server'));
+    expect(seen).toEqual(['saved', 'server']);
+    vi.useRealTimers();
+  });
+});

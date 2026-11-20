@@ -10,6 +10,7 @@ import { Toaster } from './views/components/Toaster';
 import { isAnyAdmin, isEventManager, isScanner, isUserAdmin, isSuperAdminRole, type UserRole } from './models/types';
 import { ConfirmDialog } from './views/components/ConfirmDialog';
 import { PhotoViewer } from './views/components/PhotoViewer';
+import { BackToTop } from './views/components/BackToTop';
 import Home from './views/pages/Home';
 
 // Each page loads on demand, so a first visit downloads the home page only.
@@ -89,6 +90,7 @@ export default function App({ router: Router }: { router: (props: { children: Re
             </main>
             <SiteFooter />
           </div>
+          <BackToTop />
           <Toaster />
           <ConfirmDialog />
           <PhotoViewer />
