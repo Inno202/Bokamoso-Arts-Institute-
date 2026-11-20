@@ -20,6 +20,8 @@ npm run build      # static site in dist/
 npm run deploy     # publish dist/ to GitHub Pages
 ```
 
+`npm run deploy` also keeps the previous release's script files online (`scripts/keep-previous-assets.mjs`), so anyone with the old version still open can keep moving around the site. The offline helper (`public/sw.js`) always asks GitHub for the newest page instead of reusing the browser's 10-minute copy, so a new release shows on the next visit. If you change `public/sw.js`, raise its `VERSION` so old saved copies are cleared.
+
 ## Deploying the database rules (required)
 
 Changes to `firestore.rules` and `firestore.indexes.json` do nothing until they are deployed to Firebase:

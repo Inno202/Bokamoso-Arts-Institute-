@@ -131,7 +131,7 @@ export default function Footer() {
       )}
 
       <div className="border-t border-white/10 py-6">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row md:items-center justify-between gap-2 text-sm text-white/70">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row md:items-center justify-between gap-2 text-sm text-white/70 pr-16 sm:pr-20 lg:pr-20">
           <p>© {new Date().getFullYear()} Bokamoso Arts Institute. {copyrightLine}</p>
           <ul className="flex gap-6">
             {legalLinks.map((link) => (

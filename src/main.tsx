@@ -34,7 +34,15 @@ function registerOfflineCopy() {
   const allowed = import.meta.env.PROD || import.meta.env.MODE === 'emulator';
   if (!allowed || !('serviceWorker' in navigator)) return;
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`, { scope: import.meta.env.BASE_URL }).catch(() => undefined);
+    navigator.serviceWorker
+      .register(`${import.meta.env.BASE_URL}sw.js`, { scope: import.meta.env.BASE_URL, updateViaCache: 'none' })
+      .then((registration) => {
+        // Check for a newer release whenever the site comes back into view (phones keep tabs for days).
+        document.addEventListener('visibilitychange', () => {
+          if (document.visibilityState === 'visible') registration.update().catch(() => undefined);
+        });
+      })
+      .catch(() => undefined);
   });
 }
 

@@ -17,6 +17,7 @@ import { BAIEvent } from '../models/types';
 import { cacheService } from '../services/cacheService';
 import { toDate } from './lib/utils';
 import { logger } from '../services/loggerService';
+import { preferServer } from './lib/preferServer';
 
 const COLLECTION = 'events';
 const MAX_LISTED = 100;
@@ -47,13 +48,15 @@ export const eventController = {
       ? [where('status', '==', 'On Sale'), orderBy('date', 'asc'), limit(MAX_LISTED)]
       : [orderBy('date', 'asc'), limit(MAX_LISTED)];
 
-    return onSnapshot(query(collection(db, COLLECTION), ...constraints), (snapshot) => {
+    // preferServer: show the server's events (current photos and prices) rather than a flash
+    // of the copy saved on this device from the last visit.
+    return onSnapshot(query(collection(db, COLLECTION), ...constraints), { includeMetadataChanges: true }, preferServer((snapshot) => {
       // 'estimate' gives a just-created event its local time straight away, so it
       // jumps to the top at once instead of waiting for the server's timestamp.
       const events = sortNewestFirst(snapshot.docs.map(d => ({ id: d.id, ...d.data({ serverTimestamps: 'estimate' }) })) as BAIEvent[]);
       events.forEach(e => cacheService.set(`${COLLECTION}:${e.id}`, e));
       callback(events);
-    }, (error) => {
+    }), (error) => {
       logger.error('Could not load events', error);
       onError?.(error);
     });

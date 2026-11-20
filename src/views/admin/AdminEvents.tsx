@@ -78,7 +78,7 @@ export default function AdminEvents() {
     <AdminShell title="Events">
       <div className="flex flex-wrap items-center justify-between gap-4 mb-8">
         <p className="text-bai-black/75 max-w-xl">Events marked On sale appear on the public Events page. Drafts and closed events stay hidden.</p>
-        <button onClick={() => setEditing('new')} className="btn btn-primary">New event</button>
+        <button onClick={() => setEditing('new')} className="btn btn-primary"><span>New event</span></button>
       </div>
 
       {loading ? (
@@ -91,16 +91,17 @@ export default function AdminEvents() {
         <div className="py-16 text-center border-y border-bai-black/15">
           <h2 className="display text-2xl">No events yet</h2>
           <p className="text-bai-black/75 mt-3 mb-6">Create the first one and it appears on the Events page straight away.</p>
-          <button onClick={() => setEditing('new')} className="btn btn-primary">New event</button>
+          <button onClick={() => setEditing('new')} className="btn btn-primary"><span>New event</span></button>
         </div>
       ) : (
         <ul className="border-t border-bai-black/15">
           {events.map(event => (
             <li key={event.id} className="py-5 border-b border-bai-black/15 flex flex-col md:flex-row md:items-center gap-4 md:gap-8">
               <div className="min-w-0 flex-grow">
-                <div className="flex items-start justify-between gap-3">
+                {/* Phones: status pills on the right of the name. Larger screens: right after the name, as before. */}
+                <div className="flex items-start justify-between md:justify-start md:flex-wrap md:items-center gap-3">
                   <h2 className="font-semibold text-lg break-words min-w-0">{event.name}</h2>
-                  <div className="flex flex-wrap justify-end gap-2 shrink-0">
+                  <div className="flex flex-wrap justify-end gap-2 shrink-0 md:shrink">
                   <span className={`text-sm font-bold px-2.5 py-0.5 rounded-full ${STATUS_STYLE[event.status] || STATUS_STYLE.Closed}`}>{event.status}</span>
                   {eventHasEnded(event.date) && <span className="text-sm font-bold px-2.5 py-0.5 rounded-full bg-bai-black/10 text-bai-black">Ended</span>}
                   </div>
@@ -125,8 +126,8 @@ export default function AdminEvents() {
                   <dd className="font-bold">{event.ticketsSold || 0} of {event.capacity}</dd>
                 </div>
               </dl>
-              {/* Report / Edit / Duplicate share one row; Cancel and Delete each take the full width below. */}
-              <div className="w-full md:w-[22rem] shrink-0 space-y-2">
+              {/* Phones: Report / Edit / Duplicate share one row; Cancel and Delete each take the full width below. */}
+              <div className="md:hidden w-full space-y-2">
                 <div className="even-cols">
                   <Link to={`${ROUTES.ADMIN_EVENTS}/${event.id}/report`} className="btn btn-outline">Report</Link>
                   <button onClick={() => setEditing(event)} className="btn btn-outline">Edit</button>
@@ -136,6 +137,26 @@ export default function AdminEvents() {
                   <button onClick={() => handleCancel(event)} className="btn btn-danger btn-block" aria-label={`Cancel event ${event.name}`}>Cancel event</button>
                 )}
                 <button onClick={() => handleDelete(event)} className="btn btn-danger btn-block" aria-label={`Delete ${event.name}`}>Delete</button>
+              </div>
+              {/* Larger screens: the original single row of buttons. */}
+              <div className="hidden md:flex flex-wrap gap-2 shrink-0">
+                <Link to={`${ROUTES.ADMIN_EVENTS}/${event.id}/report`} className="btn btn-outline">
+                  <span>Report</span>
+                </Link>
+                {event.status !== 'Cancelled' && (
+                  <button onClick={() => handleCancel(event)} className="btn btn-danger" aria-label={`Cancel event ${event.name}`}>
+                    <span>Cancel event</span>
+                  </button>
+                )}
+                <button onClick={() => setEditing(event)} className="btn btn-outline">
+                  <span>Edit</span>
+                </button>
+                <button onClick={() => setCopying(event)} className="btn btn-outline" aria-label={`Duplicate ${event.name}`}>
+                  <span>Duplicate</span>
+                </button>
+                <button onClick={() => handleDelete(event)} className="btn btn-danger" aria-label={`Delete ${event.name}`}>
+                  <span>Delete</span>
+                </button>
               </div>
             </li>
           ))}

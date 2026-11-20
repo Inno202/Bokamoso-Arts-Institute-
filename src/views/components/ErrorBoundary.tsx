@@ -28,9 +28,12 @@ export class ErrorBoundary extends Component<Props, State> {
     // After a new deploy, an open tab may ask for a page file that no longer exists.
     // Reload once to pick up the new version; the flag prevents a reload loop.
     if (isChunkLoadError(error)) {
+      // Reload at most once a minute, so a real outage cannot cause a reload loop,
+      // but a later release in the same browser session still reloads by itself.
       try {
-        if (!sessionStorage.getItem(RELOAD_FLAG)) {
-          sessionStorage.setItem(RELOAD_FLAG, '1');
+        const last = Number(sessionStorage.getItem(RELOAD_FLAG) || 0);
+        if (Date.now() - last > 60_000) {
+          sessionStorage.setItem(RELOAD_FLAG, String(Date.now()));
           window.location.reload();
         }
       } catch { /* sessionStorage unavailable: fall through to the message */ }

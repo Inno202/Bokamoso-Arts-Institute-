@@ -11,6 +11,7 @@ import { AppError } from '../controllers/lib/utils';
 import { clean, validate, type Data, type Errors } from './fields';
 import { stable } from './stable';
 import { SECTIONS, pickSource, resolveSection, type ContentMap, type ContentSource, type SectionKey } from './sections';
+import { preferServer } from '../controllers/lib/preferServer';
 
 export const CONTENT_COLLECTION = 'content';
 /** Firestore refuses documents over 1 MB; stop a little before that with a clear message. */
@@ -61,7 +62,8 @@ function start<K extends SectionKey>(key: K) {
   // Each snapshot gets a number; a slow fallback lookup from an older snapshot
   // must never overwrite content from a newer one.
   let latest = 0;
-  onSnapshot(doc(db, CONTENT_COLLECTION, key), { includeMetadataChanges: true }, async (snap) => {
+  // preferServer: a returning visitor sees today's content, not a flash of their last visit's copy.
+  onSnapshot(doc(db, CONTENT_COLLECTION, key), { includeMetadataChanges: true }, preferServer(async (snap) => {
     const mine = ++latest;
     const stored = snap.exists() ? snap.data()?.data : undefined;
     let legacy: unknown;
@@ -77,7 +79,7 @@ function start<K extends SectionKey>(key: K) {
     const { source, raw } = pickSource(stored, legacy);
     const updatedAt = snap.exists() ? snap.data()?.updatedAt?.toDate?.() ?? null : null;
     publish(key, { content: resolveSection(key, raw), source, updatedAt, pending: snap.metadata.hasPendingWrites });
-  }, (err) => {
+  }), (err) => {
     // Offline, blocked or denied: keep showing what we have (defaults at worst).
     logger.error(`Could not load ${key} content`, err);
     publish(key, {});
