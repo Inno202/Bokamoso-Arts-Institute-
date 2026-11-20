@@ -1,1 +1,0 @@
-import{r as s}from"./react-Cm28bfkS.js";import{d as a}from"./index-CtwePrfV.js";import{a as c}from"./activityController-CMmvDVv9.js";function u(){const{user:o,userData:r,role:t}=a();return s.useCallback((e,i,m="")=>c.record({user:o,name:r==null?void 0:r.displayName,role:t},e,i,m),[o,r==null?void 0:r.displayName,t])}export{u};
