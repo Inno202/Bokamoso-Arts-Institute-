@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Ban, BarChart3, Copy, Edit2, Plus, Trash2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { ROUTES } from '../../controllers/navigation';
 import { AdminShell } from './AdminShell';
@@ -79,7 +78,7 @@ export default function AdminEvents() {
     <AdminShell title="Events">
       <div className="flex flex-wrap items-center justify-between gap-4 mb-8">
         <p className="text-bai-black/75 max-w-xl">Events marked On sale appear on the public Events page. Drafts and closed events stay hidden.</p>
-        <button onClick={() => setEditing('new')} className="btn btn-primary"><Plus size={16} className="hidden md:block" aria-hidden="true" /><span>New event</span></button>
+        <button onClick={() => setEditing('new')} className="btn btn-primary"><span>New event</span></button>
       </div>
 
       {loading ? (
@@ -92,7 +91,7 @@ export default function AdminEvents() {
         <div className="py-16 text-center border-y border-bai-black/15">
           <h2 className="display text-2xl">No events yet</h2>
           <p className="text-bai-black/75 mt-3 mb-6">Create the first one and it appears on the Events page straight away.</p>
-          <button onClick={() => setEditing('new')} className="btn btn-primary"><Plus size={16} className="hidden md:block" aria-hidden="true" /><span>New event</span></button>
+          <button onClick={() => setEditing('new')} className="btn btn-primary"><span>New event</span></button>
         </div>
       ) : (
         <ul className="border-t border-bai-black/15">
@@ -139,24 +138,24 @@ export default function AdminEvents() {
                 )}
                 <button onClick={() => handleDelete(event)} className="btn btn-danger btn-block" aria-label={`Delete ${event.name}`}>Delete</button>
               </div>
-              {/* Larger screens: the original row of buttons, with icons. */}
+              {/* Larger screens: the original single row of buttons. */}
               <div className="hidden md:flex flex-wrap gap-2 shrink-0">
                 <Link to={`${ROUTES.ADMIN_EVENTS}/${event.id}/report`} className="btn btn-outline">
-                  <BarChart3 size={16} aria-hidden="true" /><span>Report</span>
+                  <span>Report</span>
                 </Link>
                 {event.status !== 'Cancelled' && (
                   <button onClick={() => handleCancel(event)} className="btn btn-danger" aria-label={`Cancel event ${event.name}`}>
-                    <Ban size={16} aria-hidden="true" /><span>Cancel event</span>
+                    <span>Cancel event</span>
                   </button>
                 )}
                 <button onClick={() => setEditing(event)} className="btn btn-outline">
-                  <Edit2 size={16} aria-hidden="true" /><span>Edit</span>
+                  <span>Edit</span>
                 </button>
                 <button onClick={() => setCopying(event)} className="btn btn-outline" aria-label={`Duplicate ${event.name}`}>
-                  <Copy size={16} aria-hidden="true" /><span>Duplicate</span>
+                  <span>Duplicate</span>
                 </button>
                 <button onClick={() => handleDelete(event)} className="btn btn-danger" aria-label={`Delete ${event.name}`}>
-                  <Trash2 size={16} aria-hidden="true" /><span>Delete</span>
+                  <span>Delete</span>
                 </button>
               </div>
             </li>
