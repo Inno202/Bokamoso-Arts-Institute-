@@ -51,7 +51,7 @@ export function VerifyEmailNotice() {
       <p className="text-sm mt-2 leading-relaxed">
         We sent a link to <strong className="break-all">{user?.email}</strong>. Open it, then come back and tap “I’ve confirmed it”.
       </p>
-      <div className="flex flex-wrap gap-2 mt-4">
+      <div className="even-row mt-4">
         <button type="button" onClick={check} disabled={checking} className="btn btn-primary">
           {checking && <Loader2 size={16} className="animate-spin" aria-hidden="true" />}
           <span>I’ve confirmed it</span>

@@ -14,7 +14,7 @@ import { APP_CHECK_ENABLED } from '../../controllers/lib/firebase';
  * charged, collected, stored or promised, update the matching section here and
  * the LAST_UPDATED date in the same commit.
  */
-const LAST_UPDATED = '17 November 2026';
+const LAST_UPDATED = '20 November 2026';
 
 type Doc = 'terms' | 'privacy' | 'cookies';
 const TITLES: Record<Doc, [string, string]> = {
@@ -78,7 +78,7 @@ export default function Legal({ doc }: { doc: Doc }) {
 
             <H>What we collect</H>
             <UL>
-              <li><strong>Account details:</strong> your name and email address when you create an account. If you sign in with Google, we receive your name and email address from Google. Your password is handled by Google Firebase Authentication; we never see or store it. When you create an account with an email address, Firebase sends you a link to confirm it, and tickets can only be booked once it is confirmed.</li>
+              <li><strong>Account details:</strong> your name and email address when you create an account. If you sign in with Google, we receive your name and email address from Google. Your password is handled by Google Firebase Authentication; we never see or store it. When you create an account with an email address, Firebase may send you a link to confirm it.</li>
               <li><strong>Tickets and orders:</strong> which events you booked, how many tickets, the price and its currency, the time of booking, how many tickets your account holds for each event, and when a ticket was scanned at the door and by which staff account.</li>
               <li><strong>Your bag:</strong> the tickets you have added but not yet booked, saved to your account and in your browser so they are still there when you come back.</li>
               <li><strong>Emails you send us:</strong> if you email us, we receive whatever you choose to send.</li>
@@ -121,7 +121,7 @@ export default function Legal({ doc }: { doc: Doc }) {
 
             <H>What is stored on your device</H>
             <UL>
-              <li><strong>Sign-in:</strong> when you sign in, Google Firebase keeps you signed in using your browser's storage, until you sign out.</li>
+              <li><strong>Sign-in:</strong> when you sign in, Google Firebase keeps you signed in using your browser's storage. With "Remember me" ticked you stay signed in on that browser until you sign out; without it you are signed out when you close the browser. Staff are also signed out after 30 minutes without activity.</li>
               <li><strong>Offline copy:</strong> a copy of the pages' content, events and your tickets is cached so the site loads quickly and your tickets open with a weak connection.</li>
               <li><strong>Your bag:</strong> the tickets you have added but not yet booked.</li>
               <li><strong>Footer preference:</strong> whether you have folded the footer away.</li>

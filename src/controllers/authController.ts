@@ -7,6 +7,9 @@ import {
   signInWithPopup,
   sendPasswordResetEmail,
   sendEmailVerification,
+  setPersistence,
+  browserLocalPersistence,
+  browserSessionPersistence,
   type User,
 } from 'firebase/auth';
 import { doc, runTransaction, serverTimestamp, type Firestore } from 'firebase/firestore';
@@ -39,7 +42,16 @@ const verificationLink = () =>
   typeof window === 'undefined' ? undefined : { url: `${window.location.origin}${import.meta.env.BASE_URL}login` };
 
 export const authController = {
-  async login(email: string, password: string) {
+  /**
+   * "Remember me": stay signed in on this browser (the default), or only until the browser closes.
+   * Staff are still signed out after 30 idle minutes either way.
+   */
+  async remember(stay: boolean) {
+    await setPersistence(auth, stay ? browserLocalPersistence : browserSessionPersistence);
+  },
+
+  async login(email: string, password: string, stay = true) {
+    await this.remember(stay);
     const credential = await signInWithEmailAndPassword(auth, email.trim(), password);
     return credential.user;
   },
@@ -54,7 +66,8 @@ export const authController = {
       const name = displayName.trim();
       if (name) await updateProfile(credential.user, { displayName: name });
       await ensureUserProfile(credential.user, name, session.db);
-      // Booking needs a confirmed email (enforced in firestore.rules). If the email
+      // The confirmation link is still sent, ready for when booking needs a confirmed email again
+      // (REQUIRE_EMAIL_VERIFICATION in src/config.ts). If the email
       // cannot be sent now, the person can ask for it again when they first book.
       await sendEmailVerification(credential.user, verificationLink()).catch(() => undefined);
     });
@@ -66,7 +79,8 @@ export const authController = {
     await sendEmailVerification(auth.currentUser, verificationLink());
   },
 
-  async loginWithGoogle() {
+  async loginWithGoogle(stay = true) {
+    await this.remember(stay);
     const credential = await signInWithPopup(auth, new GoogleAuthProvider());
     await ensureUserProfile(credential.user);
     return credential.user;

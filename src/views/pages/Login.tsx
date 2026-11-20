@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
-import { Eye, EyeOff, LogIn, Mail, Lock } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock } from 'lucide-react';
 import { doc, getDoc } from 'firebase/firestore';
 import { ROUTES, safeReturnPath } from '../../controllers/navigation';
 import { authController } from '../../controllers/authController';
@@ -18,6 +18,7 @@ export default function Login() {
     : '';
   const [email, setEmail] = useState(registered);
   const [password, setPassword] = useState('');
+  const [remember, setRemember] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -52,7 +53,7 @@ export default function Login() {
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    void run(() => authController.login(email, password));
+    void run(() => authController.login(email, password, remember));
   };
 
   const handleForgot = async () => {
@@ -105,14 +106,18 @@ export default function Login() {
               </button>
             </div>
 
-            <div className="flex justify-end">
+            <div className="flex items-center justify-between gap-4">
+              <label htmlFor="login-remember" className="flex items-center gap-3 min-h-[44px] cursor-pointer select-none">
+                <input id="login-remember" type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} className="w-5 h-5 accent-bai-black cursor-pointer" />
+                <span>Remember me</span>
+              </label>
               <button type="button" onClick={handleForgot} className="link py-1">
                 Forgot password?
               </button>
             </div>
 
             <button type="submit" disabled={loading} className="btn btn-lg btn-primary btn-block">
-              {loading ? <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" role="status" aria-label="Signing in" /> : <><span>Sign in</span> <LogIn size={18} aria-hidden="true" /></>}
+              {loading ? <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" role="status" aria-label="Signing in" /> : 'Sign in'}
             </button>
           </form>
 
@@ -120,7 +125,7 @@ export default function Login() {
             <span className="h-px flex-grow bg-bai-black/15" />or<span className="h-px flex-grow bg-bai-black/15" />
           </div>
 
-          <button onClick={() => run(() => authController.loginWithGoogle())} disabled={loading} className="btn btn-outline btn-block">
+          <button onClick={() => run(() => authController.loginWithGoogle(remember))} disabled={loading} className="btn btn-outline btn-block">
             <GoogleMark className="w-5 h-5" />
             <span>Sign in with Google</span>
           </button>

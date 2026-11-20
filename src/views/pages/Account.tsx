@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { signOut } from 'firebase/auth';
-import { CheckCircle2, Loader2, LogOut, Trash2 } from 'lucide-react';
+import { CheckCircle2, Loader2 } from 'lucide-react';
 import { PageHero } from '../components/PageHero';
 import { useAuth } from '../components/AuthProvider';
 import { VerifyEmailNotice } from '../components/VerifyEmailNotice';
@@ -13,6 +13,7 @@ import { confirmAction } from '../../services/confirm';
 import { toast } from '../../services/toast';
 import { logger } from '../../services/loggerService';
 import { ROLE_LABELS } from '../../models/types';
+import { REQUIRE_EMAIL_VERIFICATION } from '../../config';
 
 /** Firebase's sign-in errors, in words people can act on. */
 function accountError(err: unknown, fallback: string) {
@@ -116,7 +117,7 @@ export default function Account() {
               <span>Save name</span>
             </button>
           </form>
-          {!emailVerified && <div className="mt-6"><VerifyEmailNotice /></div>}
+          {REQUIRE_EMAIL_VERIFICATION && !emailVerified && <div className="mt-6"><VerifyEmailNotice /></div>}
         </section>
 
         <section className="panel p-6 sm:p-8" aria-labelledby="password-heading">
@@ -146,8 +147,7 @@ export default function Account() {
         <section className="panel p-6 sm:p-8" aria-labelledby="signout-heading">
           <h2 id="signout-heading" className="display text-2xl mb-4">Sign out</h2>
           <button type="button" onClick={() => signOut(auth).then(() => navigate(ROUTES.HOME, { replace: true }))} className="btn btn-outline">
-            <LogOut size={18} aria-hidden="true" />
-            <span>Sign out on this device</span>
+            Sign out on this device
           </button>
         </section>
 
@@ -167,7 +167,7 @@ export default function Account() {
                 </div>
               )}
               <button type="submit" disabled={deleting || (hasPassword && !deletePassword)} className="btn btn-danger">
-                {deleting ? <Loader2 size={16} className="animate-spin" aria-hidden="true" /> : <Trash2 size={16} aria-hidden="true" />}
+                {deleting && <Loader2 size={16} className="animate-spin" aria-hidden="true" />}
                 <span>Delete my account</span>
               </button>
             </form>

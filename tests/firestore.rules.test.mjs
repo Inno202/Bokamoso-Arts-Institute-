@@ -201,9 +201,12 @@ test('a buyer can purchase a ticket at the real price', async () => {
   await assertSucceeds(buy(as('alice'), 'alice'));
 });
 
-test('booking needs a confirmed email', async () => {
-  await assertFails(buy(as('alice', 'alice@example.com', 60, false), 'alice'), 'email not confirmed');
-  await assertSucceeds(buy(as('alice'), 'alice'));
+test('booking does not need a confirmed email while the site sends no emails', async () => {
+  await assertSucceeds(buy(as('alice', 'alice@example.com', 60, false), 'alice'));
+});
+
+test('an unconfirmed account still cannot book in someone else\'s name', async () => {
+  await assertFails(buy(as('mallory', 'mallory@example.com', 60, false), 'alice'));
 });
 
 test('a show that is over cannot be booked', async () => {

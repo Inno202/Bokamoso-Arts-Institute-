@@ -1,6 +1,6 @@
 import { useId, useState } from 'react';
-import { ArrowDown, ArrowUp, ImagePlus, Loader2, Plus, Trash2 } from 'lucide-react';
-import { blankItem, isSafeImage, type Data, type Errors, type Field } from '../../content/fields';
+import { ArrowDown, ArrowUp, Loader2, Trash2 } from 'lucide-react';
+import { blankItem, isSafeImage, mustFill, type Data, type Errors, type Field } from '../../content/fields';
 import { contentImage } from '../../content/image';
 import { cloudinaryService } from '../../services/cloudinaryService';
 import { friendlyError } from '../../controllers/lib/utils';
@@ -29,13 +29,16 @@ async function uploadImage(file: File): Promise<string | null> {
   }
 }
 
-function UploadButton({ label, onUploaded }: { label: string; onUploaded: (url: string) => void }) {
+function UploadButton({ label, onUploaded, id, describedBy, invalid }: { label: string; onUploaded: (url: string) => void; id?: string; describedBy?: string; invalid?: boolean }) {
   const [busy, setBusy] = useState(false);
   return (
     <label className={`btn btn-outline cursor-pointer has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-bai-blue has-[:focus-visible]:outline-offset-2 ${busy ? 'opacity-60 pointer-events-none' : ''}`}>
-      {busy ? <Loader2 size={16} className="animate-spin" aria-hidden="true" /> : <ImagePlus size={16} aria-hidden="true" />}
+      {busy && <Loader2 size={16} className="animate-spin" aria-hidden="true" />}
       <span>{busy ? 'Uploading' : label}</span>
       <input
+        id={id}
+        aria-describedby={describedBy}
+        aria-invalid={invalid || undefined}
         type="file"
         accept="image/jpeg,image/png,image/webp"
         className="sr-only"
@@ -54,9 +57,6 @@ function UploadButton({ label, onUploaded }: { label: string; onUploaded: (url: 
   );
 }
 
-const describeImage = (value: string) =>
-  value.startsWith('data:') ? 'Uploaded photo (stored with this page)' : value.startsWith('assets/') ? `Built-in photo: ${value}` : value;
-
 export function FieldEditor({ field, value, path, errors, onChange }: EditorProps) {
   const id = fieldId(path);
   const error = errors[path];
@@ -72,13 +72,13 @@ export function FieldEditor({ field, value, path, errors, onChange }: EditorProp
         value: text,
         'aria-invalid': !!error,
         'aria-describedby': describedBy,
-        'aria-required': field.required,
+        'aria-required': mustFill(field),
         onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => onChange(e.target.value),
       };
       return (
         <div>
           <div className="flex items-baseline justify-between gap-4">
-            <label htmlFor={id} className="field-label">{field.label}{!field.required && <span className="font-normal text-bai-black/70"> (optional)</span>}</label>
+            <label htmlFor={id} className="field-label">{field.label}{!mustFill(field) && <span className="font-normal text-bai-black/70"> (optional)</span>}</label>
             <span className={`num text-sm ${text.length > field.max ? 'text-red-700 font-bold' : 'text-bai-black/70'}`} aria-hidden="true">{text.length}/{field.max}</span>
           </div>
           {field.multiline
@@ -114,7 +114,7 @@ export function FieldEditor({ field, value, path, errors, onChange }: EditorProp
     case 'url': case 'email': case 'tel':
       return (
         <div>
-          <label htmlFor={id} className="field-label">{field.label}{!field.required && <span className="font-normal text-bai-black/70"> (optional)</span>}</label>
+          <label htmlFor={id} className="field-label">{field.label}{!mustFill(field) && <span className="font-normal text-bai-black/70"> (optional)</span>}</label>
           <input
             id={id}
             type={field.kind}
@@ -144,35 +144,20 @@ export function FieldEditor({ field, value, path, errors, onChange }: EditorProp
       );
 
     case 'image': {
+      // Photos are always uploaded through the system (resized and stored safely); there is no paste-a-link box.
       const image = typeof value === 'string' ? value : '';
-      const isLink = image.startsWith('https://') || image === '';
       return (
         <div>
-          <label htmlFor={id} className="field-label">{field.label}{!field.required && <span className="font-normal text-bai-black/70"> (optional)</span>}</label>
-          <div className="flex flex-wrap items-center gap-4">
-            <div className="w-20 h-20 rounded-lg overflow-hidden bg-bai-black/10 shrink-0">
-              {isSafeImage(image) && <img src={contentImage(image, 200)} alt="" className="w-full h-full object-cover" />}
+          <p className="field-label" id={`${id}-label`}>{field.label}{!mustFill(field) && <span className="font-normal text-bai-black/70"> (optional)</span>}</p>
+          <div className="flex items-center gap-4">
+            <div className="w-24 h-24 rounded-lg overflow-hidden bg-bai-black/10 shrink-0">
+              {isSafeImage(image) && <img src={contentImage(image, 240)} alt={image ? `Current ${field.label.toLowerCase()}` : ''} className="w-full h-full object-cover" />}
             </div>
-            <div className="flex-grow min-w-[min(100%,16rem)] space-y-3">
-              <input
-                id={id}
-                type="url"
-                value={isLink ? image : describeImage(image)}
-                readOnly={!isLink}
-                placeholder="Paste an https:// link, or upload"
-                aria-invalid={!!error}
-                aria-describedby={describedBy}
-                className="field"
-                onChange={(e) => onChange(e.target.value)}
-              />
-              <div className="flex flex-wrap gap-3">
-                <UploadButton label={image ? 'Replace photo' : 'Upload photo'} onUploaded={onChange} />
-                {image && !field.required && (
-                  <button type="button" className="btn btn-danger" onClick={() => onChange('')}>
-                    <Trash2 size={16} aria-hidden="true" /><span>Remove photo</span>
-                  </button>
-                )}
-              </div>
+            <div className="flex-grow min-w-0 even-row">
+              <UploadButton id={id} describedBy={[`${id}-label`, describedBy].filter(Boolean).join(' ')} invalid={!!error} label={image ? 'Replace photo' : 'Upload photo'} onUploaded={onChange} />
+              {image && !mustFill(field) && (
+                <button type="button" className="btn btn-danger" onClick={() => onChange('')}>Remove photo</button>
+              )}
             </div>
           </div>
           {help}{errorLine}
@@ -296,8 +281,7 @@ function ListEditor({ field, value, path, errors, onChange }: EditorProps & { fi
       </ol>
 
       <button type="button" className="btn btn-outline mt-6" disabled={list.length >= field.max} onClick={() => onChange([...list, blankItem(field.fields)])}>
-        <Plus size={16} aria-hidden="true" />
-        <span>Add {itemName}</span>
+        Add {itemName}
       </button>
       {list.length >= field.max && <p className="field-help">That is the most this part of the page can hold.</p>}
     </fieldset>

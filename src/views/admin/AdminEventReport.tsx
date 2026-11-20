@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { ArrowLeft, Download, RotateCcw, XCircle } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { AdminShell } from './AdminShell';
 import { eventController } from '../../controllers/eventController';
 import { ticketController } from '../../controllers/ticketController';
@@ -132,7 +132,7 @@ export default function AdminEventReport() {
               <p className="num text-bai-black/75 mt-1">{formatDateTime(event.date)} · {[event.venue, event.city].filter(Boolean).join(', ')}{event.status === 'Cancelled' ? ' · Cancelled' : ''}</p>
             </div>
             <button type="button" onClick={downloadCsv} disabled={!tickets || tickets.length === 0} className="btn btn-primary">
-              <Download size={18} aria-hidden="true" /><span>Download attendee list</span>
+              Download attendee list
             </button>
           </div>
 
@@ -176,7 +176,7 @@ export default function AdminEventReport() {
 
           <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
             <h3 className="font-semibold text-lg">Tickets</h3>
-            <div className="flex flex-wrap gap-2" role="group" aria-label="Show tickets">
+            <div className="even-row w-full sm:w-auto sm:flex-1 sm:max-w-xl" role="group" aria-label="Show tickets">
               {(['all', 'VALID', 'SCANNED', 'CANCELLED'] as const).map(f => (
                 <button key={f} type="button" onClick={() => setFilter(f)} aria-pressed={filter === f}
                   className={`min-h-[44px] px-4 rounded-full text-sm font-semibold border ${filter === f ? 'bg-bai-black text-white border-bai-black' : 'border-bai-black/25 hover:border-bai-black'}`}>
@@ -199,12 +199,12 @@ export default function AdminEventReport() {
                   </div>
                   {t.status === 'VALID' && (
                     <button type="button" onClick={() => setStatus(t, 'CANCELLED')} disabled={busy === t.id} className="btn btn-danger">
-                      <XCircle size={16} aria-hidden="true" /><span>Cancel</span>
+                      Cancel
                     </button>
                   )}
                   {t.status === 'CANCELLED' && (
                     <button type="button" onClick={() => setStatus(t, 'VALID')} disabled={busy === t.id} className="btn btn-outline">
-                      <RotateCcw size={16} aria-hidden="true" /><span>Restore</span>
+                      Restore
                     </button>
                   )}
                 </li>

@@ -7,6 +7,7 @@ import { authController } from '../../controllers/authController';
 import { useCart } from '../../hooks/useCart';
 import { isAnyAdmin, isScanner } from '../../models/types';
 import { toast } from '../../services/toast';
+import { useBackToClose } from './useBackToClose';
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
@@ -30,6 +31,9 @@ export default function Navbar() {
 
   // The menu closes whenever the page changes, and on Escape.
   useEffect(() => { setIsOpen(false); }, [location.pathname]);
+  // Back closes the open menu. Menu links replace that extra history entry, so Back from
+  // the new page returns to the page the menu was opened on.
+  useBackToClose(isOpen, () => setIsOpen(false));
   useEffect(() => {
     if (!isOpen) return;
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setIsOpen(false); };
@@ -148,6 +152,7 @@ export default function Navbar() {
                   <Link
                     key={link.path}
                     to={link.path}
+                    replace
                     aria-current={active ? 'page' : undefined}
                     className={`block py-3 font-display text-base font-bold uppercase tracking-widest hover:text-bai-red ${active ? 'text-bai-red-deep' : 'text-bai-black'}`}
                   >
@@ -161,7 +166,7 @@ export default function Navbar() {
                     Sign Out
                   </button>
                 ) : (
-                  <Link to={ROUTES.LOGIN} className="btn btn-primary btn-block">
+                  <Link to={ROUTES.LOGIN} replace className="btn btn-primary btn-block">
                     Sign In
                   </Link>
                 )}

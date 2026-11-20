@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { AlertTriangle, HelpCircle } from 'lucide-react';
 import { subscribeConfirm, type ConfirmRequest } from '../../services/confirm';
+import { useBackToClose } from './useBackToClose';
 
 /**
  * The one confirmation dialog for the whole site. Uses the browser's modal
@@ -30,6 +31,7 @@ export function ConfirmDialog() {
   }, [request]);
 
   const answer = (ok: boolean) => request?.resolve(ok);
+  useBackToClose(!!request, () => answer(false));
   const danger = request?.tone === 'danger';
 
   return (
@@ -52,7 +54,7 @@ export function ConfirmDialog() {
               {request.message && <p id="confirm-message" className="text-bai-ink-soft leading-relaxed mt-2 break-words">{request.message}</p>}
             </div>
           </div>
-          <div className="mt-7 flex flex-col-reverse sm:flex-row sm:justify-end gap-3">
+          <div className="mt-7 grid grid-cols-2 gap-3">
             <button ref={cancelRef} type="button" onClick={() => answer(false)} className="btn btn-outline">
               {request.cancelLabel || 'Cancel'}
             </button>

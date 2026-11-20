@@ -215,6 +215,22 @@ describe('validating what staff type', () => {
   });
 });
 
+describe('team members', () => {
+  const team = SECTIONS.about.fields.find(f => f.key === 'management')!;
+  const member = { name: 'Thabo', role: 'Conductor', desc: '', image: '' };
+
+  it('cannot be saved without "About them" and a photo', () => {
+    const errors = validate([team], { management: [member] });
+    expect(Object.keys(errors).sort()).toEqual(['management.0.desc', 'management.0.image']);
+    expect(validate([team], { management: [{ ...member, desc: 'Leads the choir.', image: 'https://res.cloudinary.com/x/a.jpg' }] })).toEqual({});
+  });
+
+  it('still shows members saved before these were required', () => {
+    const out = resolve([team], { management: [member] }, { management: [] });
+    expect(out.management).toEqual([member]);
+  });
+});
+
 describe('validating events', () => {
   const good: EventForm = { name: 'Gala', venue: 'Hall', city: 'Pretoria', date: '2026-05-29T10:00', price: '200', capacity: '300', description: '', status: 'On Sale', currency: 'ZAR', ticketUrl: '', ticketProvider: '' };
 

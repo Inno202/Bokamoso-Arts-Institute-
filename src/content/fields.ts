@@ -12,18 +12,24 @@
  */
 
 export type Field =
-  | { kind: 'text'; key: string; label: string; max: number; required?: boolean; multiline?: boolean; help?: string }
+  | { kind: 'text'; key: string; label: string; max: number; required?: boolean; requiredOnSave?: boolean; multiline?: boolean; help?: string }
   | { kind: 'number'; key: string; label: string; min: number; max: number; integer?: boolean; help?: string }
   | { kind: 'url'; key: string; label: string; required?: boolean; help?: string }
   | { kind: 'email'; key: string; label: string; required?: boolean; help?: string }
   | { kind: 'tel'; key: string; label: string; required?: boolean; help?: string }
-  | { kind: 'image'; key: string; label: string; required?: boolean; help?: string }
+  | { kind: 'image'; key: string; label: string; required?: boolean; requiredOnSave?: boolean; help?: string }
   | { kind: 'select'; key: string; label: string; options: Array<{ value: string; label: string }>; help?: string }
   | { kind: 'images'; key: string; label: string; max: number; help?: string }
   | { kind: 'group'; key: string; label: string; fields: Field[]; help?: string }
   | { kind: 'list'; key: string; label: string; itemLabel: string; titleKey: string; min?: number; max: number; fields: Field[]; help?: string };
 
 export type Data = Record<string, unknown>;
+
+/**
+ * True when staff must fill this field before saving. `requiredOnSave` fields are required in the
+ * admin form, but entries saved before the rule existed are still shown on the site.
+ */
+export const mustFill = (f: Field) => ('required' in f && !!f.required) || ('requiredOnSave' in f && !!f.requiredOnSave);
 export type Errors = Record<string, string>;
 
 const isObject = (v: unknown): v is Data => typeof v === 'object' && v !== null && !Array.isArray(v);
@@ -131,7 +137,7 @@ export function resolve(fields: Field[], raw: unknown, defaults: Data): Data {
           .slice(0, f.max)
           .map(item => resolve(f.fields, item, blank))
           // An item whose required parts did not survive is dropped, not shown half-empty.
-          .filter(item => Object.keys(validate(f.fields, item)).length === 0);
+          .filter(item => Object.keys(validate(f.fields, item, '', true)).length === 0);
         out[f.key] = items.length >= (f.min ?? 0) ? items : fallback;
         break;
       }
@@ -145,7 +151,7 @@ export function resolve(fields: Field[], raw: unknown, defaults: Data): Data {
 const lower = (label: string) => label.charAt(0).toLowerCase() + label.slice(1);
 
 /** Returns one message per problem, keyed by the field's path (for example "tiers.1.amount"). Empty means valid. */
-export function validate(fields: Field[], data: unknown, prefix = ''): Errors {
+export function validate(fields: Field[], data: unknown, prefix = '', reading = false): Errors {
   const errors: Errors = {};
   const source = isObject(data) ? data : {};
 
@@ -156,7 +162,7 @@ export function validate(fields: Field[], data: unknown, prefix = ''): Errors {
     switch (f.kind) {
       case 'text': {
         const text = typeof value === 'string' ? value : '';
-        if (f.required && text.trim() === '') errors[path] = `Add the ${lower(f.label)}.`;
+        if ((reading ? f.required : mustFill(f)) && text.trim() === '') errors[path] = /^about /i.test(f.label) ? `Add a few words ${lower(f.label)}.` : `Add the ${lower(f.label)}.`;
         else if (text.length > f.max) errors[path] = `Keep the ${lower(f.label)} to ${f.max} characters or fewer (it is ${text.length}).`;
         break;
       }
@@ -169,13 +175,13 @@ export function validate(fields: Field[], data: unknown, prefix = ''): Errors {
       case 'url': case 'email': case 'tel': case 'image': {
         const text = typeof value === 'string' ? value.trim() : '';
         if (text === '') {
-          if (f.required) errors[path] = `Add the ${lower(f.label)}.`;
+          if (reading ? f.required : mustFill(f)) errors[path] = `Add the ${lower(f.label)}.`;
         } else if (!formatOk(f, text)) {
           errors[path] = {
             url: 'Use a full link that starts with https://',
             email: 'That does not look like an email address.',
             tel: 'Use digits, spaces and an optional leading +, for example +27 12 345 6789.',
-            image: 'Upload a JPEG, PNG or WebP image, or paste a link that starts with https://',
+            image: 'Upload a JPEG, PNG or WebP image.',
           }[f.kind];
         }
         break;
@@ -190,13 +196,13 @@ export function validate(fields: Field[], data: unknown, prefix = ''): Errors {
         break;
       }
       case 'group':
-        Object.assign(errors, validate(f.fields, value, `${path}.`));
+        Object.assign(errors, validate(f.fields, value, `${path}.`, reading));
         break;
       case 'list': {
         const list = Array.isArray(value) ? value : [];
         if (list.length < (f.min ?? 0)) errors[path] = `Add at least ${f.min} ${lower(f.itemLabel)}${f.min === 1 ? '' : 's'}.`;
         else if (list.length > f.max) errors[path] = `Use ${f.max} ${lower(f.itemLabel)}s or fewer.`;
-        list.forEach((item, i) => Object.assign(errors, validate(f.fields, item, `${path}.${i}.`)));
+        list.forEach((item, i) => Object.assign(errors, validate(f.fields, item, `${path}.${i}.`, reading)));
         break;
       }
     }
