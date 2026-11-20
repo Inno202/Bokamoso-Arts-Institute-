@@ -42,6 +42,11 @@ service cloud.firestore {
       return role in ['SUPER_ADMIN', 'PRO', 'CEO', 'FINANCE_MANAGER', 'TICKET_SCANNER', 'USER'];
     }
 
+    // Booking needs a confirmed email only when this returns true (see src/config.ts).
+    function requireConfirmedEmail() {
+      return false;
+    }
+
     function tokenEmail() {
       return request.auth.token.get('email', '');
     }
@@ -239,8 +244,9 @@ service cloud.firestore {
         && request.resource.data.keys().hasOnly(['buyerId', 'buyerEmail', 'eventId', 'eventName', 'unitPrice', 'currency', 'ticketTypeId', 'ticketTypeName', 'quantity', 'ticketIds', 'createdAt'])
         && request.resource.data.buyerId == request.auth.uid
         && request.resource.data.buyerEmail == tokenEmail()
-        // Only people who have confirmed their email can book (Google sign-ins are confirmed).
-        && request.auth.token.get('email_verified', false) == true
+        // While the site sends no emails, booking does not need a confirmed email.
+        // Turn requireConfirmedEmail() back on together with REQUIRE_EMAIL_VERIFICATION in src/config.ts.
+        && (!requireConfirmedEmail() || request.auth.token.get('email_verified', false) == true)
         && request.resource.data.createdAt == request.time
         && request.resource.data.eventId is string
         && request.resource.data.quantity is int

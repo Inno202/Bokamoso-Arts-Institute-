@@ -46,7 +46,7 @@ export default function Home() {
             Bokamoso <span className="block text-white/90">Arts Institute</span>
           </h1>
           {hero.tagline && <p className="font-serif text-2xl md:text-3xl mt-6 md:mt-8"><Tagline text={hero.tagline} /></p>}
-          <div className="flex flex-col sm:flex-row gap-3 mt-9">
+          <div className="grid sm:grid-cols-2 gap-3 mt-9 sm:max-w-xl">
             <Link to={ROUTES.EVENTS} className="btn btn-lg btn-light">
               <span>See upcoming events</span>
               <ArrowRight size={18} className="btn-arrow" aria-hidden="true" />

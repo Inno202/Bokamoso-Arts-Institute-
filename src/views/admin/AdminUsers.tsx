@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import type { QueryDocumentSnapshot } from 'firebase/firestore';
-import { UserX, UserCheck } from 'lucide-react';
 import { AdminShell } from './AdminShell';
 import { ContentAccessRequests } from './ContentAccessRequests';
 import { useAuth } from '../components/AuthProvider';
@@ -159,8 +158,7 @@ export default function AdminUsers() {
                           onClick={() => handleToggleActive(u)}
                           className={`btn ${inactive ? 'btn-primary' : 'btn-danger'}`}
                         >
-                          {inactive ? <UserCheck size={14} aria-hidden="true" /> : <UserX size={14} aria-hidden="true" />}
-                          <span>{inactive ? 'Reactivate' : 'Deactivate'}</span>
+                          {inactive ? 'Reactivate' : 'Deactivate'}
                         </button>
                       )}
                     </div>

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Check, Clock, X, ShieldOff } from 'lucide-react';
+import { Clock } from 'lucide-react';
 import { useAuth } from '../components/AuthProvider';
 import { ACCESS_DURATIONS, contentAccessController, hasLiveAccess } from '../../controllers/contentAccessController';
 import { formatDateTime, friendlyError } from '../../controllers/lib/utils';
@@ -92,8 +92,8 @@ export function ContentAccessRequests() {
                 <select id={`dur-${a.uid}`} className="field min-w-0 px-3 lg:w-32" value={durations[a.uid] ?? 24} onChange={e => setDurations(d => ({ ...d, [a.uid]: Number(e.target.value) }))}>
                   {ACCESS_DURATIONS.map(d => <option key={d.hours} value={d.hours}>{d.label}</option>)}
                 </select>
-                <button type="button" onClick={() => approve(a)} disabled={busy === a.uid} className="btn btn-primary min-w-0 px-3 sm:px-5"><Check size={16} className="hidden sm:block shrink-0" aria-hidden="true" /><span>Approve</span></button>
-                <button type="button" onClick={() => decline(a)} disabled={busy === a.uid} className="btn btn-danger min-w-0 px-3 sm:px-5"><X size={16} className="hidden sm:block shrink-0" aria-hidden="true" /><span>Decline</span></button>
+                <button type="button" onClick={() => approve(a)} disabled={busy === a.uid} className="btn btn-primary min-w-0 px-3 sm:px-5">Approve</button>
+                <button type="button" onClick={() => decline(a)} disabled={busy === a.uid} className="btn btn-danger min-w-0 px-3 sm:px-5">Decline</button>
               </div>
             </li>
           ))}
@@ -103,7 +103,7 @@ export function ContentAccessRequests() {
                 <p className="font-bold break-words">{who(a)} <span className="font-normal text-green-950/70">can edit</span></p>
                 <p className="num text-sm text-green-950/80">Until {formatDateTime(a.expiresAt)}</p>
               </div>
-              <button type="button" onClick={() => end(a)} disabled={busy === a.uid} className="btn btn-danger shrink-0"><ShieldOff size={16} aria-hidden="true" /><span>End access</span></button>
+              <button type="button" onClick={() => end(a)} disabled={busy === a.uid} className="btn btn-danger shrink-0">End access</button>
             </li>
           ))}
         </ul>

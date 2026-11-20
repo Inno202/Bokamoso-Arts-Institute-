@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Camera, Check, ChevronDown, Keyboard, Calendar, RefreshCw, WifiOff, X } from 'lucide-react';
+import { Camera, Check, ChevronDown, Keyboard, Calendar, WifiOff, X } from 'lucide-react';
 import { useAuth } from '../components/AuthProvider';
 import { EVENT_PASSED_AFTER_HOURS, ScanRefused, ticketController, type ScanRefusal } from '../../controllers/ticketController';
 import { eventController } from '../../controllers/eventController';
@@ -278,8 +278,7 @@ export default function TicketScanner() {
                     <Camera size={36} className="text-white/60" aria-hidden="true" />
                     <p className="text-white/90 max-w-xs">{camera.message}</p>
                     <button type="button" onClick={() => setCameraAttempt(n => n + 1)} className="btn btn-light">
-                      <RefreshCw size={18} aria-hidden="true" />
-                      <span>Try again</span>
+                      Try again
                     </button>
                   </>
                 )}

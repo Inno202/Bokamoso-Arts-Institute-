@@ -49,7 +49,7 @@ export default function AdminActivity() {
   return (
     <AdminShell title="Activity">
       <p className="text-bai-black/70 mb-6 max-w-2xl">Every recorded staff action, newest first. Entries cannot be changed or deleted, and only super admins can see this page.</p>
-      <div className="flex flex-wrap gap-2 mb-8" role="group" aria-label="Show activity for">
+      <div className="even-row mb-8" role="group" aria-label="Show activity for">
         {chip('', 'Everything')}
         {(Object.keys(ACTIVITY_AREAS) as ActivityArea[]).map(key => chip(key, ACTIVITY_AREAS[key]))}
       </div>

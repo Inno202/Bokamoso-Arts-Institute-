@@ -10,7 +10,7 @@ import { ticketController } from '../../controllers/ticketController';
 import { formatCurrency, friendlyError } from '../../controllers/lib/utils';
 import { CURRENCIES, type CurrencyCode } from '../../models/currency';
 import { logger } from '../../services/loggerService';
-import { PAYMENTS_LIVE } from '../../config';
+import { PAYMENTS_LIVE, REQUIRE_EMAIL_VERIFICATION } from '../../config';
 
 // Reads as "Total in Botswana pula"; the euro is the one name that is not capitalised mid-sentence.
 const CURRENCY_NAME = (code: CurrencyCode) => (code === 'EUR' ? 'euros' : CURRENCIES.find(c => c.code === code)!.name);
@@ -125,7 +125,7 @@ export default function Checkout() {
             </dl>
           </section>
 
-          {user && !emailVerified ? (
+          {user && REQUIRE_EMAIL_VERIFICATION && !emailVerified ? (
             <div className="md:col-span-2 space-y-5">
               <VerifyEmailNotice />
               <Link to={ROUTES.CART} className="block text-center link py-2">Back to your bag</Link>

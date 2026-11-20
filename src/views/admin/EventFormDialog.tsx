@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Loader2, Plus, X } from 'lucide-react';
+import { Loader2, X } from 'lucide-react';
 import { eventController } from '../../controllers/eventController';
 import { useAuth } from '../components/AuthProvider';
 import { BAIEvent } from '../../models/types';
@@ -241,7 +241,7 @@ export function EventFormDialog({ event, copyFrom, onClose }: Props) {
               </ul>
               {(form.types || []).length < MAX_TYPES && (
                 <button type="button" onClick={addType} className="btn btn-outline mt-4">
-                  <Plus size={16} aria-hidden="true" /><span>Add a ticket type</span>
+                  Add a ticket type
                 </button>
               )}
             </fieldset>
@@ -273,7 +273,7 @@ export function EventFormDialog({ event, copyFrom, onClose }: Props) {
 
           <EventPreview form={form} bannerFile={bannerFile} ticketFile={ticketFile} existingBanner={existingBanner} existingTicket={existingTicket} />
 
-          <div className="flex flex-wrap gap-3 mt-8">
+          <div className="even-row mt-8">
             <button type="submit" disabled={saving} className="btn btn-primary">
               {saving && <Loader2 className="animate-spin" size={16} aria-hidden="true" />}
               <span>{saving ? 'Saving' : event ? 'Save event' : 'Create event'}</span>

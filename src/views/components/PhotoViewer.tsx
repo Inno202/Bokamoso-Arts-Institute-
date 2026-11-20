@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { lightbox, type ViewerState } from '../../services/lightbox';
+import { useBackToClose } from './useBackToClose';
 
 /**
  * Full-screen photo viewer for the whole site. A modal <dialog> keeps focus
@@ -15,6 +16,7 @@ export function PhotoViewer() {
   const swipeStart = useRef<{ x: number; y: number } | null>(null);
   const justSwiped = useRef(false);
   const [loaded, setLoaded] = useState(false);
+  useBackToClose(!!view, () => lightbox.close());
 
   useEffect(() => lightbox.subscribe(setView), []);
 

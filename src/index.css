@@ -78,6 +78,13 @@
   @media (hover: hover) and (pointer: fine) {
     .btn:hover:not(:disabled) > .btn-arrow { transform: translateX(3px); }
   }
+  /* Groups of buttons or chips share each row evenly. When they do not fit on one line they wrap,
+     and every row (including the last) still fills the full width: two left over take half each. */
+  .even-row { @apply flex flex-wrap gap-2; }
+  .even-row > * { flex: 1 1 var(--even-min, 8.5rem); min-width: 0; }
+  /* Always exactly one row, equal columns (for three short actions such as Report / Edit / Duplicate). */
+  .even-cols { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 0.5rem; }
+  .even-cols > .btn, .even-row > .btn { @apply px-3; }
   .btn-lg { @apply min-h-[54px] px-7 text-base; }
   .btn-block { @apply w-full; }
   .btn-primary { @apply bg-bai-black text-white hover:bg-bai-red; }

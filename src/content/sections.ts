@@ -239,8 +239,8 @@ const about: SectionDef<'about'> = {
     { kind: 'list', key: 'management', label: 'Management team', itemLabel: 'Team member', titleKey: 'name', max: 30, fields: [
       text('name', 'Name', 80, { ...required, help: 'Shown exactly as typed, including capital letters.' }),
       text('role', 'Role', 80, required),
-      text('desc', 'About them', 400, long),
-      { kind: 'image', key: 'image', label: 'Photo', help: 'Best size: 1600 × 1600, square, with the face in the upper middle.' },
+      text('desc', 'About them', 400, { ...long, requiredOnSave: true }),
+      { kind: 'image', key: 'image', label: 'Photo', requiredOnSave: true, help: 'Best size: 1600 × 1600, square, with the face in the upper middle.' },
     ] },
     { kind: 'images', key: 'choirPictures', label: 'Choir photos', max: 24, help: 'Best size: 1600 × 1600, square. The first photo also appears beside the story, cropped to portrait (4:5), so keep its subject in the middle.' },
   ],

@@ -1,7 +1,7 @@
 import type React from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Ticket as TicketIcon, MapPin, Calendar, Download, ChevronRight, Share2, X, Loader2, WifiOff } from 'lucide-react';
+import { Ticket as TicketIcon, MapPin, Calendar, ChevronRight, Share2, X, Loader2, WifiOff } from 'lucide-react';
 import { PageHero } from '../components/PageHero';
 import { useAuth } from '../components/AuthProvider';
 import { ticketController } from '../../controllers/ticketController';
@@ -14,6 +14,7 @@ import { ROUTES } from '../../controllers/navigation';
 import { FALLBACK_EVENT_IMAGE } from '../../config';
 import { toast } from '../../services/toast';
 import { logger } from '../../services/loggerService';
+import { useBackToClose } from '../components/useBackToClose';
 
 type TicketWithEvent = Ticket & { event?: BAIEvent | null };
 
@@ -34,6 +35,7 @@ export default function MyTickets() {
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
   const [selected, setSelected] = useState<TicketWithEvent | null>(null);
+  useBackToClose(!!selected, () => setSelected(null));
   const closeRef = useRef<HTMLButtonElement>(null);
   const [online, setOnline] = useState(() => (typeof navigator === 'undefined' ? true : navigator.onLine));
   useEffect(() => {
@@ -268,13 +270,12 @@ export default function MyTickets() {
               {statusOf(selected) !== 'VALID' && (
                 <p className="mt-1 text-sm font-semibold text-red-700">{selected.status === 'SCANNED' ? 'Already used at the door' : statusOf(selected) === 'EVENT_CANCELLED' ? 'This event was cancelled' : 'This ticket was cancelled'}</p>
               )}
-              {statusOf(selected) === 'VALID' && <p className="text-sm text-center text-bai-ink-soft mt-1">Show this code at the door. It admits one person, once.</p>}
               {/* The main action gets the room; Share is a round icon button beside it.
                   Only a ticket that can still be used can be downloaded. */}
               {statusOf(selected) === 'VALID' && (
               <div className="no-print flex gap-3 w-full mt-3.5">
                 <button onClick={() => handleDownload(selected)} disabled={downloading} className="btn btn-primary flex-1 whitespace-nowrap">
-                  {downloading ? <Loader2 size={18} className="animate-spin" aria-hidden="true" /> : <Download size={18} aria-hidden="true" />}
+                  {downloading && <Loader2 size={18} className="animate-spin" aria-hidden="true" />}
                   <span>{downloading ? 'Preparing ticket' : 'Download ticket'}</span>
                 </button>
                 <button onClick={() => handleShare(selected)} aria-label="Share ticket" title="Share ticket" className="btn btn-outline shrink-0 w-[48px] px-0">

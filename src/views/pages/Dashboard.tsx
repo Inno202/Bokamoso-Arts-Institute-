@@ -1,7 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { ArrowRight, ChevronDown, Ticket } from 'lucide-react';
-import { ROUTES } from '../../controllers/navigation';
+import { ChevronDown, Ticket } from 'lucide-react';
 import { useAuth } from '../components/AuthProvider';
 import { AdminShell } from '../admin/AdminShell';
 import { ticketController } from '../../controllers/ticketController';
@@ -9,7 +7,7 @@ import { eventController } from '../../controllers/eventController';
 import { userController } from '../../controllers/userController';
 import { logger } from '../../services/loggerService';
 import { formatCurrency, formatDateTime } from '../../controllers/lib/utils';
-import { isEventManager, isFinance, isScanner, isUserAdmin, TicketScan } from '../../models/types';
+import { isFinance, isUserAdmin, TicketScan } from '../../models/types';
 
 const SCAN_LIMITS = [5, 10, 20];
 
@@ -29,7 +27,6 @@ export default function Dashboard() {
   const { role } = useAuth();
   const canSeeUsers = isUserAdmin(role);
   const canSeeSales = isFinance(role);
-  const canManageEvents = isEventManager(role);
 
   const [stats, setStats] = useState<{ totalUsers?: number; totalTickets?: number; revenue?: Array<{ currency: string; total: number }>; activeEvents?: number }>({});
   const [recentScans, setRecentScans] = useState<TicketScan[]>([]);
@@ -86,12 +83,6 @@ export default function Dashboard() {
   const toggleScans = () => setScansOpen(open => { writePref('bai-scans-open', open ? 0 : 1); return !open; });
 
   const show = (value: number | undefined, format: (n: number) => string = String) => (value === undefined ? '—' : format(value));
-  const links = [
-    { name: 'Events', to: ROUTES.ADMIN_EVENTS, show: canManageEvents },
-    { name: 'Site content', to: ROUTES.ADMIN_CONTENT, show: canManageEvents },
-    { name: 'Users', to: ROUTES.ADMIN_USERS, show: canSeeUsers },
-    { name: 'Door scanner', to: ROUTES.SCANNER, show: isScanner(role) },
-  ].filter(link => link.show);
 
   return (
     <AdminShell title="Overview">
@@ -102,8 +93,8 @@ export default function Dashboard() {
           <Stat title="Events on sale" value={stats.activeEvents === undefined ? null : String(stats.activeEvents)} />
         </dl>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-12 mt-12">
-          <section className="lg:col-span-2" aria-labelledby="scans-heading">
+        <div className="mt-12 max-w-4xl">
+          <section aria-labelledby="scans-heading">
             <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3 mb-5">
               <h2 id="scans-heading" className="m-0">
                 <button type="button" onClick={toggleScans} aria-expanded={scansOpen} aria-controls="recent-scans" className="group flex items-center gap-3 min-h-[44px] text-left">
@@ -163,21 +154,6 @@ export default function Dashboard() {
             </div>
           </section>
 
-          <section aria-labelledby="manage-heading">
-            <h2 id="manage-heading" className="display text-2xl mb-5">Manage</h2>
-            <ul className="border-t border-bai-black/15">
-              {links.map(link => (
-                <li key={link.to} className="border-b border-bai-black/15">
-                  <Link to={link.to} className="group flex items-center justify-between gap-4 py-4 min-h-14">
-                    <span>
-                      <span className="block font-bold group-hover:text-bai-red transition-colors">{link.name}</span>
-                    </span>
-                    <ArrowRight size={18} className="shrink-0 transition-transform duration-200 group-hover:translate-x-1" aria-hidden="true" />
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </section>
         </div>
 
     </AdminShell>

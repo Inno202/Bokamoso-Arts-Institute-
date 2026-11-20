@@ -9,6 +9,13 @@
 export const PAYMENTS_LIVE = false;
 
 
+/**
+ * Booking needs a confirmed email address. Off while the site cannot send emails yet.
+ * To turn it back on, set this to true AND make requireConfirmedEmail() in firestore.rules return true,
+ * then deploy both.
+ */
+export const REQUIRE_EMAIL_VERIFICATION = false;
+
 /** Staff are signed out after this many minutes without touching the page. */
 export const STAFF_IDLE_MINUTES = 30;
 

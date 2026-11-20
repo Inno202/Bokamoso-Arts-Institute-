@@ -23,6 +23,7 @@ import { CURRENCIES, DEFAULT_CURRENCY, currencyOf, sellsElsewhere, type Currency
 import { LEGACY_TYPE_ID, hasTicketTypes, typeOf } from '../models/ticketTypes';
 import { cacheService } from '../services/cacheService';
 import { logger } from '../services/loggerService';
+import { REQUIRE_EMAIL_VERIFICATION } from '../config';
 
 const TICKETS = 'tickets';
 const SCANS = 'ticket_scanned';
@@ -83,7 +84,7 @@ export const ticketController = {
    */
   async purchase(user: User, items: CartItem[]): Promise<PurchaseResult> {
     if (items.length === 0) throw new AppError('Your bag is empty.');
-    if (!user.emailVerified) throw new AppError('Confirm your email address before booking: open the link we emailed you.');
+    if (REQUIRE_EMAIL_VERIFICATION && !user.emailVerified) throw new AppError('Confirm your email address before booking: open the link we emailed you.');
 
     // One order per event and ticket type (older bag lines have no type: General Admission).
     const wanted = new Map<string, { eventId: string; typeId: string; quantity: number }>();

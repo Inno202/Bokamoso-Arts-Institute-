@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, NavLink, useParams } from 'react-router-dom';
-import { Clock, ExternalLink, KeyRound, Loader2, RotateCcw, Save, ShieldCheck } from 'lucide-react';
+import { Clock, Loader2, ShieldCheck } from 'lucide-react';
 import { AdminShell } from './AdminShell';
 import { FieldEditor, fieldId } from './FieldEditor';
 import { useAuth } from '../components/AuthProvider';
@@ -32,14 +32,14 @@ function editorFor(key: SectionKey) {
   return (
     <>
       <nav aria-label="Content sections" className="mb-10">
-        <ul className="flex flex-wrap gap-2">
+        <ul className="even-row">
           {SECTION_KEYS.map(k => (
             <li key={k}>
               <NavLink
                 to={`${ROUTES.ADMIN_CONTENT}/${k}`}
                 aria-current={k === key ? 'page' : undefined}
-                className={`inline-flex items-center min-h-11 px-4 rounded-lg font-semibold border-2 transition-colors ${
-                  k === key ? 'bg-bai-black text-white border-bai-black' : 'border-bai-black/20 hover:border-bai-black'
+                className={`flex items-center justify-center text-center min-h-[44px] px-4 rounded-full text-sm font-semibold border transition-colors ${
+                  k === key ? 'bg-bai-black text-white border-bai-black' : 'border-bai-black/25 hover:border-bai-black'
                 }`}
               >
                 {SECTIONS[k].title}
@@ -113,7 +113,7 @@ function AccessGate({ children }: { children: React.ReactNode }) {
         <textarea id="access-note" rows={3} maxLength={NOTE_LIMIT} value={note} onChange={(e) => setNote(e.target.value)} className="field leading-relaxed" placeholder="For example: add the new tour photos to the About page" />
       </div>
       <button type="submit" disabled={sending} className="btn btn-primary">
-        {sending ? <Loader2 className="animate-spin" size={18} aria-hidden="true" /> : <KeyRound size={18} aria-hidden="true" />}
+        {sending && <Loader2 className="animate-spin" size={18} aria-hidden="true" />}
         <span>{sending ? 'Sending request' : 'Request access'}</span>
       </button>
     </form>
@@ -250,8 +250,7 @@ function SectionEditor({ sectionKey }: { sectionKey: SectionKey }) {
           <p className="text-bai-black/75 mt-1">Headings and titles are shown in capital letters on the site, so a change to capitalisation alone will not be visible there.</p>
         </div>
         <Link to={def.preview} target="_blank" rel="noopener" className="btn btn-outline">
-          <span>View page</span>
-          <ExternalLink size={16} aria-hidden="true" />
+          View page
         </Link>
       </div>
 
@@ -277,19 +276,15 @@ function SectionEditor({ sectionKey }: { sectionKey: SectionKey }) {
         ))}
       </div>
 
-      <div className="sticky bottom-0 mt-12 -mx-4 px-4 py-4 bg-bai-bone border-t border-bai-black/15 flex flex-wrap items-center gap-3">
-        <button type="submit" disabled={saving || !dirty} className="btn btn-primary">
-          {saving ? <Loader2 size={16} className="animate-spin" aria-hidden="true" /> : <Save size={16} aria-hidden="true" />}
-          <span>{saving ? 'Saving' : 'Save changes'}</span>
-        </button>
-        <button type="button" disabled={saving || !dirty} onClick={discard} className="btn btn-outline">Discard</button>
-        <button type="button" disabled={saving} onClick={loadDefaults} className="btn btn-outline">
-          <RotateCcw size={16} aria-hidden="true" />
-          <span>Load defaults</span>
-        </button>
-        <p className="text-sm text-bai-black/75 ml-auto" role="status">
-          {dirty ? 'You have unsaved changes.' : state.pending ? 'Sending to the database. Not live yet.' : 'Everything is saved and live.'}
+      <div className="sticky bottom-0 mt-12 -mx-4 px-4 py-4 bg-bai-bone border-t border-bai-black/15">
+        <p className="text-sm text-bai-black/75 mb-3 empty:hidden" role="status">
+          {dirty ? 'You have unsaved changes.' : state.pending ? 'Sending to the database. Not live yet.' : ''}
         </p>
+        <div className="even-cols">
+          <button type="submit" disabled={saving || !dirty} className="btn btn-primary">{saving ? 'Saving' : 'Save changes'}</button>
+          <button type="button" disabled={saving || !dirty} onClick={discard} className="btn btn-outline">Discard</button>
+          <button type="button" disabled={saving} onClick={loadDefaults} className="btn btn-outline">Load defaults</button>
+        </div>
       </div>
     </form>
   );
