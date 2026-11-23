@@ -683,3 +683,11 @@ test('door staff can list one event\'s tickets (for checking without signal); bu
   await assertSucceeds(getDocs(query(collection(as('door'), 'tickets'), where('eventId', '==', 'e1'))));
   await assertFails(getDocs(query(collection(as('alice'), 'tickets'), where('eventId', '==', 'e1'))));
 });
+
+test('super admins record when they last read the error log, and nothing else that way', async () => {
+  await assertSucceeds(updateDoc(doc(as('root'), 'users/root'), { errorsSeenAt: serverTimestamp() }));
+  await assertFails(updateDoc(doc(as('root'), 'users/root'), { errorsSeenAt: Timestamp.fromMillis(0) }), 'back-dated');
+  await assertFails(updateDoc(doc(as('root'), 'users/root'), { errorsSeenAt: serverTimestamp(), role: 'USER' }), 'with another change');
+  await assertFails(updateDoc(doc(as('alice'), 'users/alice'), { errorsSeenAt: serverTimestamp() }), 'not a super admin');
+  await assertFails(updateDoc(doc(as('root'), 'users/alice'), { errorsSeenAt: serverTimestamp() }), 'on someone else');
+});

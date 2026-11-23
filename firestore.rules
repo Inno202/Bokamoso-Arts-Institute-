@@ -97,6 +97,11 @@ service cloud.firestore {
           && request.resource.data.displayName is string
           && request.resource.data.displayName.size() >= 1
           && request.resource.data.displayName.size() <= 100)
+        // Super admins record when they last looked at the site error log (the time is the server's).
+        || (isOwner(uid)
+          && isSuperAdmin()
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['errorsSeenAt'])
+          && request.resource.data.errorsSeenAt == request.time)
         // Super admins manage roles and status, but not their own (no self lock-out).
         || (recentSignIn()
           && isSuperAdmin()

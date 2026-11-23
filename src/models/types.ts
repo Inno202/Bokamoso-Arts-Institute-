@@ -50,6 +50,8 @@ export interface UserProfile {
   photoURL?: string;
   createdAt: DateLike;
   lastLogin?: DateLike;
+  /** Super admins: when they last opened the site error log (only newer problems are announced). */
+  errorsSeenAt?: DateLike;
 }
 
 export interface BAIEvent {

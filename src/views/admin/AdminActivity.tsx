@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { SiteErrors } from './SiteErrors';
+import { useAuth } from '../components/AuthProvider';
+import { errorLog } from '../../controllers/errorLogController';
 import type { QueryDocumentSnapshot } from 'firebase/firestore';
 import { CalendarDays, FileText, KeyRound, Ticket, Users } from 'lucide-react';
 import { AdminShell } from './AdminShell';
@@ -15,6 +17,13 @@ const ICONS: Record<ActivityArea, typeof Users> = { people: Users, events: Calen
 export default function AdminActivity() {
   const [params, setParams] = useSearchParams();
   const view = params.get('view') === 'errors' ? 'errors' : 'staff';
+  // How many problems are new since the error log was last opened (shown on its button).
+  const { userData } = useAuth();
+  const [newErrors, setNewErrors] = useState(0);
+  useEffect(() => {
+    if (view === 'errors') { setNewErrors(0); return; }
+    errorLog.countSince(errorLog.seenAt(userData?.errorsSeenAt)).then(setNewErrors).catch(() => setNewErrors(0));
+  }, [view, userData?.errorsSeenAt]);
   const [area, setArea] = useState<ActivityArea | ''>('');
   const [entries, setEntries] = useState<ActivityEntry[]>([]);
   const [cursor, setCursor] = useState<QueryDocumentSnapshot | undefined>();
@@ -57,7 +66,7 @@ export default function AdminActivity() {
           <button key={value} type="button" aria-pressed={view === value}
             onClick={() => setParams(value === 'errors' ? { view: 'errors' } : {}, { replace: true })}
             className={`min-h-[48px] px-4 rounded-full font-semibold border transition-colors ${view === value ? 'bg-bai-black text-white border-bai-black' : 'border-bai-black/25 hover:border-bai-black'}`}>
-            {label}
+            {label}{value === 'errors' && newErrors > 0 && <><span className="ml-2 inline-flex items-center justify-center min-w-[1.5rem] h-6 px-1.5 rounded-full bg-bai-red text-white text-xs font-bold" aria-hidden="true">{newErrors}</span><span className="sr-only"> ({newErrors} new)</span></>}
           </button>
         ))}
       </div>
