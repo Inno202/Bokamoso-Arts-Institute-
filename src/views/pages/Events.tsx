@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Calendar, MapPin, Search } from 'lucide-react';
+import { Calendar, Info, MapPin, Search } from 'lucide-react';
 import { priceRange } from '../../models/ticketTypes';
 import { eventController } from '../../controllers/eventController';
 import { BAIEvent } from '../../models/types';
@@ -99,10 +99,21 @@ export default function Events() {
                   </div>
 
                   <div className="p-6 flex flex-col flex-grow">
-                    <p className="num flex items-center gap-2 text-bai-red-deep font-semibold">
-                      <Calendar size={16} aria-hidden="true" />
-                      <span>{when}{formatTime(event.date) ? ` · ${formatTime(event.date)}` : ''}</span>
-                    </p>
+                    <div className="flex items-center gap-3">
+                      {/* Opens the event's own page (details, line-up, add to calendar, share). */}
+                      <Link
+                        to={`${ROUTES.EVENTS}/${event.id}`}
+                        aria-label={`Details and sharing: ${event.name}`}
+                        title="Details and sharing"
+                        className="shrink-0 w-[44px] h-[44px] rounded-full border border-bai-black/20 flex items-center justify-center text-bai-black hover:bg-bai-black hover:text-white hover:border-bai-black transition-colors"
+                      >
+                        <Info size={18} aria-hidden="true" />
+                      </Link>
+                      <p className="num flex items-center gap-2 text-bai-red-deep font-semibold min-w-0">
+                        <Calendar size={16} className="shrink-0" aria-hidden="true" />
+                        <span>{when}{formatTime(event.date) ? ` · ${formatTime(event.date)}` : ''}</span>
+                      </p>
+                    </div>
                     <h2 className="font-serif font-semibold text-3xl leading-tight mt-2 line-clamp-2 break-words">
                       <Link to={`${ROUTES.EVENTS}/${event.id}`} className="hover:text-bai-red transition-colors">{event.name}</Link>
                     </h2>
@@ -111,7 +122,6 @@ export default function Events() {
                       <span className="truncate">{[event.venue, event.city].filter(Boolean).join(', ')}</span>
                     </p>
                     {event.description && <p className="text-bai-ink-soft leading-relaxed mt-3 line-clamp-2">{event.description}</p>}
-                    <Link to={`${ROUTES.EVENTS}/${event.id}`} className="link self-start mt-2 min-h-[44px] inline-flex items-center" aria-label={`Details and sharing: ${event.name}`}>Details and sharing</Link>
 
                     <div className="mt-auto pt-6">
                       <EventBuyBox event={event} />
