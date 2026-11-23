@@ -7,6 +7,7 @@ import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
 import { logger } from '../../services/loggerService';
 import { formatDateTime, friendlyError, toDate } from '../../controllers/lib/utils';
 import { BAIEvent, Ticket } from '../../models/types';
+import { errorLog } from '../../controllers/errorLogController';
 
 type Result =
   | { kind: 'success'; ticket: Ticket; eventName: string; eventDate: string }
@@ -91,6 +92,8 @@ export default function TicketScanner() {
       navigator.vibrate?.(80);
     } catch (err) {
       logger.error('Ticket check failed', err);
+      // A refused ticket is the scanner doing its job; anything else (and not just offline) is a fault.
+      if (!(err instanceof ScanRefused) && navigator.onLine) errorLog.report('scan', err);
       const kind: ScanRefusal | undefined = err instanceof ScanRefused ? err.kind : undefined;
       setResult({
         kind: 'error',

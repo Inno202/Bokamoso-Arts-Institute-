@@ -520,6 +520,34 @@ test('only super admins read the activity log, and nobody edits or deletes it', 
   await assertFails(deleteDoc(doc(as('root'), 'activity_log', id)));
 });
 
+// ---------- site error log ----------
+
+const problem = (uid = '', extra = {}) => ({
+  at: serverTimestamp(), kind: 'signin', code: 'auth/internal-error', message: 'Something failed', page: '/login',
+  browser: 'Chrome on Android', release: 'abc1234', uid, ...extra,
+});
+
+test('anyone can report a small problem, only in their own name or none', async () => {
+  await assertSucceeds(addDoc(collection(guest(), 'error_log'), problem()));
+  await assertSucceeds(addDoc(collection(as('alice'), 'error_log'), problem('alice')));
+  await assertFails(addDoc(collection(guest(), 'error_log'), problem('alice')), 'a visitor naming an account');
+  await assertFails(addDoc(collection(as('alice'), 'error_log'), problem('bob')), 'in someone else\'s name');
+  await assertFails(addDoc(collection(guest(), 'error_log'), problem('', { kind: 'made-up' })), 'unknown kind');
+  await assertFails(addDoc(collection(guest(), 'error_log'), problem('', { message: 'x'.repeat(301) })), 'too long');
+  await assertFails(addDoc(collection(guest(), 'error_log'), problem('', { at: Timestamp.fromMillis(0) })), 'back-dated');
+  await assertFails(addDoc(collection(guest(), 'error_log'), problem('', { email: 'a@b.c' })), 'extra fields');
+});
+
+test('only super admins read the error log, and nobody edits or deletes it', async () => {
+  let id;
+  await env.withSecurityRulesDisabled(async ctx => { id = (await addDoc(collection(ctx.firestore(), 'error_log'), { ...problem(), at: Timestamp.now() })).id; });
+  await assertSucceeds(getDocs(collection(as('root'), 'error_log')));
+  await assertFails(getDocs(collection(as('ceo'), 'error_log')));
+  await assertFails(getDocs(collection(guest(), 'error_log')));
+  await assertFails(updateDoc(doc(as('root'), 'error_log', id), { message: 'changed' }));
+  await assertFails(deleteDoc(doc(as('root'), 'error_log', id)));
+});
+
 // ---------- site content access requests ----------
 
 const accessRequest = (uid, extra = {}) => ({

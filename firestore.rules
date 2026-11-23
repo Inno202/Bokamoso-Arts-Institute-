@@ -373,6 +373,24 @@ service cloud.firestore {
     // ---------- staff activity log ----------
     // Append-only: staff write entries in their own name and current role; nobody
     // edits or deletes them; only super admins read them.
+    // Site errors: anyone may add a small, well-formed report (sign-in failures happen
+    // before sign-in), only in their own name or none; only super admins can read them;
+    // nobody can change or delete one.
+    match /error_log/{entryId} {
+      allow get, list: if isSuperAdmin();
+      allow create: if request.resource.data.keys().hasOnly(['at', 'kind', 'code', 'message', 'page', 'browser', 'release', 'uid'])
+        && request.resource.data.at == request.time
+        && request.resource.data.kind in ['page', 'signin', 'booking', 'scan', 'botcheck']
+        && request.resource.data.code is string && request.resource.data.code.size() <= 80
+        && request.resource.data.message is string && request.resource.data.message.size() <= 300
+        && request.resource.data.page is string && request.resource.data.page.size() <= 200
+        && request.resource.data.browser is string && request.resource.data.browser.size() <= 80
+        && request.resource.data.release is string && request.resource.data.release.size() <= 40
+        && request.resource.data.uid is string
+        && (request.resource.data.uid == '' || (isSignedIn() && request.resource.data.uid == request.auth.uid));
+      allow update, delete: if false;
+    }
+
     match /activity_log/{entryId} {
       allow get, list: if isSuperAdmin();
       allow create: if isStaff()

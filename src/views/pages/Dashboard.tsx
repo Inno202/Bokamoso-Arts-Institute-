@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ChevronDown, Ticket } from 'lucide-react';
+import { AlertTriangle, ArrowRight, ChevronDown, Ticket } from 'lucide-react';
 import { useAuth } from '../components/AuthProvider';
 import { AdminShell } from '../admin/AdminShell';
 import { ticketController } from '../../controllers/ticketController';
@@ -7,7 +7,10 @@ import { eventController } from '../../controllers/eventController';
 import { userController } from '../../controllers/userController';
 import { logger } from '../../services/loggerService';
 import { formatCurrency, formatDateTime } from '../../controllers/lib/utils';
-import { isFinance, isUserAdmin, TicketScan } from '../../models/types';
+import { isFinance, isSuperAdminRole, isUserAdmin, TicketScan } from '../../models/types';
+import { Link } from 'react-router-dom';
+import { ROUTES } from '../../controllers/navigation';
+import { errorLog } from '../../controllers/errorLogController';
 
 const SCAN_LIMITS = [5, 10, 20];
 
@@ -27,6 +30,13 @@ export default function Dashboard() {
   const { role } = useAuth();
   const canSeeUsers = isUserAdmin(role);
   const canSeeSales = isFinance(role);
+  const isSuper = isSuperAdminRole(role);
+  // Super admins hear about site problems here, without having to go looking.
+  const [problems, setProblems] = useState<number | null>(null);
+  useEffect(() => {
+    if (!isSuper) return;
+    errorLog.countSince(new Date(Date.now() - 7 * 24 * 3600e3)).then(setProblems).catch(() => setProblems(null));
+  }, [isSuper]);
 
   const [stats, setStats] = useState<{ totalUsers?: number; totalTickets?: number; revenue?: Array<{ currency: string; total: number }>; activeEvents?: number }>({});
   const [recentScans, setRecentScans] = useState<TicketScan[]>([]);
@@ -86,6 +96,13 @@ export default function Dashboard() {
 
   return (
     <AdminShell title="Overview">
+        {isSuper && !!problems && (
+          <Link to={`${ROUTES.ADMIN_ACTIVITY}?view=errors`} className="group mb-8 p-4 rounded-2xl bg-red-50 text-red-950 flex items-center gap-3 hover:bg-red-100 transition-colors">
+            <AlertTriangle size={20} className="shrink-0" aria-hidden="true" />
+            <span className="flex-grow"><strong>{problems} site {problems === 1 ? 'problem' : 'problems'}</strong> recorded in the last 7 days.</span>
+            <span className="font-semibold shrink-0 inline-flex items-center gap-1">See them <ArrowRight size={16} className="transition-transform group-hover:translate-x-0.5" aria-hidden="true" /></span>
+          </Link>
+        )}
         <dl className="grid grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-8 border-y border-bai-black/15 py-8" aria-busy={loading}>
           {canSeeUsers && <Stat title="Registered users" value={loading ? null : show(stats.totalUsers)} />}
           {canSeeSales && <Stat title="Tickets issued" value={loading ? null : show(stats.totalTickets)} />}

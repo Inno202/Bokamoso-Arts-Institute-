@@ -1,5 +1,5 @@
 import { deleteApp, initializeApp } from 'firebase/app';
-import { initializeAppCheck, ReCaptchaEnterpriseProvider } from 'firebase/app-check';
+import { initializeAppCheck, ReCaptchaEnterpriseProvider, type AppCheck } from 'firebase/app-check';
 import { connectAuthEmulator, getAuth, signOut, type Auth } from 'firebase/auth';
 import { connectFirestoreEmulator, initializeFirestore, type Firestore, memoryLocalCache, persistentLocalCache, persistentMultipleTabManager } from 'firebase/firestore';
 import firebaseConfig from '../../../firebase-applet-config.json';
@@ -13,16 +13,18 @@ export const app = initializeApp(firebaseConfig);
 // without that proof is refused before it can read, write or sign up, which is
 // the main defence against scripted floods and scraping. See README, "Security".
 export const APP_CHECK_ENABLED = Boolean(import.meta.env.VITE_RECAPTCHA_SITE_KEY) && import.meta.env.VITE_USE_EMULATORS !== 'true';
-const startAppCheck = (target: typeof app) => {
+const startAppCheck = (target: typeof app): AppCheck | null => {
   if (APP_CHECK_ENABLED && typeof window !== 'undefined') {
-    initializeAppCheck(target, {
+    return initializeAppCheck(target, {
       // Fraud Defense (formerly reCAPTCHA Enterprise), as registered in the Firebase console.
       provider: new ReCaptchaEnterpriseProvider(import.meta.env.VITE_RECAPTCHA_SITE_KEY as string),
       isTokenAutoRefreshEnabled: true,
     });
   }
+  return null;
 };
-startAppCheck(app);
+/** The site's App Check, or null when it is not set up in this build (local testing). */
+export const appCheck = startAppCheck(app);
 export const db = initializeFirestore(app, {
   // The offline copy needs a browser; pre-rendering at build time uses memory only.
   localCache: typeof window === 'undefined' ? memoryLocalCache() : persistentLocalCache({ tabManager: persistentMultipleTabManager() }),

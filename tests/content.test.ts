@@ -453,3 +453,13 @@ describe('sign-in error messages', () => {
     expect(friendlyError({ code: 'auth/firebase-app-check-token-is-invalid' })).toMatch(/real browser/);
   });
 });
+
+describe('site error reports', () => {
+  it('keep messages short and free of emails and long ids, and name only the browser family', async () => {
+    const { cleanMessage, browserFamily } = await import('../src/controllers/errorLogController');
+    expect(cleanMessage('Failed for thandi.m@example.co.za with token AbCdEfGhIjKlMnOpQrStUvWxYz0123456789')).toBe('Failed for [email] with token [id]');
+    expect(cleanMessage('word '.repeat(100))).toHaveLength(300);
+    expect(browserFamily('Mozilla/5.0 (Linux; Android 14; SM-A546E) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0 Mobile Safari/537.36')).toBe('Chrome on Android');
+    expect(browserFamily('Mozilla/5.0 (iPhone; CPU iPhone OS 18_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.1 Mobile/15E148 Safari/604.1')).toBe('Safari on iPhone');
+  });
+});

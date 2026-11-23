@@ -14,7 +14,7 @@ import { APP_CHECK_ENABLED } from '../../controllers/lib/firebase';
  * charged, collected, stored or promised, update the matching section here and
  * the LAST_UPDATED date in the same commit.
  */
-const LAST_UPDATED = '20 November 2026';
+const LAST_UPDATED = '23 November 2026';
 
 type Doc = 'terms' | 'privacy' | 'cookies';
 const TITLES: Record<Doc, [string, string]> = {
@@ -83,6 +83,7 @@ export default function Legal({ doc }: { doc: Doc }) {
               <li><strong>Your bag:</strong> the tickets you have added but not yet booked, saved to your account and in your browser so they are still there when you come back.</li>
               <li><strong>Emails you send us:</strong> if you email us, we receive whatever you choose to send.</li>
               <li><strong>Staff activity:</strong> for staff accounts, your role, a record of which account last changed site content or scanned a ticket, and an activity log of staff actions (such as role changes, event and content edits, and access approvals) with your name, role and the time. Only super admins can see the activity log, and its entries cannot be changed or deleted. If you ask for access to edit site content, we keep your name, email address, any note you add, when you asked, and who approved or declined it and when.</li>
+              <li><strong>Error reports:</strong> when a page breaks, or a sign-in, booking or ticket scan fails for an unexpected reason, the site records the error message, the page, the type of browser (for example "Chrome on Android"), the site version and, if you are signed in, your account number. It never records your name, email address, password or what you typed. Only super admins can see these reports; we use them to fix problems.</li>
             </UL>
             <P>We do not collect card or bank details on this site, and we do not use advertising or analytics trackers.</P>
 
