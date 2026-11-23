@@ -8,13 +8,16 @@ import { ticketController } from '../../controllers/ticketController';
 import { eventController } from '../../controllers/eventController';
 import { BAIEvent, Ticket, TicketStatus } from '../../models/types';
 import { cloudinaryService } from '../../services/cloudinaryService';
-import { formatCurrency, formatDate, formatTime } from '../../controllers/lib/utils';
+import { formatCurrency, formatDate, formatTime, toDate, friendlyError } from '../../controllers/lib/utils';
 import { TicketQR } from '../components/TicketQR';
 import { ROUTES } from '../../controllers/navigation';
 import { FALLBACK_EVENT_IMAGE } from '../../config';
 import { toast } from '../../services/toast';
 import { logger } from '../../services/loggerService';
 import { useBackToClose } from '../components/useBackToClose';
+import { AddToCalendar, eventPageUrl } from '../components/EventActions';
+import { confirmAction } from '../../services/confirm';
+import { VerifyEmailNotice } from '../components/VerifyEmailNotice';
 
 type TicketWithEvent = Ticket & { event?: BAIEvent | null };
 
@@ -36,6 +39,11 @@ export default function MyTickets() {
   const [failed, setFailed] = useState(false);
   const [selected, setSelected] = useState<TicketWithEvent | null>(null);
   useBackToClose(!!selected, () => setSelected(null));
+  // The open ticket follows live changes (a transfer offered or accepted, a cancellation);
+  // if it has left this account, it closes.
+  useEffect(() => {
+    setSelected(current => (current ? tickets.find(t => t.id === current.id) || null : current));
+  }, [tickets]);
   const closeRef = useRef<HTMLButtonElement>(null);
   const [online, setOnline] = useState(() => (typeof navigator === 'undefined' ? true : navigator.onLine));
   useEffect(() => {
@@ -157,6 +165,7 @@ export default function MyTickets() {
             You are offline. These are the tickets saved on this device; their QR codes still work at the door.
           </p>
         )}
+        <IncomingTransfers />
         {failed ? (
           <div className="panel py-20 px-6 text-center" role="alert">
             <h2 className="display text-3xl">Your tickets could not be loaded</h2>
@@ -270,7 +279,7 @@ export default function MyTickets() {
               {statusOf(selected) !== 'VALID' && (
                 <p className="mt-1 text-sm font-semibold text-red-700">{selected.status === 'SCANNED' ? 'Already used at the door' : statusOf(selected) === 'EVENT_CANCELLED' ? 'This event was cancelled' : 'This ticket was cancelled'}</p>
               )}
-              {/* The main action gets the room; Share is a round icon button beside it.
+              {/* The main action gets the room; Add to calendar and Share are round icon buttons beside it.
                   Only a ticket that can still be used can be downloaded. */}
               {statusOf(selected) === 'VALID' && (
               <div className="no-print flex gap-3 w-full mt-3.5">
@@ -278,15 +287,135 @@ export default function MyTickets() {
                   {downloading && <Loader2 size={18} className="animate-spin" aria-hidden="true" />}
                   <span>{downloading ? 'Preparing ticket' : 'Download ticket'}</span>
                 </button>
+                {selected.event?.date && (
+                  <AddToCalendar round event={{ id: selected.eventId, name: eventName(selected), date: selected.event.date, venue: selected.event.venue, city: selected.event.city, description: `Ticket ${selected.id} (${selected.ticketType})`, url: eventPageUrl(selected.eventId) }} />
+                )}
                 <button onClick={() => handleShare(selected)} aria-label="Share ticket" title="Share ticket" className="btn btn-outline shrink-0 w-[48px] px-0">
                   <Share2 size={18} aria-hidden="true" />
                 </button>
               </div>
               )}
+              {statusOf(selected) === 'VALID' && <TransferControls ticket={selected} />}
             </div>
           </div>
         </div>
       )}
     </div>
+  );
+}
+
+/** On an open ticket: offer it to a friend's email address, or take the offer back. */
+function TransferControls({ ticket }: { ticket: TicketWithEvent }) {
+  const [open, setOpen] = useState(false);
+  const [email, setEmail] = useState('');
+  const [busy, setBusy] = useState(false);
+  const started = (toDate(ticket.event?.date)?.getTime() ?? 0) <= Date.now();
+  if (started) return null;
+
+  const offer = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!await confirmAction({
+      title: `Transfer this ticket to ${email.trim()}?`,
+      message: 'They see it under My tickets when they sign in with that email address, and it becomes theirs when they accept. You can take the offer back until then.',
+      confirmLabel: 'Transfer ticket',
+      cancelLabel: 'Keep it',
+    })) return;
+    setBusy(true);
+    try {
+      await ticketController.offerTransfer(ticket.id, email);
+      toast.success(`Offered to ${email.trim()}. Ask them to sign in with that email to accept it.`);
+      setOpen(false);
+      setEmail('');
+    } catch (err) {
+      logger.error('Ticket transfer failed', err);
+      toast.error(friendlyError(err, 'The ticket could not be transferred. Please try again.'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const takeBack = async () => {
+    setBusy(true);
+    try {
+      await ticketController.cancelTransfer(ticket.id);
+      toast.success('The offer is cancelled. The ticket stays yours.');
+    } catch (err) {
+      logger.error('Cancelling a transfer failed', err);
+      toast.error(friendlyError(err, 'That did not work. Please try again.'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (ticket.transferTo) {
+    return (
+      <div className="no-print w-full mt-3 p-3 rounded-xl bg-bai-sand text-sm text-center">
+        <p>Offered to <strong className="break-all">{ticket.transferTo}</strong>. It stays yours until they accept.</p>
+        <button type="button" onClick={takeBack} disabled={busy} className="link min-h-[44px]">Cancel the transfer</button>
+      </div>
+    );
+  }
+  if (!open) {
+    return <button type="button" onClick={() => setOpen(true)} className="no-print link min-h-[44px] mt-1 text-sm">Transfer to a friend</button>;
+  }
+  return (
+    <form onSubmit={offer} className="no-print w-full mt-3 space-y-2">
+      <label htmlFor={`transfer-${ticket.id}`} className="block text-sm font-semibold text-left">Your friend's email address</label>
+      <input id={`transfer-${ticket.id}`} type="email" required value={email} onChange={e => setEmail(e.target.value)} autoComplete="off" className="field" placeholder="friend@example.com" />
+      <div className="even-cols">
+        <button type="button" onClick={() => setOpen(false)} className="btn btn-outline">Cancel</button>
+        <button type="submit" disabled={busy || !email.trim()} className="btn btn-primary">Transfer</button>
+      </div>
+    </form>
+  );
+}
+
+/** Tickets friends have offered to the signed-in person's email address. */
+function IncomingTransfers() {
+  const { user, emailVerified } = useAuth();
+  const [offers, setOffers] = useState<Ticket[]>([]);
+  const [busy, setBusy] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!user?.email) return;
+    return ticketController.subscribeToIncomingTransfers(user.email, setOffers);
+  }, [user?.email]);
+
+  if (!user || offers.length === 0) return null;
+
+  const accept = async (t: Ticket) => {
+    setBusy(t.id);
+    try {
+      await ticketController.acceptTransfer(t, user);
+      toast.success('The ticket is yours. It is now in your tickets below.');
+    } catch (err) {
+      logger.error('Accepting a ticket failed', err);
+      toast.error(friendlyError(err, 'The ticket could not be accepted. Please try again.'));
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  return (
+    <section className="panel p-5 sm:p-6 mb-8" aria-labelledby="incoming-heading">
+      <h2 id="incoming-heading" className="display text-2xl mb-1">Tickets waiting for you</h2>
+      <p className="text-bai-ink-soft mb-4">{offers.length === 1 ? 'A friend has passed you a ticket.' : `Friends have passed you ${offers.length} tickets.`}</p>
+      {!emailVerified && (
+        <div className="mb-4"><VerifyEmailNotice title="Confirm your email to accept tickets" /></div>
+      )}
+      <ul className="divide-y divide-bai-black/10 border-t border-bai-black/10">
+        {offers.map(t => (
+          <li key={t.id} className="py-4 flex flex-wrap items-center gap-x-4 gap-y-3">
+            <div className="min-w-0 flex-grow">
+              <p className="font-semibold break-words">{t.eventName || 'Event'}</p>
+              <p className="text-sm text-bai-ink-soft break-all">{t.ticketType} · from {t.buyerEmail || 'a friend'}</p>
+            </div>
+            <button type="button" onClick={() => accept(t)} disabled={busy === t.id || !emailVerified} className="btn btn-primary w-full sm:w-auto">
+              {busy === t.id ? 'Accepting' : 'Accept ticket'}
+            </button>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }

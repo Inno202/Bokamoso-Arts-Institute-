@@ -4,6 +4,7 @@ import { BrowserRouter } from 'react-router-dom';
 import App from './App.tsx';
 import { seedContent, SEED_ELEMENT_ID } from './content/store';
 import { seedUpcoming } from './content/upcoming';
+import { seedEvent } from './content/eventSeed';
 import './index.css';
 import { checkBotCheck, errorLog } from './controllers/errorLogController';
 
@@ -83,6 +84,7 @@ if (framed) {
       const parsed = JSON.parse(seed);
       seedContent(parsed);
       seedUpcoming(parsed.upcomingEvents);
+      if (parsed.event) seedEvent(parsed.event);
     } catch { /* fall back to built-in defaults */ }
   }
   // Hydrate only when this HTML was pre-rendered for this very address.

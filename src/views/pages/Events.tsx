@@ -1,31 +1,24 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Calendar, Ticket, MapPin, Search, CheckCircle2, ExternalLink } from 'lucide-react';
-import { currencyOf, sellsElsewhere } from '../../models/currency';
-import { priceRange, ticketTypesOf, type EventTicketType } from '../../models/ticketTypes';
+import { Link } from 'react-router-dom';
+import { Calendar, MapPin, Search } from 'lucide-react';
+import { priceRange } from '../../models/ticketTypes';
 import { eventController } from '../../controllers/eventController';
 import { BAIEvent } from '../../models/types';
 import { cloudinaryService } from '../../services/cloudinaryService';
-import { useCart } from '../../hooks/useCart';
-import { useAuth } from '../components/AuthProvider';
 import { useContent } from '../../content/store';
 import { PageHero } from '../components/PageHero';
 import { ROUTES } from '../../controllers/navigation';
 import { eventHasEnded, formatCurrency, formatDate, formatTime } from '../../controllers/lib/utils';
 import { FALLBACK_EVENT_IMAGE } from '../../config';
 import { ZoomablePhoto } from '../components/ZoomablePhoto';
-import { toast } from '../../services/toast';
+import { EventBuyBox, availability } from '../components/EventBuyBox';
 
 export default function Events() {
-  const { addToCart } = useCart();
-  const { user } = useAuth();
   const { eventsHeroImage } = useContent('site');
-  const navigate = useNavigate();
   const [events, setEvents] = useState<BAIEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [addedIds, setAddedIds] = useState<Set<string>>(new Set());
 
   useEffect(() => eventController.subscribeToEvents((data) => {
     setEvents(data);
@@ -42,34 +35,6 @@ export default function Events() {
   const filteredEvents = term
     ? current.filter(e => [e.name, e.city, e.venue].some(v => (v || '').toLowerCase().includes(term)))
     : current;
-
-  // The ticket type chosen on each card (cards with one type need no choice).
-  const [chosenType, setChosenType] = useState<Record<string, string>>({});
-
-  const handleAddToCart = (event: BAIEvent, type: EventTicketType) => {
-    if (!user) {
-      toast.info('Sign in to book tickets.');
-      navigate(ROUTES.LOGIN, { state: { from: ROUTES.EVENTS } });
-      return;
-    }
-    addToCart({
-      eventId: event.id,
-      eventName: event.name,
-      venue: event.venue,
-      date: event.date,
-      ticketType: type.name,
-      ticketTypeId: type.id,
-      price: type.price,
-      currency: currencyOf(event.currency),
-      quantity: 1,
-    });
-    setAddedIds(prev => new Set(prev).add(event.id));
-    setTimeout(() => setAddedIds(prev => {
-      const next = new Set(prev);
-      next.delete(event.id);
-      return next;
-    }), 2000);
-  };
 
   return (
     <div className="pb-24">
@@ -111,16 +76,9 @@ export default function Events() {
         ) : (
           <ul className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredEvents.map((event) => {
-              const elsewhere = sellsElsewhere(event);
-              const types = ticketTypesOf(event);
+              const { soldOut, types } = availability(event);
               const multi = types.length > 1;
-              const type = types.find(t => t.id === chosenType[event.id]) || types.find(t => t.remaining > 0) || types[0];
-              const eventLeft = Math.max(0, (event.capacity || 0) - (event.ticketsSold || 0));
-              const remaining = Math.min(type.remaining, eventLeft);
               const range = priceRange(event);
-              // Seats for shows sold elsewhere are counted by that seller, not here.
-              const soldOut = !elsewhere && (eventLeft === 0 || types.every(t => t.remaining === 0));
-              const added = addedIds.has(event.id);
               const when = formatDate(event.date, { weekday: 'short', day: 'numeric', month: 'short' });
               return (
                 <li key={event.id} className="group lift panel overflow-hidden flex flex-col">
@@ -145,68 +103,18 @@ export default function Events() {
                       <Calendar size={16} aria-hidden="true" />
                       <span>{when}{formatTime(event.date) ? ` · ${formatTime(event.date)}` : ''}</span>
                     </p>
-                    <h2 className="font-serif font-semibold text-3xl leading-tight mt-2 line-clamp-2 break-words">{event.name}</h2>
+                    <h2 className="font-serif font-semibold text-3xl leading-tight mt-2 line-clamp-2 break-words">
+                      <Link to={`${ROUTES.EVENTS}/${event.id}`} className="hover:text-bai-red transition-colors">{event.name}</Link>
+                    </h2>
                     <p className="flex items-center gap-1.5 text-bai-ink-soft mt-2">
                       <MapPin size={16} className="shrink-0" aria-hidden="true" />
                       <span className="truncate">{[event.venue, event.city].filter(Boolean).join(', ')}</span>
                     </p>
                     {event.description && <p className="text-bai-ink-soft leading-relaxed mt-3 line-clamp-2">{event.description}</p>}
+                    <Link to={`${ROUTES.EVENTS}/${event.id}`} className="link self-start mt-2 min-h-[44px] inline-flex items-center" aria-label={`Details and sharing: ${event.name}`}>Details and sharing</Link>
 
                     <div className="mt-auto pt-6">
-                      {elsewhere ? (
-                        <a
-                          href={event.ticketUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="btn btn-block btn-primary"
-                        >
-                          <span>Buy tickets on {event.ticketProvider || 'the seller\'s site'}</span>
-                          <ExternalLink size={18} aria-hidden="true" />
-                          <span className="sr-only">(opens in a new tab)</span>
-                        </a>
-                      ) : (<>
-                      {multi && !soldOut && (
-                        <fieldset className="mb-4">
-                          <legend className="text-sm font-semibold mb-2">Ticket type</legend>
-                          <div className="space-y-2">
-                            {types.map(t => {
-                              const out = t.remaining === 0;
-                              return (
-                                <label key={t.id} className={`flex items-center gap-3 min-h-[44px] px-3 rounded-xl border transition-colors ${out ? 'opacity-50 cursor-not-allowed border-bai-black/10' : type.id === t.id ? 'border-bai-black bg-bai-sand/60' : 'border-bai-black/15 hover:border-bai-black/40 cursor-pointer'}`}>
-                                  <input
-                                    type="radio"
-                                    name={`type-${event.id}`}
-                                    value={t.id}
-                                    checked={type.id === t.id}
-                                    disabled={out}
-                                    onChange={() => setChosenType(c => ({ ...c, [event.id]: t.id }))}
-                                    className="accent-bai-red w-4 h-4 shrink-0"
-                                  />
-                                  <span className="flex-grow min-w-0 truncate font-medium">{t.name}</span>
-                                  <span className="num text-sm font-semibold shrink-0">{out ? 'Sold out' : t.price > 0 ? formatCurrency(t.price, event.currency) : 'Free'}</span>
-                                </label>
-                              );
-                            })}
-                          </div>
-                        </fieldset>
-                      )}
-                      {!soldOut && remaining <= 20 && (
-                        <p className="num text-sm font-semibold text-bai-red-deep mb-3">Only {remaining} {remaining === 1 ? 'seat' : 'seats'} left</p>
-                      )}
-                      <button
-                        onClick={() => handleAddToCart(event, type)}
-                        disabled={soldOut || added}
-                        className={`btn btn-block ${added ? 'bg-green-700 text-white' : 'btn-primary'}`}
-                      >
-                        {added ? (
-                          <><CheckCircle2 size={18} aria-hidden="true" /><span>Added to your bag</span></>
-                        ) : soldOut ? (
-                          <span>Sold out</span>
-                        ) : (
-                          <><span>Add ticket to bag</span><Ticket size={18} className="btn-arrow" aria-hidden="true" /></>
-                        )}
-                      </button>
-                      </>)}
+                      <EventBuyBox event={event} />
                     </div>
                   </div>
                 </li>

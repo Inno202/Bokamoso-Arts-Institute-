@@ -40,7 +40,8 @@ const SHELL_ROUTES = ['/cart', '/checkout', '/my-tickets', '/account', '/dashboa
 
 // ---------- 1. content ----------
 
-const DOCS = `https://firestore.googleapis.com/v1/projects/${config.projectId}/databases/${config.firestoreDatabaseId}/documents`;
+// PRERENDER_DOCS_URL lets a test build read from the local emulator instead of the live database.
+const DOCS = process.env.PRERENDER_DOCS_URL || `https://firestore.googleapis.com/v1/projects/${config.projectId}/databases/${config.firestoreDatabaseId}/documents`;
 
 /** Firestore's REST format to plain values. */
 function decode(value) {
@@ -144,7 +145,7 @@ const eventData = events
         highPrice: Math.max(...prices),
         priceCurrency: e.currency || 'ZAR',
         availability: soldOut ? 'https://schema.org/SoldOut' : 'https://schema.org/InStock',
-        url: typeof e.ticketUrl === 'string' && e.ticketUrl.startsWith('https://') ? e.ticketUrl : `${SITE}/events/`,
+        url: typeof e.ticketUrl === 'string' && e.ticketUrl.startsWith('https://') ? e.ticketUrl : `${SITE}/events/${e.id}/`,
       },
     };
   });
@@ -171,6 +172,43 @@ for (const route of server.PRERENDERED_ROUTES) {
   console.log(`prerender: ${route} (${Math.round(html.length / 1024)} kB)`);
 }
 
+// Each event on sale gets its own finished page, with its own title, description and
+// poster for link previews (WhatsApp, Facebook) and search engines.
+const escapeAttr = (text) => String(text).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+const setMeta = (html, attr, key, value) => html.replace(new RegExp(`(<meta ${attr}="${key}" content=")[^"]*(")`), `$1${escapeAttr(value)}$2`);
+// A share image WhatsApp and Facebook accept: a 1200px JPEG for Cloudinary photos.
+const shareImage = (img) => {
+  const url = absolute(img);
+  return /res\.cloudinary\.com\/[^/]+\/image\/upload\//.test(url) ? url.replace('/image/upload/', '/image/upload/w_1200,c_limit,f_jpg,q_auto/') : url;
+};
+const eventRoutes = [];
+for (const e of events) {
+  if (!e.id || !/^[\w-]{1,128}$/.test(e.id)) continue;
+  const route = `/events/${e.id}`;
+  server.prepareEvent(e);
+  const body = await server.render(`${BASE}${route}`, BASE);
+  const eventSeedTag = `<script type="application/json" id="bai-content">${JSON.stringify({ ...content, upcomingEvents, event: e }).replace(/</g, '\\u003c')}</script>`;
+  const when = e.date ? new Date(e.date) : null;
+  const whenText = when && !Number.isNaN(when.getTime())
+    ? when.toLocaleString('en-ZA', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Africa/Johannesburg' })
+    : '';
+  const summary = [whenText, [e.venue, e.city].filter(Boolean).join(', ')].filter(Boolean).join(' · ');
+  const description = `${summary}${e.description ? `. ${String(e.description).replace(/\s+/g, ' ').slice(0, 160)}` : ''}`;
+  const url = `${SITE}${route}/`;
+  let html = template.replace('<div id="root"></div>', `<div id="root" data-route="${route}">${body}</div>${eventSeedTag}`);
+  html = setTitle(html, `${String(e.name || 'Event').slice(0, 120)} | Bokamoso Arts Institute`);
+  html = setMeta(html, 'name', 'description', description);
+  html = setMeta(html, 'property', 'og:title', String(e.name || 'Event'));
+  html = setMeta(html, 'property', 'og:description', summary || description);
+  html = setMeta(html, 'property', 'og:image', shareImage(e.bannerImageUrl || e.ticketImageUrl));
+  const one = eventData.find(d => d.name === String(e.name || '').slice(0, 200) && d.startDate === (when ? when.toISOString() : ''));
+  const ld = one ? `<script type="application/ld+json">${JSON.stringify({ '@context': 'https://schema.org', ...one, url }).replace(/</g, '\\u003c')}</script>` : '';
+  html = html.replace('</head>', `    <link rel="canonical" href="${url}" />\n    <meta property="og:url" content="${url}" />\n    ${ld}\n  </head>`);
+  await write(route, html);
+  eventRoutes.push(route);
+}
+if (eventRoutes.length) console.log(`prerender: ${eventRoutes.length} event page(s)`);
+
 // Signed-in and staff pages are not for search engines.
 const shell = template
   .replace('<div id="root"></div>', `<div id="root"></div>${seedTag}`)
@@ -181,7 +219,7 @@ console.log(`prerender: ${SHELL_ROUTES.length} app shells and 404.html`);
 
 // A sitemap of the public pages, to submit once in Google Search Console.
 const today = new Date().toISOString().slice(0, 10);
-const publicRoutes = server.PRERENDERED_ROUTES.filter(r => !['/login', '/register'].includes(r));
+const publicRoutes = [...server.PRERENDERED_ROUTES.filter(r => !['/login', '/register'].includes(r)), ...eventRoutes];
 const sitemap = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${publicRoutes
   .map(r => `  <url><loc>${SITE}${r === '/' ? '/' : `${r}/`}</loc><lastmod>${today}</lastmod></url>`).join('\n')}\n</urlset>\n`;
 await writeFile(join(DIST, 'sitemap.xml'), sitemap);

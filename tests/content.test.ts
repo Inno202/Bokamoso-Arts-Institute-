@@ -463,3 +463,19 @@ describe('site error reports', () => {
     expect(browserFamily('Mozilla/5.0 (iPhone; CPU iPhone OS 18_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.1 Mobile/15E148 Safari/604.1')).toBe('Safari on iPhone');
   });
 });
+
+describe('add to calendar', () => {
+  it('builds a Google Calendar link and a valid calendar file lasting three hours', async () => {
+    const { googleCalendarUrl, icsFile } = await import('../src/services/calendar');
+    const ev = { id: 'e1', name: 'Lost in Music, Eswatini; Night', date: '2026-12-16T11:34:00Z', venue: 'Esibayeni Lodge', city: 'Matsapha', url: 'https://example.org/events/e1' };
+    const g = new URL(googleCalendarUrl(ev));
+    expect(g.searchParams.get('dates')).toBe('20261216T113400Z/20261216T143400Z');
+    expect(g.searchParams.get('location')).toBe('Esibayeni Lodge, Matsapha');
+    const ics = icsFile(ev);
+    expect(ics).toContain('DTSTART:20261216T113400Z');
+    expect(ics).toContain('DTEND:20261216T143400Z');
+    expect(ics).toContain('SUMMARY:Lost in Music\\, Eswatini\\; Night');
+    expect(ics.split('\r\n').every(line => line.length <= 75)).toBe(true);
+    expect(googleCalendarUrl({ ...ev, date: null })).toBe('');
+  });
+});

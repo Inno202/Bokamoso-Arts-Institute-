@@ -124,7 +124,7 @@ export default function Home() {
               const date = new Date(event.date);
               return (
                 <li key={event.id} className="border-b border-bai-black/15">
-                  <Link to={ROUTES.EVENTS} className="group grid grid-cols-[4.5rem_1fr_auto] sm:grid-cols-[6rem_1fr_auto] items-center gap-4 sm:gap-8 py-6">
+                  <Link to={`${ROUTES.EVENTS}/${event.id}`} className="group grid grid-cols-[4.5rem_1fr_auto] sm:grid-cols-[6rem_1fr_auto] items-center gap-4 sm:gap-8 py-6">
                     <span className="text-center leading-none">
                       <span className="num block font-serif font-semibold text-5xl sm:text-6xl text-bai-red">{date.toLocaleDateString('en-ZA', { day: 'numeric' })}</span>
                       <span className="block font-semibold text-bai-ink-soft mt-1">{date.toLocaleDateString('en-ZA', { month: 'short' })}</span>

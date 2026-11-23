@@ -9,7 +9,7 @@ import { toast } from '../../services/toast';
  * Shown where booking needs a confirmed email. Lets the person resend the link and,
  * once they have clicked it, carry on without signing out and in again.
  */
-export function VerifyEmailNotice() {
+export function VerifyEmailNotice({ title = 'Confirm your email to book' }: { title?: string } = {}) {
   const { user, refreshEmailVerified } = useAuth();
   const [sending, setSending] = useState(false);
   const [checking, setChecking] = useState(false);
@@ -47,7 +47,7 @@ export function VerifyEmailNotice() {
 
   return (
     <div className="p-5 rounded-2xl bg-blue-50 text-blue-950" role="status">
-      <p className="font-semibold flex items-center gap-2"><MailCheck size={20} className="text-bai-blue shrink-0" aria-hidden="true" />Confirm your email to book</p>
+      <p className="font-semibold flex items-center gap-2"><MailCheck size={20} className="text-bai-blue shrink-0" aria-hidden="true" />{title}</p>
       <p className="text-sm mt-2 leading-relaxed">
         We sent a link to <strong className="break-all">{user?.email}</strong>. Open it, then come back and tap “I’ve confirmed it”.
       </p>

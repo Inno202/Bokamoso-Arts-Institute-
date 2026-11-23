@@ -75,6 +75,8 @@ export interface BAIEvent {
   ticketTypes?: Partial<Record<string, { name: string; price: number; capacity: number }>>;
   /** Seats sold per ticket type. */
   typeSold?: Partial<Record<string, number>>;
+  /** Performers or acts, in order (shown on the event page). Absent on older events. */
+  lineup?: string[];
   createdAt: DateLike;
   createdBy: string;
 }
@@ -96,6 +98,11 @@ export interface Ticket {
   quantity: number;
   scannedAt?: DateLike;
   scannedBy?: string;
+  /** Email address the holder has offered this ticket to (lower case); empty or absent when none. */
+  transferTo?: string;
+  transferAt?: DateLike;
+  /** The account it was passed on from, once a friend accepts. */
+  transferredFrom?: string;
 }
 
 export interface TicketScan {
