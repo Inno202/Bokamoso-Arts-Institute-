@@ -51,7 +51,7 @@ export default function Register() {
         <div className="px-8 pt-8 pb-6 text-center">
           <img src={`${import.meta.env.BASE_URL}assets/brand/mark-96.png`} alt="" width={56} height={56} className="w-14 h-14 mx-auto mb-4" />
           <h1 className="display text-4xl">
-            Join <span className="text-bai-blue">Bokamoso</span>
+            Create <span className="text-bai-blue">account</span>
           </h1>
         </div>
 
