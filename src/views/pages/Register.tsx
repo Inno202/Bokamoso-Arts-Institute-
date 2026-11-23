@@ -22,6 +22,8 @@ export default function Register() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  // Unticked by default: news by email only for people who ask for it (POPIA).
+  const [eventNews, setEventNews] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
@@ -32,7 +34,7 @@ export default function Register() {
     setLoading(true);
     setError(null);
     try {
-      await authController.register(email, password, displayName);
+      await authController.register(email, password, displayName, eventNews);
       // Creating an account does not sign you in: sign in next, then carry on to where you were going.
       navigate(ROUTES.LOGIN, { replace: true, state: { from: safeReturnPath(location.state) || undefined, registered: email.trim() } });
     } catch (err) {
@@ -91,6 +93,11 @@ export default function Register() {
                 )}
               </div>
             </div>
+
+            <label htmlFor="reg-news" className="flex items-start gap-3 min-h-[44px] cursor-pointer select-none text-sm">
+              <input id="reg-news" type="checkbox" checked={eventNews} onChange={(e) => setEventNews(e.target.checked)} className="w-5 h-5 mt-0.5 shrink-0 accent-bai-black cursor-pointer" />
+              <span>Email me about upcoming concerts and events. You can stop at any time in your account.</span>
+            </label>
 
             <p className="text-sm text-bai-black/75">
               By creating an account you agree to our <Link to={ROUTES.TERMS} className="link">terms</Link> and <Link to={ROUTES.PRIVACY} className="link">privacy policy</Link>.

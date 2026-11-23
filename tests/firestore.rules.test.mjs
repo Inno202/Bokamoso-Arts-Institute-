@@ -118,6 +118,17 @@ test('users cannot promote or reactivate themselves', async () => {
   await assertSucceeds(updateDoc(doc(db, 'users/alice'), { displayName: 'Alice M' }));
 });
 
+test('people choose event news for themselves only, with the server time as proof', async () => {
+  const db = as('alice');
+  await assertSucceeds(updateDoc(doc(db, 'users/alice'), { marketingOptIn: true, marketingOptInAt: serverTimestamp() }));
+  await assertSucceeds(updateDoc(doc(db, 'users/alice'), { marketingOptIn: false, marketingOptInAt: serverTimestamp() }));
+  await assertFails(updateDoc(doc(db, 'users/alice'), { marketingOptIn: true, marketingOptInAt: Timestamp.fromMillis(0) }), 'back-dated');
+  await assertFails(updateDoc(doc(db, 'users/alice'), { marketingOptIn: 'yes', marketingOptInAt: serverTimestamp() }), 'not a yes/no');
+  await assertFails(updateDoc(doc(db, 'users/alice'), { marketingOptIn: true, marketingOptInAt: serverTimestamp(), role: 'CEO' }), 'with a role change');
+  await assertFails(updateDoc(doc(as('bob'), 'users/alice'), { marketingOptIn: true, marketingOptInAt: serverTimestamp() }), 'for someone else');
+  await assertFails(updateDoc(doc(as('ceo'), 'users/alice'), { marketingOptIn: true, marketingOptInAt: serverTimestamp() }), 'staff cannot opt people in');
+});
+
 test('profiles are private to their owner and user admins', async () => {
   await assertFails(getDoc(doc(as('bob'), 'users/alice')));
   await assertFails(getDocs(collection(as('alice'), 'users')));

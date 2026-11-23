@@ -23,7 +23,7 @@ export const ACTIVITY_AREAS = {
 export type ActivityArea = keyof typeof ACTIVITY_AREAS;
 
 export type ActivityAction =
-  | 'user.created' | 'user.role' | 'user.deactivated' | 'user.reactivated'
+  | 'user.created' | 'user.role' | 'user.deactivated' | 'user.reactivated' | 'user.newsList'
   | 'event.created' | 'event.updated' | 'event.deleted' | 'event.cancelled'
   | 'content.saved'
   | 'access.requested' | 'access.approved' | 'access.declined' | 'access.ended'

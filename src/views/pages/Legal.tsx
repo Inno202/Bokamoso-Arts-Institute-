@@ -85,6 +85,7 @@ export default function Legal({ doc }: { doc: Doc }) {
               <li><strong>Your bag:</strong> the tickets you have added but not yet booked, saved to your account and in your browser so they are still there when you come back.</li>
               <li><strong>Waiting lists and transfers:</strong> if you join an event's waiting list, your name, email address and the time you joined, which event staff can see so they can contact you. If you pass a ticket to a friend, the email address you enter is stored on the ticket until they accept, and your friend sees the email address of the account it came from.</li>
               <li><strong>At the door:</strong> so tickets can be checked where there is no signal, the phones of door staff keep a copy of the event's ticket list (ticket reference, type, status and the booking email address) until the event is over.</li>
+              <li><strong>Event news:</strong> only if you tick "Email me about upcoming concerts and events" (when you create an account, or later in your account), we record that choice and when you made it, and may email you about upcoming events. The box is never ticked for you. Untick it in your account at any time and we stop. The CEO and super admins can see who asked for event news and copy those email addresses to send the news; it is sent with addresses hidden from other recipients.</li>
               <li><strong>Emails you send us:</strong> if you email us, we receive whatever you choose to send.</li>
               <li><strong>Staff activity:</strong> for staff accounts, your role, a record of which account last changed site content or scanned a ticket, a copy of each version of site content you save with your name and the time (kept so staff can look back and restore an earlier version; only staff who can edit site content see it), and an activity log of staff actions (such as role changes, event and content edits, and access approvals) with your name, role and the time. Only super admins can see the activity log, and its entries cannot be changed or deleted. If you ask for access to edit site content, we keep your name, email address, any note you add, when you asked, and who approved or declined it and when.</li>
               <li><strong>Error reports:</strong> when a page breaks, or a sign-in, booking or ticket scan fails for an unexpected reason, the site records the error message, the page, the type of browser (for example "Chrome on Android"), the site version and, if you are signed in, your account number. It never records your name, email address, password or what you typed. Only super admins can see these reports; we use them to fix problems.</li>
@@ -98,7 +99,7 @@ export default function Legal({ doc }: { doc: Doc }) {
               <li>To report internally on how many tickets were issued.</li>
               <li>To reply when you contact us.</li>
             </UL>
-            <P>We do not sell your information or use it for marketing without your agreement.</P>
+            <P>We do not sell your information, and we only email you about events if you asked for event news.</P>
 
             <H>Who else handles it</H>
             <UL>

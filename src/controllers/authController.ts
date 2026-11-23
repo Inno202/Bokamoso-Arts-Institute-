@@ -14,6 +14,7 @@ import {
 } from 'firebase/auth';
 import { doc, runTransaction, serverTimestamp, type Firestore } from 'firebase/firestore';
 import { auth, db, inSignupSession, REMEMBER_KEY, rememberChoice } from './lib/firebase';
+import { setEventNews } from './accountController';
 
 /**
  * Creates the Firestore profile for a signed-in user if it does not exist yet.
@@ -63,12 +64,15 @@ export const authController = {
    * Creates the account and its profile without signing in: the person signs in
    * with their new details afterwards.
    */
-  async register(email: string, password: string, displayName: string) {
+  async register(email: string, password: string, displayName: string, eventNews = false) {
     await inSignupSession(async (session) => {
       const credential = await createUserWithEmailAndPassword(session.auth, email.trim(), password);
       const name = displayName.trim();
       if (name) await updateProfile(credential.user, { displayName: name });
       await ensureUserProfile(credential.user, name, session.db);
+      // Saved on its own, so a problem here never stops the account being created; it can be
+      // changed later in the account page.
+      if (eventNews) await setEventNews(credential.user.uid, true, session.db).catch(() => undefined);
       // The confirmation link is still sent, ready for when booking needs a confirmed email again
       // (REQUIRE_EMAIL_VERIFICATION in src/config.ts). If the email
       // cannot be sent now, the person can ask for it again when they first book.

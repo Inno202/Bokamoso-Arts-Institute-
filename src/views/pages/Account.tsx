@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { signOut } from 'firebase/auth';
 import { CheckCircle2, Loader2 } from 'lucide-react';
 import { PageHero } from '../components/PageHero';
 import { useAuth } from '../components/AuthProvider';
 import { VerifyEmailNotice } from '../components/VerifyEmailNotice';
-import { accountController, MIN_PASSWORD, usesPassword } from '../../controllers/accountController';
+import { accountController, MIN_PASSWORD, setEventNews, usesPassword } from '../../controllers/accountController';
 import { auth } from '../../controllers/lib/firebase';
 import { ROUTES } from '../../controllers/navigation';
 import { friendlyError } from '../../controllers/lib/utils';
@@ -35,10 +35,29 @@ export default function Account() {
   const [savingPassword, setSavingPassword] = useState(false);
   const [deletePassword, setDeletePassword] = useState('');
   const [deleting, setDeleting] = useState(false);
+  const [savingNews, setSavingNews] = useState(false);
+  // Shown at once when clicked; put back if saving fails. Follows the saved value otherwise.
+  const [news, setNews] = useState(!!userData?.marketingOptIn);
+  useEffect(() => { setNews(!!userData?.marketingOptIn); }, [userData?.marketingOptIn]);
 
   if (!user) return null;
   const hasPassword = usesPassword(user);
   const isStaff = !!role && role !== 'USER';
+
+  const toggleNews = async (agree: boolean) => {
+    setSavingNews(true);
+    setNews(agree);
+    try {
+      await setEventNews(user.uid, agree);
+      toast.success(agree ? 'You will receive news about upcoming events.' : 'You will no longer receive news about upcoming events.');
+    } catch (err) {
+      logger.error('Saving the event news choice failed', err);
+      setNews(!agree);
+      toast.error(friendlyError(err, 'Your choice could not be saved. Please try again.'));
+    } finally {
+      setSavingNews(false);
+    }
+  };
 
   const saveName = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -118,6 +137,15 @@ export default function Account() {
             </button>
           </form>
           {REQUIRE_EMAIL_VERIFICATION && !emailVerified && <div className="mt-6"><VerifyEmailNotice /></div>}
+        </section>
+
+        <section className="panel p-6 sm:p-8" aria-labelledby="news-heading">
+          <h2 id="news-heading" className="display text-2xl mb-4">Event news</h2>
+          <label htmlFor="acc-news" className="flex items-start gap-3 min-h-[44px] cursor-pointer select-none">
+            <input id="acc-news" type="checkbox" checked={news} disabled={savingNews} onChange={(e) => toggleNews(e.target.checked)} className="w-5 h-5 mt-0.5 shrink-0 accent-bai-black cursor-pointer" />
+            <span>Email me about upcoming concerts and events.</span>
+          </label>
+          <p className="field-help mt-1">We only use your email for this if you tick the box, and never share it. Untick it to stop at any time.</p>
         </section>
 
         <section className="panel p-6 sm:p-8" aria-labelledby="password-heading">
