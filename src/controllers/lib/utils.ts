@@ -22,14 +22,21 @@ export function eventHasEnded(date: DateLike, now = Date.now()) {
   return !!start && start.getTime() + EVENT_OVER_AFTER_HOURS * 3_600_000 < now;
 }
 
+/**
+ * Every date and time on the site is shown in South African time (the same hour for
+ * Eswatini, Botswana and Lesotho). This also makes the pages built in advance (on a
+ * server set to UTC) match exactly what the visitor's browser draws.
+ */
+export const SITE_TIME_ZONE = 'Africa/Johannesburg';
+
 export function formatDate(date: DateLike, options: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'long', year: 'numeric' }) {
   const d = toDate(date);
-  return d ? d.toLocaleDateString('en-ZA', options) : '';
+  return d ? d.toLocaleDateString('en-ZA', { timeZone: SITE_TIME_ZONE, ...options }) : '';
 }
 
 export function formatTime(date: DateLike) {
   const d = toDate(date);
-  return d ? d.toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' }) : '';
+  return d ? d.toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit', timeZone: SITE_TIME_ZONE }) : '';
 }
 
 export function formatDateTime(date: DateLike) {

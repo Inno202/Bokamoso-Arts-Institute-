@@ -4,7 +4,7 @@ import { eventController } from '../../controllers/eventController';
 import { useAuth } from '../components/AuthProvider';
 import { BAIEvent } from '../../models/types';
 import { cloudinaryService } from '../../services/cloudinaryService';
-import { formatCurrency, friendlyError, toDate } from '../../controllers/lib/utils';
+import { formatCurrency, friendlyError, toDate, SITE_TIME_ZONE } from '../../controllers/lib/utils';
 import { FALLBACK_EVENT_IMAGE } from '../../config';
 import { toast } from '../../services/toast';
 import { logger } from '../../services/loggerService';
@@ -129,7 +129,7 @@ export function EventFormDialog({ event, copyFrom, onClose }: Props) {
       } else {
         const id = await eventController.createEvent(data);
         toast.success(form.status === 'On Sale' ? 'Event created. It is now on sale.' : 'Event saved.');
-        void record('event.created', `Created the event "${data.name}" for ${data.date.toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })} (${form.status}).`, typeof id === 'string' ? id : '');
+        void record('event.created', `Created the event "${data.name}" for ${data.date.toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric', timeZone: SITE_TIME_ZONE })} (${form.status}).`, typeof id === 'string' ? id : '');
       }
       onClose();
     } catch (err) {
@@ -323,7 +323,7 @@ function EventPreview({ form, bannerFile, ticketFile, existingBanner, existingTi
   const money = (n: number) => (n > 0 ? formatCurrency(n, form.currency) : 'Free');
   const badge = !prices.length ? '' : min === max ? money(max) : `From ${money(min)}`;
   const date = form.date ? new Date(form.date) : null;
-  const when = date && !Number.isNaN(date.getTime()) ? date.toLocaleString('en-ZA', { weekday: 'short', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }).replace(',', ' ·') : 'Date not set';
+  const when = date && !Number.isNaN(date.getTime()) ? date.toLocaleString('en-ZA', { weekday: 'short', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: SITE_TIME_ZONE }).replace(',', ' ·') : 'Date not set';
   return (
     <section className="mt-8 border-t border-bai-black/10 pt-6" aria-labelledby="ev-preview-heading">
       <h3 id="ev-preview-heading" className="font-semibold mb-1">Preview</h3>

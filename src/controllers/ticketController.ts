@@ -17,7 +17,7 @@ import {
 import type { User } from 'firebase/auth';
 import { db } from './lib/firebase';
 import { BAIEvent, CartItem, Ticket, TicketScan } from '../models/types';
-import { AppError, EVENT_OVER_AFTER_HOURS, eventHasEnded, toDate } from './lib/utils';
+import { AppError, EVENT_OVER_AFTER_HOURS, eventHasEnded, SITE_TIME_ZONE, toDate } from './lib/utils';
 import { MAX_PER_EVENT } from './cartController';
 import { CURRENCIES, DEFAULT_CURRENCY, currencyOf, sellsElsewhere, type CurrencyCode } from '../models/currency';
 import { LEGACY_TYPE_ID, hasTicketTypes, typeOf } from '../models/ticketTypes';
@@ -221,7 +221,7 @@ export const ticketController = {
       const event = eventSnap.exists() ? (eventSnap.data() as BAIEvent) : null;
       const eventName = event?.name || data.eventName || 'another event';
       const when = toDate(event?.date);
-      const whenText = when ? when.toLocaleString('en-ZA', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
+      const whenText = when ? when.toLocaleString('en-ZA', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: SITE_TIME_ZONE }) : '';
 
       if (!event) throw new ScanRefused('cancelled', `${eventName} is no longer listed.`);
       if (event.status === 'Cancelled') throw new ScanRefused('cancelled', `${eventName} was cancelled.`);
@@ -233,7 +233,7 @@ export const ticketController = {
       }
       if (data.status === 'SCANNED') {
         const at = toDate(data.scannedAt);
-        throw new ScanRefused('used', at ? `Already admitted at ${at.toLocaleString('en-ZA')}.` : 'This ticket has already been admitted.');
+        throw new ScanRefused('used', at ? `Already admitted at ${at.toLocaleString('en-ZA', { timeZone: SITE_TIME_ZONE })}.` : 'This ticket has already been admitted.');
       }
       if (data.status !== 'VALID') throw new ScanRefused('cancelled', 'This ticket has been cancelled.');
 
