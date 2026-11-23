@@ -6,7 +6,7 @@ import { contentImage } from '../../content/image';
 import { HeroSlideshow } from '../components/HeroSlideshow';
 import { useUpcomingEvents } from '../../content/upcoming';
 import { ZoomablePhoto } from '../components/ZoomablePhoto';
-import { formatCurrency, formatTime } from '../../controllers/lib/utils';
+import { formatCurrency, formatDate, formatTime } from '../../controllers/lib/utils';
 
 const LINKS = {
   traditions: ROUTES.TRADITIONS,
@@ -126,8 +126,8 @@ export default function Home() {
                 <li key={event.id} className="border-b border-bai-black/15">
                   <Link to={`${ROUTES.EVENTS}/${event.id}`} className="group grid grid-cols-[4.5rem_1fr_auto] sm:grid-cols-[6rem_1fr_auto] items-center gap-4 sm:gap-8 py-6">
                     <span className="text-center leading-none">
-                      <span className="num block font-serif font-semibold text-5xl sm:text-6xl text-bai-red">{date.toLocaleDateString('en-ZA', { day: 'numeric' })}</span>
-                      <span className="block font-semibold text-bai-ink-soft mt-1">{date.toLocaleDateString('en-ZA', { month: 'short' })}</span>
+                      <span className="num block font-serif font-semibold text-5xl sm:text-6xl text-bai-red">{formatDate(date, { day: 'numeric' })}</span>
+                      <span className="block font-semibold text-bai-ink-soft mt-1">{formatDate(date, { month: 'short' })}</span>
                     </span>
                     <span className="min-w-0">
                       <span className="block font-serif font-semibold text-2xl sm:text-3xl leading-tight truncate group-hover:text-bai-red-deep transition-colors">{event.name}</span>
