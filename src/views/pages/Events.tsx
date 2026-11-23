@@ -99,20 +99,20 @@ export default function Events() {
                   </div>
 
                   <div className="p-6 flex flex-col flex-grow">
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center justify-between gap-3 -my-2">
+                      <p className="num flex items-center gap-2 text-bai-red-deep font-semibold min-w-0">
+                        <Calendar size={16} className="shrink-0" aria-hidden="true" />
+                        <span>{when}{formatTime(event.date) ? ` · ${formatTime(event.date)}` : ''}</span>
+                      </p>
                       {/* Opens the event's own page (details, line-up, add to calendar, share). */}
                       <Link
                         to={`${ROUTES.EVENTS}/${event.id}`}
                         aria-label={`Details and sharing: ${event.name}`}
                         title="Details and sharing"
-                        className="shrink-0 w-[44px] h-[44px] rounded-full border border-bai-black/20 flex items-center justify-center text-bai-black hover:bg-bai-black hover:text-white hover:border-bai-black transition-colors"
+                        className="shrink-0 w-[44px] h-[44px] -mr-3 rounded-full flex items-center justify-center text-bai-black/70 hover:text-bai-red transition-colors"
                       >
-                        <Info size={18} aria-hidden="true" />
+                        <Info size={20} aria-hidden="true" />
                       </Link>
-                      <p className="num flex items-center gap-2 text-bai-red-deep font-semibold min-w-0">
-                        <Calendar size={16} className="shrink-0" aria-hidden="true" />
-                        <span>{when}{formatTime(event.date) ? ` · ${formatTime(event.date)}` : ''}</span>
-                      </p>
                     </div>
                     <h2 className="font-serif font-semibold text-3xl leading-tight mt-2 line-clamp-2 break-words">
                       <Link to={`${ROUTES.EVENTS}/${event.id}`} className="hover:text-bai-red transition-colors">{event.name}</Link>
