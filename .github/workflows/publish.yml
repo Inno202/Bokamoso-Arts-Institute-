@@ -52,7 +52,9 @@ jobs:
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          npx gh-pages -d dist \
+          # --nojekyll: the site is already built, so GitHub Pages serves the files as they are.
+          # Without it GitHub runs its own Jekyll step over them, which can fail and leave the
+          # previous version live (it did on 23 Nov).
+          npx gh-pages -d dist --nojekyll \
             -m "Publish from main (${GITHUB_SHA::7}, ${{ github.event_name }})" \
-            -u "github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>" \
             -r "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git"
