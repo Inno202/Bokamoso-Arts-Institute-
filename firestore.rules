@@ -515,6 +515,21 @@ service cloud.firestore {
       allow delete: if isSuperAdmin();
     }
 
+    // Version history of site content: a copy of each save, for looking back and restoring.
+    // Only content editors see it. A copy must be exactly what is live in that section right
+    // now, saved in the editor's own name as their profile has it; nobody can change or delete one.
+    match /content/{section}/versions/{versionId} {
+      allow get, list: if isContentEditor();
+      allow create: if isContentEditor()
+        && section in ['site', 'home', 'about', 'work', 'traditions']
+        && request.resource.data.keys().hasOnly(['data', 'savedAt', 'savedBy', 'savedByName'])
+        && request.resource.data.savedAt == request.time
+        && request.resource.data.savedBy == request.auth.uid
+        && request.resource.data.savedByName == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('displayName', '')
+        && request.resource.data.data == get(/databases/$(database)/documents/content/$(section)).data.data;
+      allow update, delete: if false;
+    }
+
     // Where the About and Our Work pages kept their content before the content
     // store existed. Still readable as a fallback, no longer writable.
     match /about/{docId} {

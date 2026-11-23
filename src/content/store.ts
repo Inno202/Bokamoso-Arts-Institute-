@@ -12,6 +12,7 @@ import { clean, validate, type Data, type Errors } from './fields';
 import { stable } from './stable';
 import { SECTIONS, pickSource, resolveSection, type ContentMap, type ContentSource, type SectionKey } from './sections';
 import { preferServer } from '../controllers/lib/preferServer';
+import { recordVersion } from './history';
 
 export const CONTENT_COLLECTION = 'content';
 /** Firestore refuses documents over 1 MB; stop a little before that with a clear message. */
@@ -151,6 +152,9 @@ export async function saveSection<K extends SectionKey>(key: K, draft: unknown, 
   // "saved" always means "this is what every visitor now gets".
   const live = await withTimeout(getDocFromServer(ref), notConfirmed);
   if (!live.exists() || stable(live.data().data) !== stable(data)) throw new AppError(notConfirmed);
+
+  // Keep a copy for the version history (exactly what the server holds). Never blocks the save.
+  await recordVersion(key, live.data().data as Data, uid);
 }
 
 const CONFIRM_TIMEOUT_MS = 20_000;
