@@ -133,7 +133,6 @@ const site: SectionDef<'site'> = {
       { network: 'youtube', url: 'https://youtube.com/@bokamosoartsinstitute?si=KQ55EgXECEq4iSDR' },
       { network: 'facebook', url: 'https://www.facebook.com/share/1G9FqBQFUC/' },
       { network: 'instagram', url: 'https://www.instagram.com/bokamoso_arts_institute?igsh=dG9sdTQzYjU5aWtx' },
-      { network: 'whatsapp', url: 'https://whatsapp.com/channel/0029VaRVyM3GufJ0VIXtp93n/145' },
     ],
     partners: [
       { name: 'Entsika Foundation' },
