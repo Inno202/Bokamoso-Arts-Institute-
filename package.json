@@ -6,8 +6,7 @@
   "scripts": {
     "dev": "tsx server.ts",
     "build": "vite build && vite build --ssr src/entry-server.tsx --outDir build/ssr && node scripts/prerender.mjs && esbuild server.ts --bundle --platform=node --target=node20 --outfile=build/server.cjs --external:express --external:vite",
-    "predeploy": "npm run build",
-    "deploy": "node scripts/keep-previous-assets.mjs && gh-pages -d dist",
+    "deploy": "echo \"Publishing happens on GitHub only: merge into main (or run Actions > Publish site). Nothing is published from this computer.\" && exit 1",
     "preview": "vite preview",
     "start": "node build/server.cjs",
     "clean": "rm -rf dist build",

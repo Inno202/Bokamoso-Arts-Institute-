@@ -101,7 +101,7 @@ const site: SectionDef<'site'> = {
   fields: [
     { kind: 'group', key: 'contact', label: 'Contact details', fields: [
       text('address', 'Address', 200, required),
-      { kind: 'tel', key: 'phone', label: 'Phone number', required: true },
+      { kind: 'tel', key: 'phone', label: 'Phone number', help: 'Leave empty to hide the phone number on the site.' },
       { kind: 'email', key: 'email', label: 'Email address', required: true },
     ] },
     { kind: 'image', key: 'eventsHeroImage', label: 'Photo at the top of the Events page', required: true, help: 'Best size: 1600 × 900, landscape. Keep the subject in the centre and the bottom-left calm (the page title sits there).' },

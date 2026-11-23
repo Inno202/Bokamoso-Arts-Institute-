@@ -509,3 +509,12 @@ describe('door scanning without signal', () => {
     expect(doorOffline.queue()).toEqual([]);
   });
 });
+
+describe('site contact details', () => {
+  it('can leave the phone number empty, and an empty phone is kept empty (not replaced by the old number)', () => {
+    const site = SECTIONS.site;
+    const saved = { ...site.defaults, contact: { ...(site.defaults as { contact: object }).contact, phone: '' } };
+    expect(validate(site.fields, saved)).toEqual({});
+    expect((resolveSection('site', saved) as { contact: { phone: string } }).contact.phone).toBe('');
+  });
+});

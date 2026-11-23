@@ -17,10 +17,16 @@ npm run dev        # http://localhost:3000
 npm run lint       # type check
 npm run test:rules # security-rule tests in the Firestore emulator (needs Java)
 npm run build      # static site in dist/
-npm run deploy     # publish dist/ to GitHub Pages
 ```
 
-`npm run deploy` also keeps the previous release's script files online (`scripts/keep-previous-assets.mjs`), so anyone with the old version still open can keep moving around the site. The offline helper (`public/sw.js`) always asks GitHub for the newest page instead of reusing the browser's 10-minute copy, so a new release shows on the next visit. If you change `public/sw.js`, raise its `VERSION` so old saved copies are cleared.
+### Publishing (one source, one way)
+
+- **`main` is the live website.** GitHub publishes it automatically (`.github/workflows/publish.yml`): within minutes of every change merged into `main`, and every hour so pages built in advance carry the latest content saved in the admin area. It can also be run by hand: GitHub > Actions > Publish site > Run workflow.
+- Changes are made on a working branch and merged into `main` through a pull request. Nothing is published from anyone's own computer: `npm run deploy` only prints this reminder.
+- **Content is not in git.** Page text, photos, team members and events live in the Firebase database and are edited in the admin area. A code change never overwrites them.
+
+
+Each publish also keeps the previous release's script files online (`scripts/keep-previous-assets.mjs`), so anyone with the old version still open can keep moving around the site. The offline helper (`public/sw.js`) always asks GitHub for the newest page instead of reusing the browser's 10-minute copy, so a new release shows on the next visit. If you change `public/sw.js`, raise its `VERSION` so old saved copies are cleared.
 
 ## Deploying the database rules (required)
 

@@ -107,10 +107,12 @@ export default function Footer() {
                   <MapPin size={18} className="text-bai-red-soft shrink-0 mt-0.5" aria-hidden="true" />
                   <span>{contact.address}</span>
                 </li>
-                <li className="flex items-center gap-3">
-                  <Phone size={18} className="text-bai-red-soft shrink-0" aria-hidden="true" />
-                  <a href={`tel:${contact.phone.replace(/[^+\d]/g, '')}`} className={footerLink}>{contact.phone}</a>
-                </li>
+                {contact.phone.trim() && (
+                  <li className="flex items-center gap-3">
+                    <Phone size={18} className="text-bai-red-soft shrink-0" aria-hidden="true" />
+                    <a href={`tel:${contact.phone.replace(/[^+\d]/g, '')}`} className={footerLink}>{contact.phone}</a>
+                  </li>
+                )}
                 <li className="flex items-center gap-3">
                   <Mail size={18} className="text-bai-red-soft shrink-0" aria-hidden="true" />
                   <a href={`mailto:${contact.email}`} className={`${footerLink} break-all`}>{contact.email}</a>
