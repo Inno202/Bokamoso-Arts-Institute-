@@ -58,10 +58,18 @@ export function friendlyError(err: unknown, fallback = 'Something went wrong. Pl
     'auth/network-request-failed': 'No connection. Check your internet and try again.',
     'auth/user-disabled': 'This account has been disabled. Contact the institute for help.',
     'auth/operation-not-allowed': 'This sign-in method is not switched on yet. Try signing in with Google.',
+    // App Check is enforced but this browser's check failed (or is not set up correctly in the console).
+    'auth/firebase-app-check-token-is-invalid': 'The site could not confirm this is a real browser. Reload the page and try again; if it keeps happening, the site\'s bot check needs attention.',
+    'auth/app-check-token-is-invalid': 'The site could not confirm this is a real browser. Reload the page and try again; if it keeps happening, the site\'s bot check needs attention.',
     'permission-denied': 'You do not have permission to do that.',
     'unavailable': 'No connection. Check your internet and try again.',
     'failed-precondition': 'That could not be completed right now. Please try again.',
   };
+  // The password policy in Firebase says exactly what is missing; pass that on in plain words.
+  if (code === 'auth/password-does-not-meet-requirements') {
+    const list = /\[([^\]]+)\]/.exec((err as Error)?.message || '')?.[1];
+    return list ? `Choose a stronger password. ${list.split(',').map(x => x.trim().replace(/\.$/, '')).join('. ')}.` : 'Choose a stronger password: at least 8 characters with a mix of letters and numbers.';
+  }
   if (map[code]) return map[code];
   if (err instanceof AppError) return err.message;
   return fallback;

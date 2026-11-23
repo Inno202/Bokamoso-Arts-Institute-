@@ -444,3 +444,12 @@ describe('fresh data before the copy saved on this device', () => {
     vi.useRealTimers();
   });
 });
+
+describe('sign-in error messages', () => {
+  it('explains a password-policy refusal and a failed bot check in plain words', async () => {
+    const { friendlyError } = await import('../src/controllers/lib/utils');
+    const policy = Object.assign(new Error('Firebase: Missing password requirements: [Password must contain an upper case character, Password must contain a numeric character] (auth/password-does-not-meet-requirements).'), { code: 'auth/password-does-not-meet-requirements' });
+    expect(friendlyError(policy)).toBe('Choose a stronger password. Password must contain an upper case character. Password must contain a numeric character.');
+    expect(friendlyError({ code: 'auth/firebase-app-check-token-is-invalid' })).toMatch(/real browser/);
+  });
+});
