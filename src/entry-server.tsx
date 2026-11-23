@@ -10,6 +10,7 @@ import { StaticRouter } from 'react-router';
 import App, { PRERENDERED_ROUTES } from './App';
 import { seedContent } from './content/store';
 import { pickUpcoming, seedUpcoming } from './content/upcoming';
+import { seedEvent } from './content/eventSeed';
 import { resolveSection, SECTION_KEYS, type SectionKey } from './content/sections';
 
 export { PRERENDERED_ROUTES };
@@ -27,6 +28,11 @@ export function prepareUpcoming(events: unknown[]) {
   const list = pickUpcoming(events as never);
   seedUpcoming(list);
   return list;
+}
+
+/** Loads one event so its page renders complete (title, poster, details) at build time. */
+export function prepareEvent(event: unknown) {
+  seedEvent(event);
 }
 
 export async function render(url: string, basename: string): Promise<string> {

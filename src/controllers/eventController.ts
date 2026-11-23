@@ -22,7 +22,7 @@ import { preferServer } from './lib/preferServer';
 const COLLECTION = 'events';
 const MAX_LISTED = 100;
 
-export type EventInput = Pick<BAIEvent, 'name' | 'venue' | 'city' | 'price' | 'capacity' | 'description' | 'status' | 'createdBy' | 'currency' | 'ticketUrl' | 'ticketProvider' | 'ticketTypes' | 'typeSold'> & {
+export type EventInput = Pick<BAIEvent, 'name' | 'venue' | 'city' | 'price' | 'capacity' | 'description' | 'status' | 'createdBy' | 'currency' | 'ticketUrl' | 'ticketProvider' | 'ticketTypes' | 'typeSold' | 'lineup'> & {
   date: Date;
   bannerImageUrl?: string;
   ticketImageUrl?: string;
@@ -58,6 +58,16 @@ export const eventController = {
       callback(events);
     }), (error) => {
       logger.error('Could not load events', error);
+      onError?.(error);
+    });
+  },
+
+  /** One event, live (seats and prices update as they change). Calls back with null if it does not exist. */
+  subscribeToEvent(eventId: string, callback: (event: BAIEvent | null) => void, onError?: (error: unknown) => void) {
+    return onSnapshot(doc(db, COLLECTION, eventId), { includeMetadataChanges: true }, preferServer((snap) => {
+      callback(snap.exists() ? ({ id: snap.id, ...snap.data({ serverTimestamps: 'estimate' }) } as BAIEvent) : null);
+    }), (error) => {
+      logger.error('Could not load the event', error);
       onError?.(error);
     });
   },

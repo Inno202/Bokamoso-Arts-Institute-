@@ -51,6 +51,11 @@ service cloud.firestore {
       return request.auth.token.get('email', '');
     }
 
+    // A ticket that its holder has offered to this person's email address.
+    function isTransferTarget(data) {
+      return data.get('transferTo', '') != '' && tokenEmail() != '' && data.get('transferTo', '') == tokenEmail().lower();
+    }
+
     // True only if the person typed their password (or used Google) within the last
     // 8 hours. A stolen, long-lived session cannot renew this, so the most damaging
     // actions (handing out roles, removing accounts) need a fresh sign-in.
@@ -133,7 +138,9 @@ service cloud.firestore {
         && data.get('ticketProvider', '') is string && data.get('ticketProvider', '').size() <= 60
         // Optional ticket types (General, VIP, Early bird...) under the keys t1..t6.
         && (data.get('ticketTypes', null) == null || validTicketTypes(data.ticketTypes))
-        && data.get('typeSold', {}) is map;
+        && data.get('typeSold', {}) is map
+        // Optional line-up of performers shown on the event page.
+        && data.get('lineup', []) is list && data.get('lineup', []).size() <= 20;
     }
 
     function validTicketType(types, key) {
@@ -292,10 +299,13 @@ service cloud.firestore {
 
     match /tickets/{ticketId} {
       allow get: if isSignedIn()
-        && ((resource != null && resource.data.buyerId == request.auth.uid) || isStaff());
-      // Buyers can only query their own tickets; admins can report on all of them.
+        && ((resource != null && (resource.data.buyerId == request.auth.uid || isTransferTarget(resource.data))) || isStaff());
+      // Buyers can only query their own tickets (and tickets being passed to them);
+      // admins can report on all of them.
       allow list: if isSignedIn()
-        && (resource.data.buyerId == request.auth.uid || isAnyAdmin());
+        && (resource.data.buyerId == request.auth.uid || isTransferTarget(resource.data) || isAnyAdmin()
+          // Door staff keep tonight's ticket list on the scanner phone for checking without signal.
+          || isScanner());
 
       // A ticket exists only as one of the references listed in the buyer's order,
       // copying that order's event, price and buyer. The order rule has already
@@ -331,9 +341,55 @@ service cloud.firestore {
           && resource.data.status in ['VALID', 'CANCELLED']
           && request.resource.data.status in ['VALID', 'CANCELLED']
           && request.resource.data.updatedAt == request.time
-          && isEventManager());
+          && isEventManager())
+        // The holder offers an unused ticket to a friend's email address (or takes the offer back),
+        // before the event starts.
+        || (resource != null
+          && resource.data.buyerId == request.auth.uid
+          && resource.data.status == 'VALID'
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['transferTo', 'transferAt'])
+          && request.resource.data.transferTo is string
+          && request.resource.data.transferTo.size() <= 200
+          && request.resource.data.transferTo == request.resource.data.transferTo.lower()
+          && (request.resource.data.transferTo == ''
+            || (request.resource.data.transferTo.matches('^[^@\\s]+@[^@\\s]+[.][^@\\s]+$')
+              && request.resource.data.transferTo != tokenEmail().lower()))
+          && request.resource.data.transferAt == request.time
+          && request.time < get(eventPath(resource.data.eventId)).data.date)
+        // The friend accepts: the ticket becomes theirs. Their email must be confirmed (Google
+        // sign-ins are), so nobody can claim it by opening an account with someone else's address.
+        || (resource != null
+          && isTransferTarget(resource.data)
+          && resource.data.status == 'VALID'
+          && request.auth.token.get('email_verified', false) == true
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['buyerId', 'buyerEmail', 'transferTo', 'transferAt', 'transferredFrom'])
+          && request.resource.data.buyerId == request.auth.uid
+          && request.resource.data.buyerEmail == tokenEmail()
+          && request.resource.data.transferTo == ''
+          && request.resource.data.transferredFrom == resource.data.buyerId
+          && request.resource.data.transferAt == request.time);
 
       allow delete: if isSuperAdmin();
+    }
+
+    // ---------- waiting lists for sold-out shows (one entry per person per event) ----------
+
+    match /waitlist/{entryId} {
+      // People see their own entry (and may check for one that does not exist yet);
+      // event staff see the whole list for contacting people when seats free up.
+      allow get: if isSignedIn() && (resource == null || resource.data.uid == request.auth.uid || isEventManager());
+      allow list: if isEventManager();
+      allow create: if isSignedIn()
+        && request.resource.data.keys().hasOnly(['eventId', 'uid', 'email', 'name', 'createdAt'])
+        && request.resource.data.eventId is string
+        && entryId == request.resource.data.eventId + '_' + request.auth.uid
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.email == tokenEmail()
+        && request.resource.data.name is string && request.resource.data.name.size() <= 100
+        && request.resource.data.createdAt == request.time
+        && exists(eventPath(request.resource.data.eventId));
+      allow update: if false;
+      allow delete: if isSignedIn() && (resource.data.uid == request.auth.uid || isEventManager());
     }
 
     // ---------- ticket scans (one per ticket, keyed by ticket id) ----------
@@ -373,6 +429,24 @@ service cloud.firestore {
     // ---------- staff activity log ----------
     // Append-only: staff write entries in their own name and current role; nobody
     // edits or deletes them; only super admins read them.
+    // Site errors: anyone may add a small, well-formed report (sign-in failures happen
+    // before sign-in), only in their own name or none; only super admins can read them;
+    // nobody can change or delete one.
+    match /error_log/{entryId} {
+      allow get, list: if isSuperAdmin();
+      allow create: if request.resource.data.keys().hasOnly(['at', 'kind', 'code', 'message', 'page', 'browser', 'release', 'uid'])
+        && request.resource.data.at == request.time
+        && request.resource.data.kind in ['page', 'signin', 'booking', 'scan', 'botcheck']
+        && request.resource.data.code is string && request.resource.data.code.size() <= 80
+        && request.resource.data.message is string && request.resource.data.message.size() <= 300
+        && request.resource.data.page is string && request.resource.data.page.size() <= 200
+        && request.resource.data.browser is string && request.resource.data.browser.size() <= 80
+        && request.resource.data.release is string && request.resource.data.release.size() <= 40
+        && request.resource.data.uid is string
+        && (request.resource.data.uid == '' || (isSignedIn() && request.resource.data.uid == request.auth.uid));
+      allow update, delete: if false;
+    }
+
     match /activity_log/{entryId} {
       allow get, list: if isSuperAdmin();
       allow create: if isStaff()

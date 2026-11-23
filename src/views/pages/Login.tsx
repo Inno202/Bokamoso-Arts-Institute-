@@ -7,6 +7,7 @@ import { authController } from '../../controllers/authController';
 import { db } from '../../controllers/lib/firebase';
 import { friendlyError } from '../../controllers/lib/utils';
 import { GoogleMark } from '../components/GoogleMark';
+import { errorLog, isSignInMistake } from '../../controllers/errorLogController';
 
 const input = 'field pl-12';
 
@@ -45,6 +46,7 @@ export default function Login() {
       const user = await action();
       await redirectAfterLogin(user.uid);
     } catch (err) {
+      if (!isSignInMistake(err)) errorLog.report('signin', err);
       setError(friendlyError(err, 'Sign-in failed. Please try again.'));
     } finally {
       setLoading(false);

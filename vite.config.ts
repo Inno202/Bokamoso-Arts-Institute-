@@ -2,7 +2,13 @@ import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 import { defineConfig, type Plugin } from 'vite';
+import { execSync } from 'node:child_process';
 import firebaseConfig from './firebase-applet-config.json';
+
+// Which release a page came from, so an error report says whether it is from an old copy.
+const RELEASE = (() => {
+  try { return execSync('git rev-parse --short HEAD', { stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim(); } catch { return 'dev'; }
+})();
 
 // Content-Security-Policy for the static production build. It limits where scripts,
 // frames and network calls may go, which blunts cross-site scripting. Dev is left
@@ -36,6 +42,7 @@ const cspPlugin = (mode: string): Plugin => ({
 
 export default defineConfig(({ mode }) => ({
   base: '/Bokamoso-Arts-Institute-/',
+  define: { __RELEASE__: JSON.stringify(RELEASE) },
   plugins: [react(), tailwindcss(), cspPlugin(mode)],
   resolve: {
     alias: {

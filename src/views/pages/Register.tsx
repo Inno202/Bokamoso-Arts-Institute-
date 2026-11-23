@@ -4,6 +4,7 @@ import { Eye, EyeOff, UserPlus, Mail, Lock, User } from 'lucide-react';
 import { ROUTES, safeReturnPath } from '../../controllers/navigation';
 import { authController } from '../../controllers/authController';
 import { friendlyError } from '../../controllers/lib/utils';
+import { errorLog, isSignInMistake } from '../../controllers/errorLogController';
 
 const MIN_PASSWORD = 8;
 const input = 'field pl-12';
@@ -35,6 +36,7 @@ export default function Register() {
       // Creating an account does not sign you in: sign in next, then carry on to where you were going.
       navigate(ROUTES.LOGIN, { replace: true, state: { from: safeReturnPath(location.state) || undefined, registered: email.trim() } });
     } catch (err) {
+      if (!isSignInMistake(err)) errorLog.report('signin', err);
       setError(friendlyError(err, 'Your account could not be created. Please try again.'));
     } finally {
       setLoading(false);

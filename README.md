@@ -169,6 +169,14 @@ Each event has its own currency (rand, pula, emalangeni, maloti, Namibian dollar
 
 When a show is sold by someone else, such as MojaTicket in Eswatini or the venue's own box office, fill in "Sold somewhere else?" on the event. The Events page then shows a "Buy tickets on …" link to that seller instead of the bag button, and the rules refuse any on-site order for that event. Seat counts for those shows are kept by the seller.
 
+## Event pages, waiting lists, transfers and the door without signal
+
+- **Event pages:** every event has its own address (`/events/<id>`) with Share and Add to calendar. Events on sale are pre-rendered with their own title and poster, so links shared on WhatsApp or Facebook show a preview. Publish again after adding an event to give it its preview; the page works straight away either way.
+- **Waiting list:** a sold-out event offers "Join the waiting list". Staff see the list (with "Copy all emails") in the event's report and contact people themselves; the site sends no emails yet.
+- **Transfer to a friend:** on an unused ticket, before the event. The friend accepts it in My tickets, signed in with that email address, once that address is confirmed.
+- **Door without signal:** the scanner keeps the chosen event's ticket list on the phone while online, checks against it when the signal drops, and records those admissions as soon as the signal returns. Two phones that are both offline cannot see each other's admissions; if both let the same ticket in, staff are told when the second phone reconnects.
+- **Site errors:** super admins see problems visitors ran into under Activity, Site errors, with a live bot-check test.
+
 ## Before taking real payments
 
 Checkout currently issues tickets **without charging anyone** and tells the buyer so (`PAYMENTS_LIVE` in `src/config.ts`). A browser-only site cannot take payments safely: the payment provider must confirm payment to a server, and that server must be the only thing allowed to create tickets. To go live:

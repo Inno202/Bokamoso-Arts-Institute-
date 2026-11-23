@@ -32,6 +32,7 @@ const AdminUsers = lazy(() => import('./views/admin/AdminUsers'));
 const AdminActivity = lazy(() => import('./views/admin/AdminActivity'));
 const AdminEventReport = lazy(() => import('./views/admin/AdminEventReport'));
 const Legal = lazy(() => import('./views/pages/Legal'));
+const EventPage = lazy(() => import('./views/pages/EventPage'));
 
 /** The routes that are pre-rendered to HTML at build time (public, same for everyone). */
 export const PRERENDERED_ROUTES = [
@@ -65,6 +66,7 @@ export default function App({ router: Router }: { router: (props: { children: Re
                     <Route path={ROUTES.ABOUT} element={<About />} />
                     <Route path={ROUTES.PROGRAMS} element={<Programs />} />
                     <Route path={ROUTES.EVENTS} element={<Events />} />
+                    <Route path={`${ROUTES.EVENTS}/:eventId`} element={<EventPage />} />
                     <Route path={ROUTES.TRADITIONS} element={<Traditions />} />
                     <Route path={ROUTES.LOGIN} element={<Login />} />
                     <Route path={ROUTES.REGISTER} element={<Register />} />

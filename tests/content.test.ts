@@ -453,3 +453,59 @@ describe('sign-in error messages', () => {
     expect(friendlyError({ code: 'auth/firebase-app-check-token-is-invalid' })).toMatch(/real browser/);
   });
 });
+
+describe('site error reports', () => {
+  it('keep messages short and free of emails and long ids, and name only the browser family', async () => {
+    const { cleanMessage, browserFamily } = await import('../src/controllers/errorLogController');
+    expect(cleanMessage('Failed for thandi.m@example.co.za with token AbCdEfGhIjKlMnOpQrStUvWxYz0123456789')).toBe('Failed for [email] with token [id]');
+    expect(cleanMessage('word '.repeat(100))).toHaveLength(300);
+    expect(browserFamily('Mozilla/5.0 (Linux; Android 14; SM-A546E) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0 Mobile Safari/537.36')).toBe('Chrome on Android');
+    expect(browserFamily('Mozilla/5.0 (iPhone; CPU iPhone OS 18_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.1 Mobile/15E148 Safari/604.1')).toBe('Safari on iPhone');
+  });
+});
+
+describe('add to calendar', () => {
+  it('builds a Google Calendar link and a valid calendar file lasting three hours', async () => {
+    const { googleCalendarUrl, icsFile } = await import('../src/services/calendar');
+    const ev = { id: 'e1', name: 'Lost in Music, Eswatini; Night', date: '2026-12-16T11:34:00Z', venue: 'Esibayeni Lodge', city: 'Matsapha', url: 'https://example.org/events/e1' };
+    const g = new URL(googleCalendarUrl(ev));
+    expect(g.searchParams.get('dates')).toBe('20261216T113400Z/20261216T143400Z');
+    expect(g.searchParams.get('location')).toBe('Esibayeni Lodge, Matsapha');
+    const ics = icsFile(ev);
+    expect(ics).toContain('DTSTART:20261216T113400Z');
+    expect(ics).toContain('DTEND:20261216T143400Z');
+    expect(ics).toContain('SUMMARY:Lost in Music\\, Eswatini\\; Night');
+    expect(ics.split('\r\n').every(line => line.length <= 75)).toBe(true);
+    expect(googleCalendarUrl({ ...ev, date: null })).toBe('');
+  });
+});
+
+describe('door scanning without signal', () => {
+  it('admits a valid ticket once, refuses used, cancelled and unknown ones, and records them later', async () => {
+    const store = new Map<string, string>();
+    const fake = { getItem: (k: string) => store.get(k) ?? null, setItem: (k: string, v: string) => { store.set(k, v); }, removeItem: (k: string) => { store.delete(k); }, key: () => null, clear: () => store.clear(), get length() { return store.size; } };
+    Object.defineProperty(globalThis, 'localStorage', { value: new Proxy(fake, { ownKeys: () => [...store.keys()], getOwnPropertyDescriptor: () => ({ enumerable: true, configurable: true }) }), configurable: true });
+    const { doorOffline } = await import('../src/services/doorOffline');
+    const t = (id: string, status: 'VALID' | 'SCANNED' | 'CANCELLED') => ({ id, status, ticketType: 'General', buyerEmail: `${id}@x.com` }) as never;
+    doorOffline.saveList({ id: 'e1', name: 'Gala', date: new Date(Date.now() + 3600e3) }, [t('BAI-AAA', 'VALID'), t('BAI-BBB', 'SCANNED'), t('BAI-CCC', 'CANCELLED'), t('BAI-DDD', 'VALID')]);
+    expect(doorOffline.check('BAI-AAA', 'e1').kind).toBe('admit');
+    expect(doorOffline.check('BAI-AAA', 'e1')).toMatchObject({ kind: 'refuse', reason: 'used' });
+    expect(doorOffline.check('BAI-BBB', 'e1')).toMatchObject({ kind: 'refuse', reason: 'used' });
+    expect(doorOffline.check('BAI-CCC', 'e1')).toMatchObject({ kind: 'refuse', reason: 'cancelled' });
+    expect(doorOffline.check('BAI-ZZZ', 'e1')).toMatchObject({ kind: 'refuse', reason: 'unknown' });
+    expect(doorOffline.check('BAI-AAA', 'other')).toMatchObject({ kind: 'refuse', reason: 'no-list' });
+    expect(doorOffline.check('BAI-DDD', 'e1').kind).toBe('admit');
+    // A fresh copy from the server must not forget admissions still waiting to be recorded.
+    doorOffline.saveList({ id: 'e1', name: 'Gala', date: new Date(Date.now() + 3600e3) }, [t('BAI-AAA', 'VALID'), t('BAI-DDD', 'VALID')]);
+    expect(doorOffline.check('BAI-AAA', 'e1')).toMatchObject({ kind: 'refuse', reason: 'used' });
+    // Back online: AAA records; DDD was already let in by another phone.
+    const recorded: string[] = [];
+    const conflicts = await doorOffline.sync(async (id) => {
+      if (id === 'BAI-DDD') throw Object.assign(new Error('Already admitted at 18:02.'), { kind: 'used' });
+      recorded.push(id);
+    });
+    expect(recorded).toEqual(['BAI-AAA']);
+    expect(conflicts.map(c => c.ticketId)).toEqual(['BAI-DDD']);
+    expect(doorOffline.queue()).toEqual([]);
+  });
+});

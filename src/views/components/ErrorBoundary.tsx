@@ -1,5 +1,6 @@
 import { Component, ErrorInfo, ReactNode } from 'react';
 import { logger } from '../../services/loggerService';
+import { errorLog } from '../../controllers/errorLogController';
 
 interface Props {
   children?: ReactNode;
@@ -25,6 +26,8 @@ export class ErrorBoundary extends Component<Props, State> {
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     logger.error('Uncaught component error:', error, errorInfo);
+    // A missing file after a release reloads by itself below; anything else is a real fault.
+    if (!isChunkLoadError(error)) errorLog.report('page', error);
     // After a new deploy, an open tab may ask for a page file that no longer exists.
     // Reload once to pick up the new version; the flag prevents a reload loop.
     if (isChunkLoadError(error)) {

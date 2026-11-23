@@ -16,6 +16,8 @@ export interface EventForm {
   /** Optional: where tickets are sold instead of this site. */
   ticketUrl: string;
   ticketProvider: string;
+  /** Optional line-up: one performer or act per line. */
+  lineup?: string;
   /** Ticket types being edited. When present they replace the single price and capacity. */
   types?: FormTicketType[];
 }
@@ -42,7 +44,10 @@ function seatsProblem(raw: string, sold: number): string | undefined {
 }
 
 export const EVENT_STATUSES = ['On Sale', 'Draft', 'Closed', 'Cancelled'] as const;
-export const EVENT_LIMITS = { name: 200, venue: 200, city: 100, description: 5000, price: 100000, capacity: 1000000, ticketUrl: 500, ticketProvider: 60 };
+export const EVENT_LIMITS = { name: 200, venue: 200, city: 100, description: 5000, price: 100000, capacity: 1000000, ticketUrl: 500, ticketProvider: 60, lineupNames: 20, lineupName: 80 };
+
+/** The line-up typed one per line, as the saved list (blank lines dropped). */
+export const lineupFrom = (text = '') => text.split('\n').map(s => s.trim()).filter(Boolean);
 
 /** Mirrors the event checks in firestore.rules, with messages staff can act on. */
 export function validateEvent(form: EventForm, ticketsSold = 0): Errors {
@@ -99,5 +104,9 @@ export function validateEvent(form: EventForm, ticketsSold = 0): Errors {
   }
   if (provider.length > EVENT_LIMITS.ticketProvider) errors.ticketProvider = `Keep the name to ${EVENT_LIMITS.ticketProvider} characters or fewer.`;
   if (provider && !url) errors.ticketUrl = 'Add the link where those tickets are sold, or clear the seller\'s name.';
+
+  const lineup = lineupFrom(form.lineup);
+  if (lineup.length > EVENT_LIMITS.lineupNames) errors.lineup = `List up to ${EVENT_LIMITS.lineupNames} names.`;
+  else if (lineup.some(n => n.length > EVENT_LIMITS.lineupName)) errors.lineup = `Keep each name to ${EVENT_LIMITS.lineupName} characters or fewer.`;
   return errors;
 }

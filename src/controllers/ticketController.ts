@@ -257,6 +257,36 @@ export const ticketController = {
     return snap.docs.map(d => ({ id: d.id, ...d.data() }) as Ticket).sort(byNewest);
   },
 
+  /** Offers an unused ticket to a friend's email address; they accept it when they sign in. */
+  async offerTransfer(ticketId: string, email: string) {
+    const to = email.trim().toLowerCase();
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(to)) throw new AppError('That email address does not look right.');
+    await updateDoc(doc(db, TICKETS, ticketId), { transferTo: to, transferAt: serverTimestamp() });
+  },
+
+  async cancelTransfer(ticketId: string) {
+    await updateDoc(doc(db, TICKETS, ticketId), { transferTo: '', transferAt: serverTimestamp() });
+  },
+
+  /** Tickets friends have offered to this email address, live. */
+  subscribeToIncomingTransfers(email: string, callback: (tickets: Ticket[]) => void) {
+    const q = query(collection(db, TICKETS), where('transferTo', '==', email.trim().toLowerCase()));
+    return onSnapshot(q, (snapshot) => {
+      callback(snapshot.docs.map(d => ({ id: d.id, ...d.data() }) as Ticket));
+    }, (error) => logger.error('Could not load tickets offered to you', error));
+  },
+
+  /** The friend accepts: the ticket moves to their account. */
+  async acceptTransfer(ticket: Ticket, user: User) {
+    await updateDoc(doc(db, TICKETS, ticket.id), {
+      buyerId: user.uid,
+      buyerEmail: user.email || '',
+      transferTo: '',
+      transferredFrom: ticket.buyerId,
+      transferAt: serverTimestamp(),
+    });
+  },
+
   /** Cancels a ticket that has not been used, or restores one that was cancelled. */
   async setTicketStatus(ticketId: string, status: 'VALID' | 'CANCELLED') {
     await updateDoc(doc(db, TICKETS, ticketId), { status, updatedAt: serverTimestamp() });

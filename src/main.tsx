@@ -4,7 +4,9 @@ import { BrowserRouter } from 'react-router-dom';
 import App from './App.tsx';
 import { seedContent, SEED_ELEMENT_ID } from './content/store';
 import { seedUpcoming } from './content/upcoming';
+import { seedEvent } from './content/eventSeed';
 import './index.css';
+import { checkBotCheck, errorLog } from './controllers/errorLogController';
 
 const basename = import.meta.env.BASE_URL.replace(/\/$/, '');
 
@@ -46,10 +48,33 @@ function registerOfflineCopy() {
   });
 }
 
+// Problems no screen caught (a failed background task, a script error) go to the error log.
+// Noise from browser extensions, other sites' scripts and resizing is ignored.
+function reportUncaught() {
+  const ignore = (text: string, file = '') => /ResizeObserver|Script error|extension:\/\/|Load failed|NetworkError|AbortError/i.test(text) || (file !== '' && !file.startsWith(location.origin));
+  window.addEventListener('error', (e) => {
+    if (!ignore(String(e.message || ''), e.filename || '')) errorLog.report('page', e.error || { name: 'Error', message: e.message });
+  });
+  window.addEventListener('unhandledrejection', (e) => {
+    const r = e.reason as { message?: string; code?: string } | undefined;
+    const text = String(r?.message || r || '');
+    if (!ignore(text) && !/dynamically imported module|Importing a module script/i.test(text)) errorLog.report('page', r || { name: 'Error', message: text });
+  });
+  // Is the bot check passing on this device? If not, record Firebase's reason once per visit.
+  window.addEventListener('load', () => {
+    setTimeout(() => {
+      void checkBotCheck().then(status => {
+        if (status.state === 'failing') errorLog.report('botcheck', { code: 'appcheck', message: status.reason });
+      });
+    }, 4000);
+  });
+}
+
 if (framed) {
   document.body.textContent = 'For your security, Bokamoso Arts Institute does not open inside another website. Open it in its own tab.';
 } else {
   registerOfflineCopy();
+  reportUncaught();
   const root = document.getElementById('root')!;
   // Pages pre-rendered at build time carry the content they were built with;
   // start from exactly that so the first render matches the HTML, then go live.
@@ -59,6 +84,7 @@ if (framed) {
       const parsed = JSON.parse(seed);
       seedContent(parsed);
       seedUpcoming(parsed.upcomingEvents);
+      if (parsed.event) seedEvent(parsed.event);
     } catch { /* fall back to built-in defaults */ }
   }
   // Hydrate only when this HTML was pre-rendered for this very address.

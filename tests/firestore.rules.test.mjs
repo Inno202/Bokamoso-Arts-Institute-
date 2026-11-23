@@ -520,6 +520,92 @@ test('only super admins read the activity log, and nobody edits or deletes it', 
   await assertFails(deleteDoc(doc(as('root'), 'activity_log', id)));
 });
 
+// ---------- passing a ticket to a friend ----------
+
+const future = () => Timestamp.fromMillis(Date.now() + 7 * 24 * 3600e3);
+const friend = (verified = true) => env.authenticatedContext('bob', { email: 'Bob@Example.com', auth_time: nowSeconds() - 60, email_verified: verified }).firestore();
+const T = 'tickets/BAI-EXISTING2345';
+
+test('a holder offers an unused ticket to a friend\'s email, and can take it back', async () => {
+  await env.withSecurityRulesDisabled(ctx => updateDoc(doc(ctx.firestore(), 'events/e1'), { date: future() }));
+  await assertSucceeds(updateDoc(doc(as('alice'), T), { transferTo: 'bob@example.com', transferAt: serverTimestamp() }));
+  await assertSucceeds(updateDoc(doc(as('alice'), T), { transferTo: '', transferAt: serverTimestamp() }));
+  await assertFails(updateDoc(doc(as('alice'), T), { transferTo: 'alice@example.com', transferAt: serverTimestamp() }), 'to themselves');
+  await assertFails(updateDoc(doc(as('alice'), T), { transferTo: 'Bob@Example.com', transferAt: serverTimestamp() }), 'not lower case');
+  await assertFails(updateDoc(doc(as('alice'), T), { transferTo: 'not-an-email', transferAt: serverTimestamp() }), 'not an email');
+  await assertFails(updateDoc(doc(as('mallory'), T), { transferTo: 'mallory@example.com', transferAt: serverTimestamp() }), 'not the holder');
+  await assertFails(updateDoc(doc(as('alice'), T), { transferTo: 'bob@example.com', transferAt: serverTimestamp(), price: 0 }), 'changing anything else');
+});
+
+test('no transfers once the event has started, or for a used ticket', async () => {
+  await assertFails(updateDoc(doc(as('alice'), T), { transferTo: 'bob@example.com', transferAt: serverTimestamp() }), 'event started');
+  await env.withSecurityRulesDisabled(ctx => Promise.all([
+    updateDoc(doc(ctx.firestore(), 'events/e1'), { date: future() }),
+    updateDoc(doc(ctx.firestore(), T), { status: 'SCANNED' }),
+  ]));
+  await assertFails(updateDoc(doc(as('alice'), T), { transferTo: 'bob@example.com', transferAt: serverTimestamp() }), 'already used');
+});
+
+test('only the friend, with a confirmed email, can see and accept the ticket', async () => {
+  await env.withSecurityRulesDisabled(ctx => updateDoc(doc(ctx.firestore(), T), { transferTo: 'bob@example.com' }));
+  const accept = (db, uid = 'bob', email = 'Bob@Example.com', extra = {}) =>
+    updateDoc(doc(db, T), { buyerId: uid, buyerEmail: email, transferTo: '', transferredFrom: 'alice', transferAt: serverTimestamp(), ...extra });
+  await assertSucceeds(getDoc(doc(friend(), T)));
+  await assertSucceeds(getDocs(query(collection(friend(), 'tickets'), where('transferTo', '==', 'bob@example.com'))));
+  await assertFails(getDoc(doc(as('mallory'), T)), 'a stranger cannot read it');
+  await assertFails(accept(friend(false)), 'email not confirmed');
+  await assertFails(accept(as('mallory'), 'mallory', 'mallory@example.com'), 'a stranger cannot accept');
+  await assertFails(accept(friend(), 'alice'), 'must become the friend\'s');
+  await assertFails(accept(friend(), 'bob', 'Bob@Example.com', { status: 'VALID', price: 0 }), 'changing the price');
+  await assertSucceeds(accept(friend()));
+  await assertFails(getDoc(doc(as('alice'), T)), 'the old holder no longer sees it');
+  await assertSucceeds(getDoc(doc(friend(), T)));
+});
+
+// ---------- waiting lists ----------
+
+const waiting = (uid, extra = {}) => ({ eventId: 'e1', uid, email: `${uid}@example.com`, name: 'Alice', createdAt: serverTimestamp(), ...extra });
+
+test('people join and leave a waiting list only for themselves; staff see the list', async () => {
+  await assertSucceeds(getDoc(doc(as('alice'), 'waitlist/e1_alice')));
+  await assertSucceeds(setDoc(doc(as('alice'), 'waitlist/e1_alice'), waiting('alice')));
+  await assertFails(setDoc(doc(as('alice'), 'waitlist/e1_bob'), waiting('bob')), 'for someone else');
+  await assertFails(setDoc(doc(as('alice'), 'waitlist/e1_alice'), waiting('alice', { email: 'other@example.com' })), 'with another email');
+  await assertFails(setDoc(doc(as('alice'), 'waitlist/nope_alice'), waiting('alice', { eventId: 'nope' })), 'event that does not exist');
+  await assertFails(getDoc(doc(as('mallory'), 'waitlist/e1_alice')), 'others cannot read it');
+  await assertFails(getDocs(collection(as('alice'), 'waitlist')), 'people cannot list everyone');
+  await assertSucceeds(getDocs(query(collection(as('pro'), 'waitlist'), where('eventId', '==', 'e1'))));
+  await assertSucceeds(deleteDoc(doc(as('alice'), 'waitlist/e1_alice')));
+});
+
+// ---------- site error log ----------
+
+const problem = (uid = '', extra = {}) => ({
+  at: serverTimestamp(), kind: 'signin', code: 'auth/internal-error', message: 'Something failed', page: '/login',
+  browser: 'Chrome on Android', release: 'abc1234', uid, ...extra,
+});
+
+test('anyone can report a small problem, only in their own name or none', async () => {
+  await assertSucceeds(addDoc(collection(guest(), 'error_log'), problem()));
+  await assertSucceeds(addDoc(collection(as('alice'), 'error_log'), problem('alice')));
+  await assertFails(addDoc(collection(guest(), 'error_log'), problem('alice')), 'a visitor naming an account');
+  await assertFails(addDoc(collection(as('alice'), 'error_log'), problem('bob')), 'in someone else\'s name');
+  await assertFails(addDoc(collection(guest(), 'error_log'), problem('', { kind: 'made-up' })), 'unknown kind');
+  await assertFails(addDoc(collection(guest(), 'error_log'), problem('', { message: 'x'.repeat(301) })), 'too long');
+  await assertFails(addDoc(collection(guest(), 'error_log'), problem('', { at: Timestamp.fromMillis(0) })), 'back-dated');
+  await assertFails(addDoc(collection(guest(), 'error_log'), problem('', { email: 'a@b.c' })), 'extra fields');
+});
+
+test('only super admins read the error log, and nobody edits or deletes it', async () => {
+  let id;
+  await env.withSecurityRulesDisabled(async ctx => { id = (await addDoc(collection(ctx.firestore(), 'error_log'), { ...problem(), at: Timestamp.now() })).id; });
+  await assertSucceeds(getDocs(collection(as('root'), 'error_log')));
+  await assertFails(getDocs(collection(as('ceo'), 'error_log')));
+  await assertFails(getDocs(collection(guest(), 'error_log')));
+  await assertFails(updateDoc(doc(as('root'), 'error_log', id), { message: 'changed' }));
+  await assertFails(deleteDoc(doc(as('root'), 'error_log', id)));
+});
+
 // ---------- site content access requests ----------
 
 const accessRequest = (uid, extra = {}) => ({
@@ -591,4 +677,9 @@ test('carts are private', async () => {
 test('unknown collections are closed', async () => {
   await assertFails(getDoc(doc(as('root'), 'sessions/s1')));
   await assertFails(setDoc(doc(as('alice'), 'anything/x'), { a: 1 }));
+});
+
+test('door staff can list one event\'s tickets (for checking without signal); buyers cannot', async () => {
+  await assertSucceeds(getDocs(query(collection(as('door'), 'tickets'), where('eventId', '==', 'e1'))));
+  await assertFails(getDocs(query(collection(as('alice'), 'tickets'), where('eventId', '==', 'e1'))));
 });

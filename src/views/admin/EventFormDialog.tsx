@@ -8,7 +8,7 @@ import { formatCurrency, friendlyError, toDate } from '../../controllers/lib/uti
 import { FALLBACK_EVENT_IMAGE } from '../../config';
 import { toast } from '../../services/toast';
 import { logger } from '../../services/loggerService';
-import { EVENT_LIMITS, validateEvent, type EventForm } from '../../content/eventValidation';
+import { EVENT_LIMITS, lineupFrom, validateEvent, type EventForm } from '../../content/eventValidation';
 import { CURRENCIES, currencyOf } from '../../models/currency';
 import { LEGACY_TYPE_NAME, MAX_TYPES, TYPE_IDS, TYPE_NAME_LIMIT, hasTicketTypes, ticketTypesOf } from '../../models/ticketTypes';
 import { useActivity } from '../components/useActivity';
@@ -34,6 +34,7 @@ const formFor = (event?: BAIEvent | null): EventForm => ({
   currency: currencyOf(event?.currency),
   ticketUrl: event?.ticketUrl ?? '',
   ticketProvider: event?.ticketProvider ?? '',
+  lineup: (event?.lineup || []).join('\n'),
   // Older events (no ticket types) become one "General Admission" row, keeping what was sold.
   types: event
     ? ticketTypesOf(event).map((t, i) => ({ id: hasTicketTypes(event) ? t.id : TYPE_IDS[i], name: t.name, price: String(t.price), capacity: String(t.capacity), sold: t.sold }))
@@ -116,6 +117,7 @@ export function EventFormDialog({ event, copyFrom, onClose }: Props) {
         // Empty when tickets are sold on this site; cleared values are saved as empty.
         ticketUrl: form.ticketUrl.trim(),
         ticketProvider: form.ticketUrl.trim() ? form.ticketProvider.trim() : '',
+        lineup: lineupFrom(form.lineup),
         createdBy: event?.createdBy || user?.uid || '',
         ...(bannerUrl ? { bannerImageUrl: bannerUrl } : {}),
         ...(ticketArtUrl ? { ticketImageUrl: ticketArtUrl } : {}),
@@ -268,6 +270,12 @@ export function EventFormDialog({ event, copyFrom, onClose }: Props) {
               <label htmlFor="ev-description" className="field-label">Description <span className="font-normal text-bai-black/70">(optional)</span></label>
               <textarea id="ev-description" rows={3} value={form.description} onChange={set('description')} aria-invalid={!!errors.description} className="field leading-relaxed" />
               {errors.description && <p className="field-error">{errors.description}</p>}
+            </div>
+            <div className="sm:col-span-2">
+              <label htmlFor="ev-lineup" className="field-label">Line-up <span className="font-normal text-bai-black/70">(optional)</span></label>
+              <textarea id="ev-lineup" rows={3} value={form.lineup} onChange={set('lineup')} aria-invalid={!!errors.lineup} aria-describedby="ev-lineup-help" className="field leading-relaxed" placeholder={'Bokamoso Youth Choir\nGuest soloist'} />
+              <p id="ev-lineup-help" className="field-help">One performer or act per line, up to {EVENT_LIMITS.lineupNames}. Shown on the event's own page.</p>
+              {errors.lineup && <p className="field-error">{errors.lineup}</p>}
             </div>
           </div>
 

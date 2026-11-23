@@ -14,7 +14,7 @@ import { APP_CHECK_ENABLED } from '../../controllers/lib/firebase';
  * charged, collected, stored or promised, update the matching section here and
  * the LAST_UPDATED date in the same commit.
  */
-const LAST_UPDATED = '20 November 2026';
+const LAST_UPDATED = '23 November 2026';
 
 type Doc = 'terms' | 'privacy' | 'cookies';
 const TITLES: Record<Doc, [string, string]> = {
@@ -55,10 +55,12 @@ export default function Legal({ doc }: { doc: Doc }) {
               <li>Each event is priced in the currency shown next to its price, for example rand (R), pula (P) or emalangeni (E). Amounts in different currencies are shown separately and never converted or added together.</li>
               <li>Tickets for some events, for example performances outside South Africa, are sold by another company such as the venue or a local ticket site. For those events the Events page links to that seller and no ticket is issued on this site. The seller's own prices, terms, refund rules and privacy policy apply, and any questions about those tickets go to them.</li>
               <li>Each ticket admits one person, once. It is checked and marked as used at the door.</li>
+              <li>You can pass an unused ticket to a friend before the event starts, using "Transfer to a friend" on the ticket. It stays yours until they accept it while signed in with the email address you entered (and confirmed); you can take the offer back until then. Once accepted it is theirs, and it no longer appears in your account.</li>
               <li>One account can hold up to {MAX_PER_EVENT} tickets for an event, while seats remain.</li>
               <li>Your ticket reference and QR code are your proof of booking. Anyone who has them can use the ticket, so only share them with the person attending.</li>
               <li>If an event is cancelled, or a ticket is cancelled, it shows as cancelled in My Tickets and is not accepted at the door.</li>
               <li>Event dates, times and venues can change. The Events page and your ticket always show the current details.</li>
+              <li>When an event sells out you can join its waiting list. Joining does not reserve a seat or guarantee a ticket; event staff contact people in the order they joined if seats become available.</li>
             </UL>
 
             <H>Using the site</H>
@@ -81,8 +83,11 @@ export default function Legal({ doc }: { doc: Doc }) {
               <li><strong>Account details:</strong> your name and email address when you create an account. If you sign in with Google, we receive your name and email address from Google. Your password is handled by Google Firebase Authentication; we never see or store it. When you create an account with an email address, Firebase may send you a link to confirm it.</li>
               <li><strong>Tickets and orders:</strong> which events you booked, how many tickets, the price and its currency, the time of booking, how many tickets your account holds for each event, and when a ticket was scanned at the door and by which staff account.</li>
               <li><strong>Your bag:</strong> the tickets you have added but not yet booked, saved to your account and in your browser so they are still there when you come back.</li>
+              <li><strong>Waiting lists and transfers:</strong> if you join an event's waiting list, your name, email address and the time you joined, which event staff can see so they can contact you. If you pass a ticket to a friend, the email address you enter is stored on the ticket until they accept, and your friend sees the email address of the account it came from.</li>
+              <li><strong>At the door:</strong> so tickets can be checked where there is no signal, the phones of door staff keep a copy of the event's ticket list (ticket reference, type, status and the booking email address) until the event is over.</li>
               <li><strong>Emails you send us:</strong> if you email us, we receive whatever you choose to send.</li>
               <li><strong>Staff activity:</strong> for staff accounts, your role, a record of which account last changed site content or scanned a ticket, and an activity log of staff actions (such as role changes, event and content edits, and access approvals) with your name, role and the time. Only super admins can see the activity log, and its entries cannot be changed or deleted. If you ask for access to edit site content, we keep your name, email address, any note you add, when you asked, and who approved or declined it and when.</li>
+              <li><strong>Error reports:</strong> when a page breaks, or a sign-in, booking or ticket scan fails for an unexpected reason, the site records the error message, the page, the type of browser (for example "Chrome on Android"), the site version and, if you are signed in, your account number. It never records your name, email address, password or what you typed. Only super admins can see these reports; we use them to fix problems.</li>
             </UL>
             <P>We do not collect card or bank details on this site, and we do not use advertising or analytics trackers.</P>
 

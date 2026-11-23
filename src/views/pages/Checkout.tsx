@@ -7,10 +7,11 @@ import { PageHero } from '../components/PageHero';
 import { VerifyEmailNotice } from '../components/VerifyEmailNotice';
 import { ROUTES } from '../../controllers/navigation';
 import { ticketController } from '../../controllers/ticketController';
-import { formatCurrency, friendlyError } from '../../controllers/lib/utils';
+import { AppError, formatCurrency, friendlyError } from '../../controllers/lib/utils';
 import { CURRENCIES, type CurrencyCode } from '../../models/currency';
 import { logger } from '../../services/loggerService';
 import { PAYMENTS_LIVE, REQUIRE_EMAIL_VERIFICATION } from '../../config';
+import { errorLog } from '../../controllers/errorLogController';
 
 // Reads as "Total in Botswana pula"; the euro is the one name that is not capitalised mid-sentence.
 const CURRENCY_NAME = (code: CurrencyCode) => (code === 'EUR' ? 'euros' : CURRENCIES.find(c => c.code === code)!.name);
@@ -54,6 +55,8 @@ export default function Checkout() {
       }
     } catch (err) {
       logger.error('Checkout failed', err);
+      // Messages written for the buyer (an event that has ended, a full show) are not faults.
+      if (!(err instanceof AppError)) errorLog.report('booking', err);
       setError(friendlyError(err, 'Your tickets could not be issued. Nothing was charged. Please try again.'));
     } finally {
       setSubmitting(false);

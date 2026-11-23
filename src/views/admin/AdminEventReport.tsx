@@ -13,6 +13,7 @@ import { confirmAction } from '../../services/confirm';
 import { toast } from '../../services/toast';
 import { logger } from '../../services/loggerService';
 import { useActivity } from '../components/useActivity';
+import { waitlistController, type WaitlistEntry } from '../../controllers/waitlistController';
 
 const STATUS_LABEL: Record<string, string> = { VALID: 'Not yet arrived', SCANNED: 'Arrived', CANCELLED: 'Cancelled' };
 
@@ -32,6 +33,31 @@ export default function AdminEventReport() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [filter, setFilter] = useState<'all' | 'VALID' | 'SCANNED' | 'CANCELLED'>('all');
+  const [waiting, setWaiting] = useState<WaitlistEntry[] | null>(null);
+  useEffect(() => {
+    waitlistController.forEvent(eventId).then(setWaiting).catch((err) => { logger.error('Waiting list failed to load', err); setWaiting([]); });
+  }, [eventId]);
+
+  const copyWaiting = async () => {
+    const emails = (waiting || []).map(w => w.email).filter(Boolean).join(', ');
+    try {
+      await navigator.clipboard.writeText(emails);
+      toast.success('Emails copied. Paste them into the BCC line of an email.');
+    } catch {
+      toast.info(emails);
+    }
+  };
+
+  const removeWaiting = async (w: WaitlistEntry) => {
+    if (!await confirmAction({ title: `Remove ${w.email} from the waiting list?`, confirmLabel: 'Remove', tone: 'danger' })) return;
+    try {
+      await waitlistController.remove(w.id);
+      setWaiting(list => (list || []).filter(x => x.id !== w.id));
+    } catch (err) {
+      logger.error('Removing from the waiting list failed', err);
+      toast.error(friendlyError(err, 'That person could not be removed.'));
+    }
+  };
 
   const load = useCallback(async () => {
     setError(null);
@@ -173,6 +199,34 @@ export default function AdminEventReport() {
               </tbody>
             </table>
           </div>
+
+          <section className="mb-10" aria-labelledby="waiting-heading">
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+              <h3 id="waiting-heading" className="font-semibold text-lg">Waiting list{waiting ? ` (${waiting.length})` : ''}</h3>
+              {!!waiting?.length && <button type="button" onClick={copyWaiting} className="btn btn-outline">Copy all emails</button>}
+            </div>
+            {waiting === null ? (
+              <div className="h-16 bg-white animate-pulse rounded-xl" role="status" aria-label="Loading the waiting list" />
+            ) : waiting.length === 0 ? (
+              <p className="py-4 border-y border-bai-black/15 text-bai-black/75">Nobody is waiting. When the show sells out, visitors can join a waiting list here.</p>
+            ) : (
+              <>
+                <p className="text-sm text-bai-black/70 mb-2">First come, first served. The site does not send emails yet, so contact them yourself when seats free up.</p>
+                <ol className="border-t border-bai-black/15">
+                  {waiting.map((w, i) => (
+                    <li key={w.id} className="py-3 border-b border-bai-black/15 flex flex-wrap items-center gap-x-4 gap-y-2">
+                      <span className="num w-8 text-bai-black/60">{i + 1}.</span>
+                      <div className="min-w-0 flex-grow">
+                        <p className="font-semibold break-all">{w.email}</p>
+                        <p className="num text-sm text-bai-black/70">{[w.name, formatDateTime(w.createdAt)].filter(Boolean).join(' · ')}</p>
+                      </div>
+                      <button type="button" onClick={() => removeWaiting(w)} className="btn btn-danger">Remove</button>
+                    </li>
+                  ))}
+                </ol>
+              </>
+            )}
+          </section>
 
           <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
             <h3 className="font-semibold text-lg">Tickets</h3>

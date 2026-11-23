@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { SiteErrors } from './SiteErrors';
 import type { QueryDocumentSnapshot } from 'firebase/firestore';
 import { CalendarDays, FileText, KeyRound, Ticket, Users } from 'lucide-react';
 import { AdminShell } from './AdminShell';
@@ -11,6 +13,8 @@ const ICONS: Record<ActivityArea, typeof Users> = { people: Users, events: Calen
 
 /** Super admins only: every recorded staff action, newest first. */
 export default function AdminActivity() {
+  const [params, setParams] = useSearchParams();
+  const view = params.get('view') === 'errors' ? 'errors' : 'staff';
   const [area, setArea] = useState<ActivityArea | ''>('');
   const [entries, setEntries] = useState<ActivityEntry[]>([]);
   const [cursor, setCursor] = useState<QueryDocumentSnapshot | undefined>();
@@ -32,7 +36,7 @@ export default function AdminActivity() {
     }
   }, [area]);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => { if (view === 'staff') void load(); }, [load, view]);
 
   const chip = (value: ActivityArea | '', label: string) => (
     <button
@@ -48,7 +52,21 @@ export default function AdminActivity() {
 
   return (
     <AdminShell title="Activity">
-      <p className="text-bai-black/70 mb-6 max-w-2xl">Every recorded staff action, newest first. Entries cannot be changed or deleted, and only super admins can see this page.</p>
+      <div className="even-cols mb-6 max-w-md" role="group" aria-label="Which log">
+        {([['staff', 'Staff actions'], ['errors', 'Site errors']] as const).map(([value, label]) => (
+          <button key={value} type="button" aria-pressed={view === value}
+            onClick={() => setParams(value === 'errors' ? { view: 'errors' } : {}, { replace: true })}
+            className={`min-h-[48px] px-4 rounded-full font-semibold border transition-colors ${view === value ? 'bg-bai-black text-white border-bai-black' : 'border-bai-black/25 hover:border-bai-black'}`}>
+            {label}
+          </button>
+        ))}
+      </div>
+      <p className="text-bai-black/70 mb-6 max-w-2xl">
+        {view === 'errors'
+          ? 'Problems visitors and staff ran into, newest first: pages that broke, and sign-ins, bookings or scans that failed for an unexpected reason. No names, emails or form contents are recorded.'
+          : 'Every recorded staff action, newest first. Entries cannot be changed or deleted, and only super admins can see this page.'}
+      </p>
+      {view === 'errors' ? <SiteErrors /> : <>
       <div className="even-row mb-8" role="group" aria-label="Show activity for">
         {chip('', 'Everything')}
         {(Object.keys(ACTIVITY_AREAS) as ActivityArea[]).map(key => chip(key, ACTIVITY_AREAS[key]))}
@@ -87,6 +105,7 @@ export default function AdminActivity() {
           {loading ? 'Loading' : 'Load more'}
         </button>
       )}
+      </>}
     </AdminShell>
   );
 }
