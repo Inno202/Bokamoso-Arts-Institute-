@@ -257,7 +257,6 @@ export const ticketController = {
     return snap.docs.map(d => ({ id: d.id, ...d.data() }) as Ticket).sort(byNewest);
   },
 
-  /** Cancels a ticket that has not been used, or restores one that was cancelled. */
   /** Offers an unused ticket to a friend's email address; they accept it when they sign in. */
   async offerTransfer(ticketId: string, email: string) {
     const to = email.trim().toLowerCase();
@@ -288,6 +287,7 @@ export const ticketController = {
     });
   },
 
+  /** Cancels a ticket that has not been used, or restores one that was cancelled. */
   async setTicketStatus(ticketId: string, status: 'VALID' | 'CANCELLED') {
     await updateDoc(doc(db, TICKETS, ticketId), { status, updatedAt: serverTimestamp() });
   },

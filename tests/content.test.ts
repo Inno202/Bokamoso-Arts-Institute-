@@ -479,3 +479,33 @@ describe('add to calendar', () => {
     expect(googleCalendarUrl({ ...ev, date: null })).toBe('');
   });
 });
+
+describe('door scanning without signal', () => {
+  it('admits a valid ticket once, refuses used, cancelled and unknown ones, and records them later', async () => {
+    const store = new Map<string, string>();
+    const fake = { getItem: (k: string) => store.get(k) ?? null, setItem: (k: string, v: string) => { store.set(k, v); }, removeItem: (k: string) => { store.delete(k); }, key: () => null, clear: () => store.clear(), get length() { return store.size; } };
+    Object.defineProperty(globalThis, 'localStorage', { value: new Proxy(fake, { ownKeys: () => [...store.keys()], getOwnPropertyDescriptor: () => ({ enumerable: true, configurable: true }) }), configurable: true });
+    const { doorOffline } = await import('../src/services/doorOffline');
+    const t = (id: string, status: 'VALID' | 'SCANNED' | 'CANCELLED') => ({ id, status, ticketType: 'General', buyerEmail: `${id}@x.com` }) as never;
+    doorOffline.saveList({ id: 'e1', name: 'Gala', date: new Date(Date.now() + 3600e3) }, [t('BAI-AAA', 'VALID'), t('BAI-BBB', 'SCANNED'), t('BAI-CCC', 'CANCELLED'), t('BAI-DDD', 'VALID')]);
+    expect(doorOffline.check('BAI-AAA', 'e1').kind).toBe('admit');
+    expect(doorOffline.check('BAI-AAA', 'e1')).toMatchObject({ kind: 'refuse', reason: 'used' });
+    expect(doorOffline.check('BAI-BBB', 'e1')).toMatchObject({ kind: 'refuse', reason: 'used' });
+    expect(doorOffline.check('BAI-CCC', 'e1')).toMatchObject({ kind: 'refuse', reason: 'cancelled' });
+    expect(doorOffline.check('BAI-ZZZ', 'e1')).toMatchObject({ kind: 'refuse', reason: 'unknown' });
+    expect(doorOffline.check('BAI-AAA', 'other')).toMatchObject({ kind: 'refuse', reason: 'no-list' });
+    expect(doorOffline.check('BAI-DDD', 'e1').kind).toBe('admit');
+    // A fresh copy from the server must not forget admissions still waiting to be recorded.
+    doorOffline.saveList({ id: 'e1', name: 'Gala', date: new Date(Date.now() + 3600e3) }, [t('BAI-AAA', 'VALID'), t('BAI-DDD', 'VALID')]);
+    expect(doorOffline.check('BAI-AAA', 'e1')).toMatchObject({ kind: 'refuse', reason: 'used' });
+    // Back online: AAA records; DDD was already let in by another phone.
+    const recorded: string[] = [];
+    const conflicts = await doorOffline.sync(async (id) => {
+      if (id === 'BAI-DDD') throw Object.assign(new Error('Already admitted at 18:02.'), { kind: 'used' });
+      recorded.push(id);
+    });
+    expect(recorded).toEqual(['BAI-AAA']);
+    expect(conflicts.map(c => c.ticketId)).toEqual(['BAI-DDD']);
+    expect(doorOffline.queue()).toEqual([]);
+  });
+});

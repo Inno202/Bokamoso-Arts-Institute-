@@ -678,3 +678,8 @@ test('unknown collections are closed', async () => {
   await assertFails(getDoc(doc(as('root'), 'sessions/s1')));
   await assertFails(setDoc(doc(as('alice'), 'anything/x'), { a: 1 }));
 });
+
+test('door staff can list one event\'s tickets (for checking without signal); buyers cannot', async () => {
+  await assertSucceeds(getDocs(query(collection(as('door'), 'tickets'), where('eventId', '==', 'e1'))));
+  await assertFails(getDocs(query(collection(as('alice'), 'tickets'), where('eventId', '==', 'e1'))));
+});

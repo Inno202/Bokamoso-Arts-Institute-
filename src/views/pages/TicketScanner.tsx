@@ -1,7 +1,9 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Camera, Check, ChevronDown, Keyboard, Calendar, WifiOff, X } from 'lucide-react';
 import { useAuth } from '../components/AuthProvider';
-import { EVENT_PASSED_AFTER_HOURS, ScanRefused, ticketController, type ScanRefusal } from '../../controllers/ticketController';
+import { EVENT_PASSED_AFTER_HOURS, normalizeTicketId, ScanRefused, ticketController, type ScanRefusal } from '../../controllers/ticketController';
+import { doorOffline } from '../../services/doorOffline';
+import { toast } from '../../services/toast';
 import { eventController } from '../../controllers/eventController';
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
 import { logger } from '../../services/loggerService';
@@ -10,7 +12,7 @@ import { BAIEvent, Ticket } from '../../models/types';
 import { errorLog } from '../../controllers/errorLogController';
 
 type Result =
-  | { kind: 'success'; ticket: Ticket; eventName: string; eventDate: string }
+  | { kind: 'success'; ticket: Pick<Ticket, 'id' | 'ticketType' | 'buyerEmail'>; eventName: string; eventDate: string; offline?: boolean }
   | { kind: 'error'; title: string; message: string };
 
 const DOOR_EVENT_KEY = 'bai-door-event';
@@ -79,8 +81,25 @@ export default function TicketScanner() {
 
     busy.current = true;
     setChecking(true);
+    // Without signal: check against the ticket list saved on this phone.
+    const checkOffline = () => {
+      const id = normalizeTicketId(code);
+      if (!doorEventId) {
+        setResult({ kind: 'error', title: 'No connection', message: 'Choose tonight\'s event while online, so its ticket list is saved on this phone for checking without signal.' });
+      } else {
+        const r = doorOffline.check(id, doorEventId);
+        if (r.kind === 'admit') {
+          setResult({ kind: 'success', ticket: r.ticket, eventName: r.eventName, eventDate: '', offline: true });
+          setPending(doorOffline.queue().length);
+          navigator.vibrate?.(80);
+          return;
+        }
+        setResult({ kind: 'error', title: r.reason === 'used' ? 'Already used' : r.reason === 'cancelled' ? 'Cancelled' : r.reason === 'no-list' ? 'No connection' : 'Not on tonight\'s list', message: r.message });
+      }
+      navigator.vibrate?.([60, 60, 60]);
+    };
     try {
-      if (!navigator.onLine) throw new ScanRefused('unknown', 'No connection. Tickets can only be checked online. Try again once the phone is back online.');
+      if (!navigator.onLine) { checkOffline(); return; }
       const ticket = await ticketController.admit(code, user.uid, doorEventId || undefined);
       const event = await eventController.getEventById(ticket.eventId).catch(() => null);
       setResult({
@@ -91,6 +110,9 @@ export default function TicketScanner() {
       });
       navigator.vibrate?.(80);
     } catch (err) {
+      // The signal dropped mid-check: fall back to the saved list.
+      const code_ = (err as { code?: string })?.code;
+      if (!(err instanceof ScanRefused) && (code_ === 'unavailable' || !navigator.onLine)) { checkOffline(); return; }
       logger.error('Ticket check failed', err);
       // A refused ticket is the scanner doing its job; anything else (and not just offline) is a fault.
       if (!(err instanceof ScanRefused) && navigator.onLine) errorLog.report('scan', err);
@@ -119,6 +141,46 @@ export default function TicketScanner() {
     setDoorEvents(current);
     setDoorEventId(id => (current.some(ev => ev.id === id) ? id : current[0]?.id || ''));
   }, false, () => setDoorEvents([])), []);
+
+  // Keep tonight's ticket list on this phone while online (refreshed every minute and a half),
+  // so tickets can still be checked if the signal drops.
+  const [saved, setSaved] = useState<{ count: number; at: number } | null>(null);
+  const [pending, setPending] = useState(() => doorOffline.queue().length);
+  useEffect(() => {
+    doorOffline.clearOld();
+    const event = doorEvents?.find(e => e.id === doorEventId);
+    const existing = doorEventId ? doorOffline.list(doorEventId) : null;
+    setSaved(existing ? { count: Object.keys(existing.tickets).length, at: existing.savedAt } : null);
+    if (!event || !online) return;
+    let live = true;
+    const refresh = () => {
+      if (document.hidden) return;
+      ticketController.listForEvent(event.id).then(tickets => {
+        const list = live ? doorOffline.saveList(event, tickets) : null;
+        if (list) setSaved({ count: tickets.length, at: list.savedAt });
+      }).catch(err => logger.error('Could not save the ticket list for offline checking', err));
+    };
+    refresh();
+    const timer = setInterval(refresh, 90_000);
+    return () => { live = false; clearInterval(timer); };
+  }, [doorEvents, doorEventId, online]);
+
+  // Admissions made without signal are recorded as soon as the signal is back.
+  useEffect(() => {
+    if (!online || !user) return;
+    let running = false;
+    const sync = async () => {
+      if (running || doorOffline.queue().length === 0) return;
+      running = true;
+      const conflicts = await doorOffline.sync((ticketId, eventId) => ticketController.admit(ticketId, user.uid, eventId));
+      running = false;
+      setPending(doorOffline.queue().length);
+      for (const c of conflicts) toast.error(`${c.ticketId} was let in without signal, but: ${c.message}`);
+    };
+    void sync();
+    const timer = setInterval(sync, 30_000);
+    return () => clearInterval(timer);
+  }, [online, user]);
 
   useEffect(() => {
     const update = () => setOnline(navigator.onLine);
@@ -312,9 +374,11 @@ export default function TicketScanner() {
           )}
 
           {!online && (
-            <p className="absolute top-3 inset-x-3 mx-auto w-fit max-w-[calc(100%-1.5rem)] px-4 py-2 rounded-full bg-amber-400 text-bai-black text-sm font-semibold flex items-center gap-2 shadow-lg" role="alert">
-              <WifiOff size={16} className="shrink-0" aria-hidden="true" />
-              No connection. Tickets cannot be checked until the phone is back online.
+            <p className="absolute top-3 inset-x-3 mx-auto w-fit max-w-[calc(100%-1.5rem)] px-4 py-2 rounded-2xl bg-amber-400 text-bai-black text-sm font-semibold flex items-start gap-2 shadow-lg" role="alert">
+              <WifiOff size={16} className="shrink-0 mt-0.5" aria-hidden="true" />
+              <span>{saved
+                ? `No signal. Checking against this phone's list of ${saved.count} tickets${pending ? `; ${pending} to record when the signal returns` : ''}.`
+                : 'No connection, and no ticket list is saved on this phone for this event.'}</span>
             </p>
           )}
 
@@ -325,6 +389,11 @@ export default function TicketScanner() {
           {!result && (checking || showManual || camera.kind === 'running') && (
             <p className="absolute inset-0 flex items-center justify-center text-center text-white/70" role={checking ? 'status' : undefined}>
               {checking ? 'Checking ticket' : showManual ? 'Type the reference printed under the QR code' : 'Hold the QR code inside the frame'}
+            </p>
+          )}
+          {!result && online && (saved || pending > 0) && (
+            <p className="absolute inset-x-0 top-0 text-center text-xs text-white/55" role="status">
+              {pending > 0 ? `Recording ${pending} ${pending === 1 ? 'ticket' : 'tickets'} let in without signal` : `Ready without signal: ${saved!.count} tickets saved on this phone`}
             </p>
           )}
           <div className="absolute inset-x-0 bottom-0" aria-live="assertive">
@@ -342,6 +411,7 @@ export default function TicketScanner() {
                   {result.kind === 'success' ? (
                     <span className="min-w-0 flex-grow">
                       <span className="block font-display font-bold text-2xl leading-none text-green-800">Admit</span>
+                      {result.offline && <span className="block text-xs font-semibold text-bai-black/60 mt-1">Checked without signal. Recorded when the signal returns.</span>}
                       <span className="block font-semibold mt-1.5 truncate">{result.ticket.ticketType} · {result.eventName}</span>
                       <span className="block text-sm text-bai-black/70 truncate">{result.ticket.buyerEmail || 'Unknown'}</span>
                       <span className="num block text-xs text-bai-black/60 mt-0.5">{result.ticket.id}</span>

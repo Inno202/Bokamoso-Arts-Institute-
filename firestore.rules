@@ -303,7 +303,9 @@ service cloud.firestore {
       // Buyers can only query their own tickets (and tickets being passed to them);
       // admins can report on all of them.
       allow list: if isSignedIn()
-        && (resource.data.buyerId == request.auth.uid || isTransferTarget(resource.data) || isAnyAdmin());
+        && (resource.data.buyerId == request.auth.uid || isTransferTarget(resource.data) || isAnyAdmin()
+          // Door staff keep tonight's ticket list on the scanner phone for checking without signal.
+          || isScanner());
 
       // A ticket exists only as one of the references listed in the buyer's order,
       // copying that order's event, price and buyer. The order rule has already
