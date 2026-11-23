@@ -8,12 +8,14 @@
  * No emails, names or form contents. Entries can never be edited or deleted, and only
  * super admins can read them (firestore.rules).
  */
-import { addDoc, collection, getCountFromServer, getDocs, limit, orderBy, query, serverTimestamp, startAfter, Timestamp, where, type QueryDocumentSnapshot } from 'firebase/firestore';
+import { addDoc, collection, doc, getCountFromServer, updateDoc, getDocs, limit, orderBy, query, serverTimestamp, startAfter, Timestamp, where, type QueryDocumentSnapshot } from 'firebase/firestore';
 import { getToken } from 'firebase/app-check';
 import { appCheck, APP_CHECK_ENABLED, auth, db } from './lib/firebase';
 import type { DateLike } from '../models/types';
+import { toDate } from './lib/utils';
 
 const COLLECTION = 'error_log';
+const SEEN_KEY = 'bai-errors-seen';
 export const ERROR_PAGE_SIZE = 50;
 /** At most this many reports from one browser tab, so a broken page cannot flood the log. */
 const PER_TAB_LIMIT = 15;
@@ -105,6 +107,24 @@ export const errorLog = {
       entries: snap.docs.map(d => ({ id: d.id, ...d.data() }) as ErrorEntry),
       cursor: snap.docs.length === ERROR_PAGE_SIZE ? snap.docs[snap.docs.length - 1] : undefined,
     };
+  },
+
+  /**
+   * When this super admin last looked at the error log: saved on their profile (so every device
+   * agrees) and on this device (works even before the matching rules are deployed).
+   */
+  seenAt(profileSeenAt?: unknown): Date {
+    let local = 0;
+    try { local = Number(localStorage.getItem(SEEN_KEY) || 0); } catch { /* storage unavailable */ }
+    const fromProfile = toDate(profileSeenAt as DateLike)?.getTime() ?? 0;
+    const latest = Math.max(local, fromProfile);
+    // Never looked: announce the last 7 days.
+    return new Date(latest || Date.now() - 7 * 24 * 3600e3);
+  },
+
+  markSeen(uid: string) {
+    try { localStorage.setItem(SEEN_KEY, String(Date.now())); } catch { /* storage unavailable */ }
+    void updateDoc(doc(db, 'users', uid), { errorsSeenAt: serverTimestamp() }).catch(() => undefined);
   },
 
   /** How many problems were recorded since a moment (for the Overview notice). */

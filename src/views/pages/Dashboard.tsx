@@ -27,7 +27,7 @@ function writePref(key: string, value: number) {
 }
 
 export default function Dashboard() {
-  const { role } = useAuth();
+  const { role, userData } = useAuth();
   const canSeeUsers = isUserAdmin(role);
   const canSeeSales = isFinance(role);
   const isSuper = isSuperAdminRole(role);
@@ -35,8 +35,9 @@ export default function Dashboard() {
   const [problems, setProblems] = useState<number | null>(null);
   useEffect(() => {
     if (!isSuper) return;
-    errorLog.countSince(new Date(Date.now() - 7 * 24 * 3600e3)).then(setProblems).catch(() => setProblems(null));
-  }, [isSuper]);
+    // Only problems since the last look at the error log; the notice goes once they have been seen.
+    errorLog.countSince(errorLog.seenAt(userData?.errorsSeenAt)).then(setProblems).catch(() => setProblems(null));
+  }, [isSuper, userData?.errorsSeenAt]);
 
   const [stats, setStats] = useState<{ totalUsers?: number; totalTickets?: number; revenue?: Array<{ currency: string; total: number }>; activeEvents?: number }>({});
   const [recentScans, setRecentScans] = useState<TicketScan[]>([]);
@@ -99,7 +100,7 @@ export default function Dashboard() {
         {isSuper && !!problems && (
           <Link to={`${ROUTES.ADMIN_ACTIVITY}?view=errors`} className="group mb-8 p-4 rounded-2xl bg-red-50 text-red-950 flex items-center gap-3 hover:bg-red-100 transition-colors">
             <AlertTriangle size={20} className="shrink-0" aria-hidden="true" />
-            <span className="flex-grow"><strong>{problems} site {problems === 1 ? 'problem' : 'problems'}</strong> recorded in the last 7 days.</span>
+            <span className="flex-grow"><strong>{problems} new site {problems === 1 ? 'problem' : 'problems'}</strong> since you last looked.</span>
             <span className="font-semibold shrink-0 inline-flex items-center gap-1">See them <ArrowRight size={16} className="transition-transform group-hover:translate-x-0.5" aria-hidden="true" /></span>
           </Link>
         )}

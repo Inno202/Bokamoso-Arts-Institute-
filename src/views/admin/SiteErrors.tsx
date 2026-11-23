@@ -3,7 +3,8 @@ import { doc, getDoc, type QueryDocumentSnapshot } from 'firebase/firestore';
 import { AlertTriangle, CheckCircle2, ShieldAlert } from 'lucide-react';
 import { db } from '../../controllers/lib/firebase';
 import { checkBotCheck, ERROR_KINDS, errorLog, type BotCheckStatus, type ErrorEntry, type ErrorKind } from '../../controllers/errorLogController';
-import { formatDateTime, friendlyError } from '../../controllers/lib/utils';
+import { formatDateTime, friendlyError, toDate } from '../../controllers/lib/utils';
+import { useAuth } from '../components/AuthProvider';
 import { logger } from '../../services/loggerService';
 
 /** Super admins: problems visitors and staff ran into, newest first, plus a live bot-check test. */
@@ -34,6 +35,11 @@ export function SiteErrors() {
 
   useEffect(() => { void load(); }, [load]);
   useEffect(() => { void checkBotCheck().then(setBot); }, []);
+
+  // Problems newer than the last visit are marked "New"; opening this page counts as seeing them.
+  const { user, userData } = useAuth();
+  const [lastSeen] = useState(() => errorLog.seenAt(userData?.errorsSeenAt).getTime());
+  useEffect(() => { if (user) errorLog.markSeen(user.uid); }, [user]);
 
   // Show who it happened to (for signed-in people), looked up once per account.
   useEffect(() => {
@@ -89,7 +95,10 @@ export function SiteErrors() {
             <li key={entry.id} className="py-4 border-b border-bai-black/15 flex items-start gap-4">
               <span className="w-10 h-10 rounded-full bg-red-50 text-bai-red-deep flex items-center justify-center shrink-0" aria-hidden="true"><AlertTriangle size={18} /></span>
               <div className="min-w-0 flex-grow">
-                <p className="font-semibold break-words">{ERROR_KINDS[entry.kind] || entry.kind}: {entry.message || entry.code}</p>
+                <p className="font-semibold break-words">
+                  {(toDate(entry.at)?.getTime() ?? Date.now()) > lastSeen && <span className="inline-block align-middle mr-2 text-xs font-bold px-2 py-0.5 rounded-full bg-bai-red text-white">New</span>}
+                  {ERROR_KINDS[entry.kind] || entry.kind}: {entry.message || entry.code}
+                </p>
                 <p className="text-sm text-bai-black/70 mt-0.5 break-words">
                   {[entry.code, entry.page, entry.browser, entry.uid ? names[entry.uid] || 'Signed-in account' : 'Visitor', entry.release && `release ${entry.release}`].filter(Boolean).join(' · ')}
                 </p>
