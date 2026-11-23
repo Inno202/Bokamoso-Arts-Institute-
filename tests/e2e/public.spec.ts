@@ -8,7 +8,7 @@ const PAGES = [
   { path: 'events/', h1: 'Live stage' },
   { path: 'traditions/', h1: 'Our traditions' },
   { path: 'login/', h1: 'Sign in' },
-  { path: 'register/', h1: 'Join Bokamoso' },
+  { path: 'register/', h1: 'Create account' },
   { path: 'terms/', h1: 'Terms of use' },
   { path: 'privacy/', h1: 'Privacy policy' },
   { path: 'cookies/', h1: 'Cookie policy' },

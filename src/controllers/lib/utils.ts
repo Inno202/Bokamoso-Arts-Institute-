@@ -61,6 +61,7 @@ export function friendlyError(err: unknown, fallback = 'Something went wrong. Pl
     'auth/weak-password': 'Choose a longer password, at least 8 characters.',
     'auth/too-many-requests': 'Too many attempts. Wait a few minutes, then try again.',
     'auth/popup-closed-by-user': 'The Google window was closed before sign-in finished.',
+    'auth/unauthorized-domain': 'Google sign-in is not switched on for this web address yet. Sign in with your email and password for now.',
     'auth/popup-blocked': 'Your browser blocked the Google window. Allow pop-ups for this site and try again.',
     'auth/network-request-failed': 'No connection. Check your internet and try again.',
     'auth/user-disabled': 'This account has been disabled. Contact the institute for help.',
