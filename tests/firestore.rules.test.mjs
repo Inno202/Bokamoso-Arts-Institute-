@@ -494,6 +494,32 @@ test('content saves must be well-formed and signed by the person saving', async 
   await assertFails(setDoc(doc(db, 'content/anything-else'), section('ceo')), 'unknown section');
 });
 
+const version = (uid, extra = {}) => ({ data: { quote: 'kept' }, savedAt: serverTimestamp(), savedBy: uid, savedByName: 'X', ...extra });
+
+test('content history: editors keep an exact copy of what is live, signed in their own name', async () => {
+  await env.withSecurityRulesDisabled(ctx => setDoc(doc(ctx.firestore(), 'content/traditions'), { data: { quote: 'kept' } }));
+  const db = as('ceo');
+  await assertSucceeds(setDoc(doc(db, 'content/traditions/versions/v1'), version('ceo')));
+  await assertFails(setDoc(doc(db, 'content/traditions/versions/v2'), version('ceo', { data: { quote: 'invented' } })), 'not what is live');
+  await assertFails(setDoc(doc(db, 'content/traditions/versions/v3'), version('root')), 'someone else as author');
+  await assertFails(setDoc(doc(db, 'content/traditions/versions/v4'), version('ceo', { savedByName: 'The CEO' })), 'name not as on the profile');
+  await assertFails(setDoc(doc(db, 'content/traditions/versions/v5'), version('ceo', { savedAt: Timestamp.fromMillis(0) })), 'back-dated');
+  await assertFails(setDoc(doc(db, 'content/traditions/versions/v6'), version('ceo', { note: 'x' })), 'extra fields');
+  for (const uid of ['pro', 'alice', 'door', 'fin']) {
+    await assertFails(setDoc(doc(as(uid), 'content/traditions/versions/v7'), version(uid)), `${uid} is not a content editor`);
+  }
+});
+
+test('content history: only editors can read it, and nobody can change or delete a version', async () => {
+  await env.withSecurityRulesDisabled(ctx => setDoc(doc(ctx.firestore(), 'content/home/versions/old'), version('root')));
+  await assertSucceeds(getDocs(collection(as('ceo'), 'content/home/versions')));
+  await assertSucceeds(getDocs(collection(as('root'), 'content/home/versions')));
+  await assertFails(getDocs(collection(as('alice'), 'content/home/versions')));
+  await assertFails(getDocs(collection(guest(), 'content/home/versions')));
+  await assertFails(setDoc(doc(as('root'), 'content/home/versions/old'), version('root', { savedByName: 'Y' })));
+  await assertFails(deleteDoc(doc(as('root'), 'content/home/versions/old')));
+});
+
 // ---------- staff activity log ----------
 
 const entry = (uid, extra = {}) => ({

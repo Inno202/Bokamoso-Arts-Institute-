@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { contentImage } from '../../content/image';
+import { responsiveImage } from '../../content/image';
 
 interface PageHeroProps {
   /** The page title. */
@@ -34,7 +34,7 @@ export function PageHero({ title, accent, image, children }: PageHeroProps) {
     <header className="px-3 sm:px-4 pt-3">
       <div className="relative overflow-hidden rounded-[2rem] bg-bai-black text-white min-h-[17rem] md:min-h-[24rem] flex items-end">
         <img
-          src={contentImage(image, 1800)}
+          {...responsiveImage(image, '100vw', 1800)}
           alt=""
           fetchPriority="high"
           decoding="async"

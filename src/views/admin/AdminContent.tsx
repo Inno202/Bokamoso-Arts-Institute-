@@ -6,7 +6,8 @@ import { FieldEditor, fieldId } from './FieldEditor';
 import { useAuth } from '../components/AuthProvider';
 import { ROUTES } from '../../controllers/navigation';
 import { clean, type Data, type Errors } from '../../content/fields';
-import { SECTIONS, SECTION_KEYS, isSectionKey, type SectionKey } from '../../content/sections';
+import { SECTIONS, SECTION_KEYS, isSectionKey, resolveSection, type SectionKey } from '../../content/sections';
+import { listVersions, type ContentVersion } from '../../content/history';
 import { ContentValidationError, saveSection, useContentState } from '../../content/store';
 import { formatDateTime, friendlyError, toDate } from '../../controllers/lib/utils';
 import { contentAccessController, hasLiveAccess, NOTE_LIMIT } from '../../controllers/contentAccessController';
@@ -172,6 +173,19 @@ function SectionEditor({ sectionKey }: { sectionKey: SectionKey }) {
   const [errors, setErrors] = useState<Errors>({});
   const [saving, setSaving] = useState(false);
   const summaryRef = useRef<HTMLDivElement>(null);
+  const [versions, setVersions] = useState<ContentVersion[] | null>(null);
+  const [versionsError, setVersionsError] = useState<string | null>(null);
+  const topRef = useRef<HTMLFormElement>(null);
+
+  const loadVersions = React.useCallback(() => {
+    listVersions(sectionKey)
+      .then(list => { setVersions(list); setVersionsError(null); })
+      .catch(err => {
+        logger.error('Content history failed to load', err);
+        setVersionsError(friendlyError(err, 'Earlier versions could not be loaded.'));
+      });
+  }, [sectionKey]);
+  useEffect(() => { loadVersions(); }, [loadVersions]);
 
   const liveJson = useMemo(() => JSON.stringify(clean(def.fields, state.content)), [def, state.content]);
   const draftJson = useMemo(() => (draft ? JSON.stringify(clean(def.fields, draft)) : liveJson), [def, draft, liveJson]);
@@ -201,6 +215,7 @@ function SectionEditor({ sectionKey }: { sectionKey: SectionKey }) {
       setErrors({});
       toast.success(`${def.title} saved and confirmed. Every visitor now sees your changes.`);
       void record('content.saved', `Saved the "${def.title}" section of the site.`, sectionKey);
+      loadVersions();
     } catch (err) {
       if (err instanceof ContentValidationError) {
         setErrors(err.errors);
@@ -226,6 +241,18 @@ function SectionEditor({ sectionKey }: { sectionKey: SectionKey }) {
     setErrors({});
   };
 
+  const restore = async (v: ContentVersion) => {
+    if (!await confirmAction({
+      title: 'Put this version back in the form?',
+      message: `The form will be filled with the version saved ${formatDateTime(v.savedAt)}${v.savedByName ? ` by ${v.savedByName}` : ''}. Nothing changes on the site until you save.`,
+      confirmLabel: 'Use this version',
+    })) return;
+    setDraft(structuredClone(resolveSection(sectionKey, v.data)) as unknown as Data);
+    setErrors({});
+    topRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    toast.info('Earlier version loaded. Check it, then save to put it live.');
+  };
+
   if (!draft) {
     return (
       <div className="py-20 flex justify-center" role="status" aria-label="Loading content">
@@ -236,12 +263,12 @@ function SectionEditor({ sectionKey }: { sectionKey: SectionKey }) {
 
   const errorList = Object.entries(errors);
   const status =
-    state.source === 'store' ? `Last saved ${state.updatedAt ? formatDateTime(state.updatedAt) : 'just now'}.`
+    state.source === 'store' ? `Last saved ${state.updatedAt ? formatDateTime(state.updatedAt) : 'just now'}${savedByName(state.updatedAt, versions)}.`
     : state.source === 'legacy' ? 'This is the content saved before the admin area existed. Saving here moves it into the content store.'
     : 'Nothing has been saved for this section yet, so visitors see the built-in defaults shown below.';
 
   return (
-    <form onSubmit={handleSave} noValidate className="max-w-3xl">
+    <form ref={topRef} onSubmit={handleSave} noValidate className="max-w-3xl scroll-mt-24">
       <div className="flex flex-wrap items-start justify-between gap-4 mb-8">
         <div className="max-w-xl">
           <h2 className="display text-2xl md:text-3xl">{def.title}</h2>
@@ -276,6 +303,35 @@ function SectionEditor({ sectionKey }: { sectionKey: SectionKey }) {
         ))}
       </div>
 
+      <section aria-labelledby="versions-heading" className="mt-14 pt-8 border-t border-bai-black/15">
+        <h3 id="versions-heading" className="display text-xl">Earlier versions</h3>
+        <p className="text-bai-black/75 mt-1">Every save is kept here. Restoring puts that version in the form; it goes live when you save.</p>
+        {versionsError ? (
+          <p className="mt-4 p-4 rounded-xl bg-red-50 text-red-900" role="alert">{versionsError}</p>
+        ) : versions === null ? (
+          <div className="mt-4 h-14 bg-white animate-pulse rounded-xl" role="status" aria-label="Loading earlier versions" />
+        ) : versions.length === 0 ? (
+          <p className="mt-4 text-bai-black/75">No versions kept yet. From your next save on, each one appears here.</p>
+        ) : (
+          <ol className="mt-4 border-t border-bai-black/15">
+            {versions.map((v, i) => {
+              const live = i === 0 && JSON.stringify(clean(def.fields, resolveSection(sectionKey, v.data))) === liveJson;
+              return (
+                <li key={v.id} className="py-3 border-b border-bai-black/15 flex items-center justify-between gap-4">
+                  <div className="min-w-0">
+                    <p className="font-semibold num">{formatDateTime(v.savedAt) || 'Just now'}</p>
+                    <p className="text-sm text-bai-black/70 break-words">{v.savedByName || 'Staff member'}</p>
+                  </div>
+                  {live
+                    ? <span className="shrink-0 text-sm font-semibold px-3 py-1 rounded-full bg-green-50 text-green-900">Live now</span>
+                    : <button type="button" onClick={() => restore(v)} disabled={saving} className="btn btn-outline shrink-0">Restore</button>}
+                </li>
+              );
+            })}
+          </ol>
+        )}
+      </section>
+
       <div className="sticky bottom-0 mt-12 -mx-4 px-4 py-4 bg-bai-bone border-t border-bai-black/15">
         <p className="text-sm text-bai-black/75 mb-3 empty:hidden" role="status">
           {dirty ? 'You have unsaved changes.' : state.pending ? 'Sending to the database. Not live yet.' : ''}
@@ -288,4 +344,13 @@ function SectionEditor({ sectionKey }: { sectionKey: SectionKey }) {
       </div>
     </form>
   );
+}
+
+/** " by Name" when the newest kept version is the save shown as "Last saved". */
+function savedByName(updatedAt: unknown, versions: ContentVersion[] | null) {
+  const latest = versions?.[0];
+  const at = toDate(updatedAt as never)?.getTime();
+  const kept = toDate(latest?.savedAt as never)?.getTime();
+  if (!latest?.savedByName || at === undefined || kept === undefined) return '';
+  return Math.abs(kept - at) < 60_000 ? ` by ${latest.savedByName}` : '';
 }

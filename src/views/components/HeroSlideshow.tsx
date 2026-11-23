@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { Pause, Play } from 'lucide-react';
-import { contentImage } from '../../content/image';
+import { responsiveImage } from '../../content/image';
 
 const SLIDE_MS = 6000;
 
@@ -21,6 +21,19 @@ export function HeroSlideshow({ images, children }: { images: string[]; children
 
   // Decided after mount, so the server-rendered page and the first browser render match.
   useEffect(() => { setAutoplay(!prefersReducedMotion() && photos.length > 1); }, [photos.length]);
+
+  // Only the first photo loads with the page; the next one once the page has finished
+  // loading, and each later one just before it is shown. Saves data on phones.
+  const [wanted, setWanted] = useState<Set<number>>(() => new Set([0]));
+  useEffect(() => {
+    const warm = () => setWanted(w => new Set([...w, 1 % photos.length]));
+    if (document.readyState === 'complete') { warm(); return; }
+    window.addEventListener('load', warm, { once: true });
+    return () => window.removeEventListener('load', warm);
+  }, [photos.length]);
+  useEffect(() => {
+    setWanted(w => (w.has(index) && w.has((index + 1) % photos.length) ? w : new Set([...w, index, (index + 1) % photos.length])));
+  }, [index, photos.length]);
 
   const running = autoplay && !paused && !hovering;
   const next = useCallback(() => setIndex(i => (i + 1) % photos.length), [photos.length]);
@@ -45,7 +58,7 @@ export function HeroSlideshow({ images, children }: { images: string[]; children
         {photos.map((photo, i) => (
           <div key={photo + i} className="slide absolute inset-0" data-active={i === index} aria-hidden={i !== index}>
             <img
-              src={contentImage(photo, 2000)}
+              {...(wanted.has(i) ? responsiveImage(photo, '(max-width: 767px) 130vw, 100vw') : {})}
               alt=""
               loading={i === 0 ? 'eager' : 'lazy'}
               {...(i === 0 ? { fetchPriority: 'high' as const } : {})}

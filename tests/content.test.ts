@@ -518,3 +518,27 @@ describe('site contact details', () => {
     expect((resolveSection('site', saved) as { contact: { phone: string } }).contact.phone).toBe('');
   });
 });
+
+describe('photo sizes', () => {
+  it('serves a smaller copy of a built-in photo when a small one is asked for', async () => {
+    const { contentImage } = await import('../src/content/image');
+    const base = import.meta.env.BASE_URL;
+    expect(contentImage('assets/photos/choir-stage.jpg', 600)).toBe(`${base}assets/photos/choir-stage-640.jpg`);
+    expect(contentImage('assets/photos/choir-stage.jpg', 1000)).toBe(`${base}assets/photos/choir-stage-1024.jpg`);
+    expect(contentImage('assets/photos/choir-stage.jpg', 2000)).toBe(`${base}assets/photos/choir-stage.jpg`);
+    expect(contentImage('assets/brand/logo.png', 300)).toBe(`${base}assets/brand/logo.png`);
+  });
+
+  it('offers full-width photos at several sizes, and leaves other images alone', async () => {
+    const { responsiveImage } = await import('../src/content/image');
+    const local = responsiveImage('assets/photos/choir-stage.jpg');
+    expect(local.srcSet).toContain('choir-stage-640.jpg 640w');
+    expect(local.srcSet).toContain('choir-stage-1024.jpg 1024w');
+    expect(local.sizes).toBe('100vw');
+    const cloud = responsiveImage('https://res.cloudinary.com/demo/image/upload/v1/events/a.jpg');
+    expect(cloud.srcSet?.split(', ')).toHaveLength(4);
+    expect(cloud.srcSet).toContain('/upload/f_auto,q_auto,c_limit,w_640/v1/events/a.jpg 640w');
+    expect(responsiveImage('https://example.com/a.jpg')).toEqual({ src: 'https://example.com/a.jpg' });
+    expect(responsiveImage('')).toEqual({ src: '' });
+  });
+});

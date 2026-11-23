@@ -155,27 +155,31 @@ const eventsLd = eventData.length
   : '';
 const canonical = (route) => `<link rel="canonical" href="${SITE}${route === '/' ? '/' : `${route}/`}" />`;
 
+const escapeAttr = (text) => String(text).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+const setMeta = (html, attr, key, value) => html.replace(new RegExp(`(<meta ${attr}="${key}" content=")[^"]*(")`), `$1${escapeAttr(value)}$2`);
+
 const setTitle = (html, title) => html.replace(/<title>[^<]*<\/title>/, `<title>${title.replace(/</g, '&lt;')}</title>`);
 
 async function write(route, html) {
   const file = route === '/' ? join(DIST, 'index.html') : join(DIST, route, 'index.html');
   await mkdir(dirname(file), { recursive: true });
-  await writeFile(file, html);
+  // WhatsApp and Facebook only show a link preview picture given its full address.
+  await writeFile(file, html.replace(`content="${BASE}/assets/brand/share.jpg"`, `content="${SITE}/assets/brand/share.jpg"`));
 }
 
 for (const route of server.PRERENDERED_ROUTES) {
   const body = await server.render(`${BASE}${route === '/' ? '/' : route}`, BASE);
   let html = template.replace('<div id="root"></div>', `<div id="root" data-route="${route}">${body}</div>${seedTag}`);
   html = setTitle(html, TITLES[route] || TITLES['/']);
-  html = html.replace('</head>', `    ${canonical(route)}\n${route === '/events' || route === '/' ? `    ${eventsLd}\n` : ''}  </head>`);
+  // A shared link names the page it points to ("About us"), not just the organisation.
+  if (route !== '/' && TITLES[route]) html = setMeta(html, 'property', 'og:title', TITLES[route]);
+  html = html.replace('</head>', `    ${canonical(route)}\n    <meta property="og:url" content="${SITE}${route === '/' ? '/' : `${route}/`}" />\n${route === '/events' || route === '/' ? `    ${eventsLd}\n` : ''}  </head>`);
   await write(route, html);
   console.log(`prerender: ${route} (${Math.round(html.length / 1024)} kB)`);
 }
 
 // Each event on sale gets its own finished page, with its own title, description and
 // poster for link previews (WhatsApp, Facebook) and search engines.
-const escapeAttr = (text) => String(text).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
-const setMeta = (html, attr, key, value) => html.replace(new RegExp(`(<meta ${attr}="${key}" content=")[^"]*(")`), `$1${escapeAttr(value)}$2`);
 // A share image WhatsApp and Facebook accept: a 1200px JPEG for Cloudinary photos.
 const shareImage = (img) => {
   const url = absolute(img);
@@ -214,7 +218,7 @@ const shell = template
   .replace('<div id="root"></div>', `<div id="root"></div>${seedTag}`)
   .replace('</head>', '    <meta name="robots" content="noindex" />\n  </head>');
 for (const route of SHELL_ROUTES) await write(route, shell);
-await writeFile(join(DIST, '404.html'), shell);
+await writeFile(join(DIST, '404.html'), shell.replace(`content="${BASE}/assets/brand/share.jpg"`, `content="${SITE}/assets/brand/share.jpg"`));
 console.log(`prerender: ${SHELL_ROUTES.length} app shells and 404.html`);
 
 // A sitemap of the public pages, to submit once in Google Search Console.
