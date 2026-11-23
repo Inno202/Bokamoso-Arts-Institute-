@@ -10,6 +10,7 @@ import {
   setDoc,
   startAfter,
   updateDoc,
+  where,
   type QueryDocumentSnapshot,
 } from 'firebase/firestore';
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
@@ -35,6 +36,14 @@ export const userController = {
       users: snap.docs.map(d => ({ uid: d.id, ...d.data() })) as UserProfile[],
       cursor: snap.docs.length === USERS_PAGE_SIZE ? snap.docs[snap.docs.length - 1] : undefined,
     };
+  },
+
+  /** Everyone who agreed to receive news about upcoming events (active accounts only). */
+  async eventNewsList() {
+    const snap = await getDocs(query(collection(db, USERS), where('marketingOptIn', '==', true)));
+    return snap.docs
+      .map(d => ({ uid: d.id, ...d.data() }) as UserProfile)
+      .filter(u => u.isActive !== false && u.email);
   },
 
   async setRole(uid: string, role: UserRole) {

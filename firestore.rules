@@ -97,6 +97,11 @@ service cloud.firestore {
           && request.resource.data.displayName is string
           && request.resource.data.displayName.size() >= 1
           && request.resource.data.displayName.size() <= 100)
+        // Owners choose whether they want news about upcoming events (POPIA consent), with the server's time as proof.
+        || (isOwner(uid)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['marketingOptIn', 'marketingOptInAt'])
+          && request.resource.data.marketingOptIn is bool
+          && request.resource.data.marketingOptInAt == request.time)
         // Super admins record when they last looked at the site error log (the time is the server's).
         || (isOwner(uid)
           && isSuperAdmin()
@@ -460,7 +465,7 @@ service cloud.firestore {
         && request.resource.data.actorId == request.auth.uid
         && request.resource.data.actorRole == get(profilePath()).data.role
         && request.resource.data.actorName is string && request.resource.data.actorName.size() <= 100
-        && request.resource.data.action in ['user.created', 'user.role', 'user.deactivated', 'user.reactivated',
+        && request.resource.data.action in ['user.created', 'user.role', 'user.deactivated', 'user.reactivated', 'user.newsList',
              'event.created', 'event.updated', 'event.deleted', 'event.cancelled', 'content.saved',
              'access.requested', 'access.approved', 'access.declined', 'access.ended', 'ticket.cancelled']
         && request.resource.data.area in ['people', 'events', 'content', 'access', 'tickets']

@@ -52,6 +52,9 @@ export interface UserProfile {
   lastLogin?: DateLike;
   /** Super admins: when they last opened the site error log (only newer problems are announced). */
   errorsSeenAt?: DateLike;
+  /** Agreed to receive news about upcoming events by email (POPIA consent), and when they last chose. */
+  marketingOptIn?: boolean;
+  marketingOptInAt?: DateLike;
 }
 
 export interface BAIEvent {

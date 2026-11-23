@@ -13,7 +13,7 @@ import {
   updateProfile,
   type User,
 } from 'firebase/auth';
-import { deleteDoc, doc, updateDoc } from 'firebase/firestore';
+import { deleteDoc, doc, serverTimestamp, updateDoc, type Firestore } from 'firebase/firestore';
 import { db } from './lib/firebase';
 import { AppError } from './lib/utils';
 
@@ -29,6 +29,14 @@ async function confirmIdentity(user: User, currentPassword?: string) {
   } else {
     await reauthenticateWithPopup(user, new GoogleAuthProvider());
   }
+}
+
+/**
+ * Records whether the person wants news about upcoming events by email, and when they chose
+ * (the proof of consent POPIA asks for). They can change it at any time in their account.
+ */
+export async function setEventNews(uid: string, agree: boolean, database: Firestore = db) {
+  await updateDoc(doc(database, 'users', uid), { marketingOptIn: agree, marketingOptInAt: serverTimestamp() });
 }
 
 export const accountController = {

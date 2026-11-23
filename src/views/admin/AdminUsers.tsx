@@ -109,12 +109,47 @@ export default function AdminUsers() {
 
   useEffect(() => { void loadUsers(); }, [loadUsers]);
 
+  // People who agreed to receive news about upcoming events. Only they may be emailed about events (POPIA).
+  const [news, setNews] = useState<UserProfile[] | null>(null);
+  const [newsError, setNewsError] = useState<string | null>(null);
+  useEffect(() => {
+    userController.eventNewsList()
+      .then(setNews)
+      .catch(err => { logger.error('Event news list failed to load', err); setNewsError(friendlyError(err, 'The event news list could not be loaded.')); });
+  }, []);
+  const copyNewsList = async () => {
+    if (!news?.length) return;
+    try {
+      await navigator.clipboard.writeText(news.map(u => u.email).join(', '));
+      toast.success(`${news.length} email ${news.length === 1 ? 'address' : 'addresses'} copied. Paste them into the Bcc field, never To or Cc.`);
+      void record('user.newsList', `Copied the event news email list (${news.length} ${news.length === 1 ? 'person' : 'people'}).`);
+    } catch {
+      toast.error('Copying is blocked in this browser. Try another browser.');
+    }
+  };
+
   // CEOs may add staff, but only a super admin can create another super admin.
   const creatableRoles = ROLE_OPTIONS.filter(r => isSuper || r !== 'SUPER_ADMIN');
 
   return (
     <AdminShell title="Users">
             <ContentAccessRequests />
+            <section className="mb-8 border-b border-bai-black/15 pb-8" aria-labelledby="news-list-heading">
+              <h2 id="news-list-heading" className="font-semibold text-lg mb-1">Event news list</h2>
+              {newsError ? (
+                <p className="text-sm text-red-900" role="alert">{newsError}</p>
+              ) : news === null ? (
+                <p className="text-sm text-bai-black/70" role="status">Loading</p>
+              ) : (
+                <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:justify-between">
+                  <p className="text-sm text-bai-black/75">
+                    {news.length === 0 ? 'Nobody has asked for event news yet.' : `${news.length} ${news.length === 1 ? 'person has' : 'people have'} asked to be emailed about upcoming events.`} Only email these people about events, and put the addresses in Bcc.
+                  </p>
+                  <button type="button" onClick={copyNewsList} disabled={!news.length} className="btn btn-outline shrink-0">Copy email addresses</button>
+                </div>
+              )}
+            </section>
+
             <form onSubmit={handleAddUser} className="mb-8 border-b border-bai-black/15 pb-8">
               <h2 className="font-semibold text-lg mb-3">Add a staff account</h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
@@ -141,6 +176,7 @@ export default function AdminUsers() {
                       <p className="font-semibold text-sm truncate">{u.displayName || 'No name'}{isSelf && <span className="font-normal text-bai-black/70"> (you)</span>}</p>
                       <p className="text-sm text-bai-black/70 truncate">{u.email}</p>
                     </div>
+                    {u.marketingOptIn && <span className="self-start lg:self-auto text-xs font-bold bg-green-50 text-green-900 px-3 py-1 rounded-full">Event news</span>}
                     {inactive && <span className="self-start lg:self-auto text-xs font-bold bg-red-100 text-red-800 px-3 py-1 rounded-full">Deactivated</span>}
                     <div className="flex items-center gap-2">
                       <select
