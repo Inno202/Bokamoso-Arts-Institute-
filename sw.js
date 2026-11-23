@@ -3,14 +3,12 @@
  * visited) open without a signal at the door. Tickets themselves come from the
  * app's own offline database copy; this file only makes the pages load.
  *
- * - Pages: network first, always asking the server for the newest version (never the
- *   browser's short-term copy), so a new release shows straight away; saved copy offline.
- * - Built files (names carry a fingerprint, so they never change): saved once, reused.
- * - Site photos and other unfingerprinted files: network first, saved copy offline.
- * - Fonts and uploaded event photos (each upload has its own address): saved as seen.
+ * - Pages: network first (always fresh when online), the saved copy when offline.
+ * - Built files (names carry a fingerprint): saved once, reused.
+ * - Fonts and event photos: saved as they are seen, refreshed in the background.
  * Database, sign-in and upload requests are never touched.
  */
-const VERSION = 'v2';
+const VERSION = 'v1';
 const PAGES = `bai-pages-${VERSION}`;
 const FILES = `bai-files-${VERSION}`;
 const PHOTOS = `bai-photos-${VERSION}`;
@@ -58,9 +56,7 @@ async function networkFirstPage(request) {
   const cache = await caches.open(PAGES);
   const key = request.url.split('#')[0].split('?')[0];
   try {
-    // 'no-cache' revalidates with the server (a quick "not modified" when nothing changed)
-    // instead of reusing the browser's copy, which GitHub Pages lets live for 10 minutes.
-    const res = await fetch(request.url, { cache: 'no-cache', credentials: 'same-origin', redirect: 'manual' });
+    const res = await fetch(request);
     if (res.ok) cache.put(key, res.clone());
     return res;
   } catch {
@@ -78,19 +74,6 @@ async function cacheFirst(request, cacheName) {
   const res = await fetch(request);
   if (res.ok) cache.put(request, res.clone());
   return res;
-}
-
-async function networkFirst(request, cacheName) {
-  const cache = await caches.open(cacheName);
-  try {
-    const res = await fetch(request, { cache: 'no-cache' });
-    if (res.ok) cache.put(request, res.clone());
-    return res;
-  } catch {
-    const hit = await cache.match(request);
-    if (hit) return hit;
-    throw new Error('offline');
-  }
 }
 
 async function staleWhileRevalidate(request, cacheName, max) {
@@ -114,7 +97,7 @@ self.addEventListener('fetch', (event) => {
   if (url.origin === SCOPE.origin && url.pathname.startsWith(SCOPE.pathname)) {
     if (request.mode === 'navigate') return event.respondWith(networkFirstPage(request));
     if (url.pathname.includes('/assets/')) {
-      return event.respondWith(fingerprinted(url) ? cacheFirst(request, FILES) : networkFirst(request, FILES));
+      return event.respondWith(fingerprinted(url) ? cacheFirst(request, FILES) : staleWhileRevalidate(request, FILES));
     }
     return;
   }
