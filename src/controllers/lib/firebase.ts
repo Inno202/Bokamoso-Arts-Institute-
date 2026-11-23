@@ -1,6 +1,6 @@
 import { deleteApp, initializeApp } from 'firebase/app';
 import { initializeAppCheck, ReCaptchaEnterpriseProvider, ReCaptchaV3Provider, type AppCheck } from 'firebase/app-check';
-import { connectAuthEmulator, getAuth, signOut, type Auth } from 'firebase/auth';
+import { browserPopupRedirectResolver, browserSessionPersistence, connectAuthEmulator, getAuth, indexedDBLocalPersistence, browserLocalPersistence, initializeAuth, signOut, type Auth } from 'firebase/auth';
 import { connectFirestoreEmulator, initializeFirestore, type Firestore, memoryLocalCache, persistentLocalCache, persistentMultipleTabManager } from 'firebase/firestore';
 import firebaseConfig from '../../../firebase-applet-config.json';
 
@@ -33,7 +33,22 @@ export const db = initializeFirestore(app, {
   localCache: typeof window === 'undefined' ? memoryLocalCache() : persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
   ignoreUndefinedProperties: true,
 }, firebaseConfig.firestoreDatabaseId);
-export const auth = getAuth(app);
+/**
+ * "Remember me", saved on this device. Ticked (the default): stay signed in on this browser.
+ * Unticked: signed in only until the browser is closed. It has to be chosen when the site
+ * starts: switching later is undone on the next page load, and switching while other tabs
+ * are open signs those tabs out.
+ */
+export const REMEMBER_KEY = 'bai-remember';
+export function rememberChoice() {
+  try { return localStorage.getItem(REMEMBER_KEY) !== '0'; } catch { return true; }
+}
+export const auth = typeof window === 'undefined'
+  ? getAuth(app)
+  : initializeAuth(app, {
+    persistence: rememberChoice() ? [indexedDBLocalPersistence, browserLocalPersistence] : [browserSessionPersistence],
+    popupRedirectResolver: browserPopupRedirectResolver,
+  });
 
 // Local testing only: `VITE_USE_EMULATORS=true npm run dev` with the Firebase emulators
 // running points the app at them instead of the live project. Never active in a build.

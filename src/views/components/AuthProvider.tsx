@@ -86,10 +86,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     if (!isStaffSession) return;
     const limit = STAFF_IDLE_MINUTES * 60_000;
+    // Activity is shared by every tab (and the installed app) on this device, so a tab left
+    // open in the background never signs out the one being used.
+    const KEY = 'bai-last-active';
     let lastActive = Date.now();
-    const touch = () => { lastActive = Date.now(); };
+    let lastWrite = 0;
+    const shared = () => { try { return Number(localStorage.getItem(KEY) || 0); } catch { return 0; } };
+    const touch = () => {
+      lastActive = Date.now();
+      if (lastActive - lastWrite > 10_000) {
+        lastWrite = lastActive;
+        try { localStorage.setItem(KEY, String(lastActive)); } catch { /* storage unavailable */ }
+      }
+    };
+    touch();
     const check = () => {
-      if (Date.now() - lastActive < limit) return;
+      if (Date.now() - Math.max(lastActive, shared()) < limit) return;
       toast.info(`You were signed out after ${STAFF_IDLE_MINUTES} minutes without activity.`);
       void signOut(auth);
     };

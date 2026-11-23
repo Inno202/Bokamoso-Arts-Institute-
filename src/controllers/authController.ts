@@ -8,12 +8,12 @@ import {
   sendPasswordResetEmail,
   sendEmailVerification,
   setPersistence,
-  browserLocalPersistence,
+  indexedDBLocalPersistence,
   browserSessionPersistence,
   type User,
 } from 'firebase/auth';
 import { doc, runTransaction, serverTimestamp, type Firestore } from 'firebase/firestore';
-import { auth, db, inSignupSession } from './lib/firebase';
+import { auth, db, inSignupSession, REMEMBER_KEY, rememberChoice } from './lib/firebase';
 
 /**
  * Creates the Firestore profile for a signed-in user if it does not exist yet.
@@ -47,7 +47,10 @@ export const authController = {
    * Staff are still signed out after 30 idle minutes either way.
    */
   async remember(stay: boolean) {
-    await setPersistence(auth, stay ? browserLocalPersistence : browserSessionPersistence);
+    // Only when the choice changes: switching storage while other tabs are open signs them out.
+    if (stay === rememberChoice()) return;
+    try { localStorage.setItem(REMEMBER_KEY, stay ? '1' : '0'); } catch { /* storage unavailable */ }
+    await setPersistence(auth, stay ? indexedDBLocalPersistence : browserSessionPersistence);
   },
 
   async login(email: string, password: string, stay = true) {

@@ -70,7 +70,7 @@ export default function Legal({ doc }: { doc: Doc }) {
             <P>The text, photographs, recordings and logo on this site belong to Bokamoso Arts Institute or the people who made them. Ask us before reusing them.</P>
 
             <H>Changes and contact</H>
-            <P>We may update these terms as the site changes; the date above shows the latest version. Questions: {email} or {contact.phone}.</P>
+            <P>We may update these terms as the site changes; the date above shows the latest version. Questions: {email}{contact.phone.trim() ? <> or {contact.phone}</> : null}.</P>
           </>
         )}
 
@@ -126,7 +126,7 @@ export default function Legal({ doc }: { doc: Doc }) {
 
             <H>What is stored on your device</H>
             <UL>
-              <li><strong>Sign-in:</strong> when you sign in, Google Firebase keeps you signed in using your browser's storage. With "Remember me" ticked you stay signed in on that browser until you sign out; without it you are signed out when you close the browser. Staff are also signed out after 30 minutes without activity.</li>
+              <li><strong>Sign-in:</strong> when you sign in, Google Firebase keeps you signed in using your browser's storage. With "Remember me" ticked you stay signed in on that browser until you sign out; without it you are signed out when you close the browser. Your choice is remembered on that browser. Staff are also signed out after 30 minutes without activity in any tab, so the time of their last activity is kept in the browser too.</li>
               <li><strong>Offline copy:</strong> a copy of the pages' content, events and your tickets is cached so the site loads quickly and your tickets open with a weak connection.</li>
               <li><strong>Your bag:</strong> the tickets you have added but not yet booked.</li>
               <li><strong>Footer preference:</strong> whether you have folded the footer away.</li>

@@ -8,6 +8,7 @@ import { db } from '../../controllers/lib/firebase';
 import { friendlyError } from '../../controllers/lib/utils';
 import { GoogleMark } from '../components/GoogleMark';
 import { errorLog, isSignInMistake } from '../../controllers/errorLogController';
+import { rememberChoice } from '../../controllers/lib/firebase';
 
 const input = 'field pl-12';
 
@@ -19,7 +20,7 @@ export default function Login() {
     : '';
   const [email, setEmail] = useState(registered);
   const [password, setPassword] = useState('');
-  const [remember, setRemember] = useState(true);
+  const [remember, setRemember] = useState(rememberChoice);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
