@@ -24,6 +24,12 @@ npm run build      # static site in dist/
 - **`main` is the live website.** GitHub publishes it automatically (`.github/workflows/publish.yml`): within minutes of every change merged into `main`, and every hour so pages built in advance carry the latest content saved in the admin area. It can also be run by hand: GitHub > Actions > Publish site > Run workflow.
 - Changes are made on a working branch and merged into `main` through a pull request. Nothing is published from anyone's own computer: `npm run deploy` only prints this reminder.
 - **Content is not in git.** Page text, photos, team members and events live in the Firebase database and are edited in the admin area. A code change never overwrites them.
+- **Bot protection and publishing.** With App Check enforced, the publish needs an App Check pass to read the public content. It gets one from the GitHub secret `APPCHECK_DEBUG_TOKEN`. To set it up (once):
+  1. Firebase console > App Check > Apps > the web app's menu > **Manage debug tokens** > **Add debug token**. Name it "GitHub publish" and click **Generate token**. Copy the code it shows.
+  2. GitHub > the repository's **Settings** > **Secrets and variables** > **Actions** > **New repository secret**. Name: `APPCHECK_DEBUG_TOKEN`. Secret: the code. Save.
+  3. GitHub > Actions > Publish site > Run workflow, and check the build log says "App Check pass received" and "live content for site, home, ...".
+
+  Keep the token only in those two places: anyone holding it can get past the bot check (the database rules still apply). If it ever leaks, delete it in the Firebase console and make a new one. If the content cannot be read, the publish stops and the last good version stays live.
 
 
 Each publish also keeps the previous release's script files online (`scripts/keep-previous-assets.mjs`), so anyone with the old version still open can keep moving around the site. The offline helper (`public/sw.js`) always asks GitHub for the newest page instead of reusing the browser's 10-minute copy, so a new release shows on the next visit. If you change `public/sw.js`, raise its `VERSION` so old saved copies are cleared.
