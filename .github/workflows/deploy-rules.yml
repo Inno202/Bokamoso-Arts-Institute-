@@ -1,0 +1,66 @@
+# Deploys the database security rules and indexes from main, so nobody has to run
+# `firebase deploy` from their own computer.
+#
+# - Runs whenever firestore.rules, firestore.indexes.json or firebase.json change on main.
+# - Can also be started by hand: Actions > Deploy database rules > Run workflow.
+# - The security tests run first; nothing is deployed unless every one of them passes.
+#
+# Needs the repository secret FIREBASE_SERVICE_ACCOUNT: the JSON key of a Google service
+# account allowed to deploy rules (see README, "Database rules"). Until it is added, the
+# workflow runs the tests and skips the deploy with a notice.
+name: Deploy database rules
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - firestore.rules
+      - firestore.indexes.json
+      - firebase.json
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-rules
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      # The Firestore emulator used by the tests needs Java.
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - run: npm ci
+
+      - name: Security tests (must all pass before anything is deployed)
+        run: npm run test:rules
+
+      - name: Deploy rules and indexes
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          if [ -z "$FIREBASE_SERVICE_ACCOUNT" ]; then
+            echo "::notice::FIREBASE_SERVICE_ACCOUNT is not set yet, so the rules were tested but not deployed."
+            exit 0
+          fi
+          KEY="$RUNNER_TEMP/firebase-key.json"
+          printf '%s' "$FIREBASE_SERVICE_ACCOUNT" > "$KEY"
+          export GOOGLE_APPLICATION_CREDENTIALS="$KEY"
+          npx -y firebase-tools@13 deploy --only firestore --project bokamosoarts-6bf62 --non-interactive
+          rm -f "$KEY"
