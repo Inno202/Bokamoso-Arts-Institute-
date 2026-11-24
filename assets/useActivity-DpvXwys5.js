@@ -1,1 +1,0 @@
-import{r as s}from"./react-9rRqpDUQ.js";import{k as a}from"./index-ChovPYeh.js";import{a as c}from"./activityController-Czd4qLrV.js";function u(){const{user:o,userData:r,role:t}=a();return s.useCallback((e,i,m="")=>c.record({user:o,name:r==null?void 0:r.displayName,role:t},e,i,m),[o,r==null?void 0:r.displayName,t])}export{u};
