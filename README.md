@@ -28,16 +28,21 @@ npm run build      # static site in dist/
 
 Each publish also keeps the previous release's script files online (`scripts/keep-previous-assets.mjs`), so anyone with the old version still open can keep moving around the site. The offline helper (`public/sw.js`) always asks GitHub for the newest page instead of reusing the browser's 10-minute copy, so a new release shows on the next visit. If you change `public/sw.js`, raise its `VERSION` so old saved copies are cleared.
 
-## Deploying the database rules (required)
+## Deploying the database rules (automatic)
 
-Changes to `firestore.rules` and `firestore.indexes.json` do nothing until they are deployed to Firebase:
+Changes to `firestore.rules` and `firestore.indexes.json` only take effect once deployed to Firebase. GitHub does this (`.github/workflows/deploy-rules.yml`): when either file (or `firebase.json`) changes on `main`, it runs the security tests and deploys only if every test passes. It can also be run by hand: GitHub > Actions > Deploy database rules > Run workflow.
 
-```bash
-npx firebase-tools login
-npx firebase-tools deploy --only firestore
-```
+The tests cover the cases that matter most: nobody can give themselves a role, read another person's tickets or profile, forge or reprice a ticket, oversell an event, or admit a ticket twice.
 
-Run `npm run test:rules` first. The tests cover the cases that matter most: nobody can give themselves a role, read another person's tickets or profile, forge or reprice a ticket, oversell an event, or admit a ticket twice.
+**One-time setup: the deploy key.** The workflow needs a Google service account key saved as the repository secret `FIREBASE_SERVICE_ACCOUNT`. Until it exists, the workflow tests the rules and skips the deploy with a notice.
+
+1. Google Cloud console (project `bokamosoarts-6bf62`) > IAM & Admin > Service accounts > Create service account, for example `github-rules-deploy`.
+2. Give it these roles: **Firebase Rules Admin**, **Cloud Datastore Index Admin** and **Service Usage Consumer**. Nothing more.
+3. Open the account > Keys > Add key > Create new key > JSON. A file downloads.
+4. GitHub > this repository > Settings > Secrets and variables > Actions > New repository secret. Name: `FIREBASE_SERVICE_ACCOUNT`. Value: the whole contents of the JSON file.
+5. Delete the downloaded file. Never paste the key anywhere else, send it to anyone or commit it.
+
+To deploy by hand instead (for example in an emergency): `npx firebase-tools login`, then `npx firebase-tools deploy --only firestore`.
 
 ## Roles
 
