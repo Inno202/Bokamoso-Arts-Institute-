@@ -392,7 +392,22 @@
 .note-float { transform-box: fill-box; animation: note-float 2.8s ease-out infinite; }
 .note-float-late { animation-delay: 1.4s; }
 .note-fallen { transform-box: fill-box; transform-origin: 50% 100%; animation: note-twitch 4s ease-in-out infinite; }
+/* The fall plays once: off the end of the staff, a tumble, one bounce, then the stars and trail appear. */
+@keyframes note-drop {
+  0% { transform: translate(-30px, -96px) rotate(78deg); opacity: 0; }
+  12% { opacity: 1; }
+  58% { transform: translate(0, 0) rotate(-8deg); animation-timing-function: ease-out; }
+  72% { transform: translate(2px, -16px) rotate(4deg); animation-timing-function: ease-in; }
+  86% { transform: translate(0, 0) rotate(-2deg); }
+  100% { transform: translate(0, 0) rotate(0); opacity: 1; }
+}
+@keyframes note-pop { 0% { transform: scale(0); opacity: 0; } 70% { transform: scale(1.25); opacity: 1; } 100% { transform: scale(1); opacity: 1; } }
+@keyframes note-fade { from { opacity: 0; } to { opacity: 0.35; } }
+.note-drop { transform-box: fill-box; transform-origin: 50% 100%; animation: note-drop 1.3s cubic-bezier(0.55, 0, 0.85, 0.35) 0.5s both; }
+.note-stars { transform-box: fill-box; transform-origin: center; animation: note-pop 0.45s ease-out 1.75s both; }
+.note-trail { animation: note-fade 0.6s ease-out 0.8s both; }
+.note-fallen { animation-delay: 2.4s; }
 @media (prefers-reduced-motion: reduce) {
-  .note-wobble, .note-float, .note-fallen { animation: none; }
+  .note-wobble, .note-float, .note-fallen, .note-drop, .note-stars, .note-trail { animation: none; }
   .note-float { opacity: 1; }
 }
