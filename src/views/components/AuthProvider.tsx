@@ -5,6 +5,7 @@ import { auth, db } from '../../controllers/lib/firebase';
 import { ensureUserProfile } from '../../controllers/authController';
 import { UserProfile, UserRole } from '../../models/types';
 import { STAFF_IDLE_MINUTES } from '../../config';
+import { rememberChoice } from '../../controllers/lib/firebase';
 import { logger } from '../../services/loggerService';
 import { toast } from '../../services/toast';
 
@@ -80,11 +81,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
   }, [user]);
 
-  // Staff sessions end after a stretch of inactivity, so a laptop or door phone
-  // left open cannot be picked up and used with staff powers.
+  // Without "Remember me" (a shared laptop or door phone), staff sessions end after a stretch
+  // of inactivity, so a device left open cannot be picked up and used with staff powers.
+  // With it ticked, the person chose to stay signed in on their own device.
   const isStaffSession = !!userData && userData.role !== 'USER';
   useEffect(() => {
-    if (!isStaffSession) return;
+    if (!isStaffSession || rememberChoice()) return;
     const limit = STAFF_IDLE_MINUTES * 60_000;
     // Activity is shared by every tab (and the installed app) on this device, so a tab left
     // open in the background never signs out the one being used.

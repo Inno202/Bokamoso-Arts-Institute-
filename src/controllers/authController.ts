@@ -45,7 +45,7 @@ const verificationLink = () =>
 export const authController = {
   /**
    * "Remember me": stay signed in on this browser (the default), or only until the browser closes.
-   * Staff are still signed out after 30 idle minutes either way.
+   * Unticked, staff are also signed out after 30 idle minutes (see AuthProvider).
    */
   async remember(stay: boolean) {
     // Only when the choice changes: switching storage while other tabs are open signs them out.

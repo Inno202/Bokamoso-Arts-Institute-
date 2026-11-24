@@ -14,7 +14,7 @@ import { APP_CHECK_ENABLED } from '../../controllers/lib/firebase';
  * charged, collected, stored or promised, update the matching section here and
  * the LAST_UPDATED date in the same commit.
  */
-const LAST_UPDATED = '23 November 2026';
+const LAST_UPDATED = '24 November 2026';
 
 type Doc = 'terms' | 'privacy' | 'cookies';
 const TITLES: Record<Doc, [string, string]> = {
@@ -127,7 +127,7 @@ export default function Legal({ doc }: { doc: Doc }) {
 
             <H>What is stored on your device</H>
             <UL>
-              <li><strong>Sign-in:</strong> when you sign in, Google Firebase keeps you signed in using your browser's storage. With "Remember me" ticked you stay signed in on that browser until you sign out; without it you are signed out when you close the browser. Your choice is remembered on that browser. Staff are also signed out after 30 minutes without activity in any tab, so the time of their last activity is kept in the browser too.</li>
+              <li><strong>Sign-in:</strong> when you sign in, Google Firebase keeps you signed in using your browser's storage. With "Remember me" ticked you stay signed in on that browser until you sign out; without it you are signed out when you close the browser. Your choice is remembered on that browser. Staff who sign in without "Remember me" are also signed out after 30 minutes without activity in any tab, so the time of their last activity is kept in the browser too.</li>
               <li><strong>Offline copy:</strong> a copy of the pages' content, events and your tickets is cached so the site loads quickly and your tickets open with a weak connection.</li>
               <li><strong>Your bag:</strong> the tickets you have added but not yet booked.</li>
               <li><strong>Footer preference:</strong> whether you have folded the footer away.</li>

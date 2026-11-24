@@ -115,7 +115,7 @@ What protects the system, and where each protection lives.
 | Flooding the website (DDoS) | The site is static files served from GitHub's global network; there is no server of ours to overload | GitHub Pages |
 | Flooding or scraping the database, mass fake sign-ups | **Firebase App Check**: requests without proof they come from this site in a real browser are refused | Console setup below |
 | Someone using another person's account or data | Every read and write is checked against the signed-in person and their role | `firestore.rules` |
-| Stolen or abandoned staff session | Staff are signed out after 30 idle minutes; role and account changes need a sign-in from the last 8 hours; a deactivated account loses access at once | `AuthProvider.tsx`, `firestore.rules` |
+| Stolen or abandoned staff session | Staff who sign in without "Remember me" (shared devices such as door phones) are signed out after 30 idle minutes; role and account changes need a sign-in from the last 8 hours; a deactivated account loses access at once | `AuthProvider.tsx`, `firestore.rules` |
 | Forged, free-minted or hoarded tickets | A ticket only exists as part of an order that matches the event's price and sold count; 10 tickets per account per event | `firestore.rules` |
 | Malicious script injected into a page (XSS) | Content-Security-Policy limits where scripts can come from; admin input is validated; links must be https | `vite.config.ts`, `src/content` |
 | The site hidden inside a hostile page (clickjacking) | The app refuses to start inside another site's frame | `src/main.tsx` |
