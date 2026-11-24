@@ -93,9 +93,11 @@ function MissingNote() {
       </g>
 
       {/* A trail showing where the little note fell from */}
-      <path d="M730 172 q18 14 22 30" fill="none" stroke="#0B0B0C" strokeWidth="2" strokeDasharray="3 7" strokeLinecap="round" opacity="0.35" />
+      <path className="note-trail" d="M730 172 q18 14 22 30" fill="none" stroke="#0B0B0C" strokeWidth="2" strokeDasharray="3 7" strokeLinecap="round" opacity="0.35" />
 
-      {/* The note that fell off the sheet: flat on its back, a little dizzy */}
+      {/* The note that fell off the sheet: it tips off the staff, tumbles down and bounces
+          once when the page opens, then lies flat on its back, a little dizzy */}
+      <g className="note-drop">
       <g className="note-fallen">
         <line x1="742" y1="240" x2="682" y2="240" stroke="#E11D48" strokeWidth="5" strokeLinecap="round" />
         <path d="M682 240 q4 -24 26 -26" fill="none" stroke="#E11D48" strokeWidth="5" strokeLinecap="round" />
@@ -104,13 +106,15 @@ function MissingNote() {
           <path d="M747 230 l5 5 M752 230 l-5 5" />
           <path d="M759 228 l5 5 M764 228 l-5 5" />
         </g>
-        <g fill="#1D4ED8">
+        <g className="note-stars" fill="#1D4ED8">
           <path d="M742 204 l2.5 5 5 2.5 -5 2.5 -2.5 5 -2.5 -5 -5 -2.5 5 -2.5z" />
           <path d="M776 210 l2 4 4 2 -4 2 -2 4 -2 -4 -4 -2 4 -2z" />
           <circle cx="760" cy="198" r="2.5" />
         </g>
-        <line x1="666" x2="798" y1="254" y2="254" stroke="#0B0B0C" strokeWidth="2" strokeLinecap="round" opacity="0.25" />
       </g>
+      </g>
+      {/* the floor stays put while the note falls onto it */}
+      <line x1="666" x2="798" y1="254" y2="254" stroke="#0B0B0C" strokeWidth="2" strokeLinecap="round" opacity="0.25" />
     </svg>
   );
 }
