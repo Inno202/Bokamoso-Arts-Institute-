@@ -2,8 +2,12 @@
  * Pre-renders the public pages to finished HTML after `vite build`.
  *
  *   1. Reads the site's current content from Firestore (public, read-only), so the
- *      HTML carries real content rather than built-in defaults. If the database
- *      cannot be reached the build still succeeds, using the defaults.
+ *      HTML carries real content rather than built-in defaults. With bot protection
+ *      (App Check) enforced, Firebase only answers with an App Check pass: the publish
+ *      Action gets one from APPCHECK_DEBUG_TOKEN (a GitHub secret, see README). If the
+ *      database cannot be reached the build uses the defaults, unless
+ *      REQUIRE_LIVE_CONTENT=1 (the publish Action), where it stops instead so the
+ *      last good version stays live.
  *   2. Renders each public route with the server build (build/ssr/entry-server.js).
  *   3. Writes dist/<route>/index.html, plus plain app shells for the signed-in
  *      routes and for 404.html, so every address opens directly on GitHub Pages.
@@ -43,6 +47,32 @@ const SHELL_ROUTES = ['/cart', '/checkout', '/my-tickets', '/account', '/dashboa
 // PRERENDER_DOCS_URL lets a test build read from the local emulator instead of the live database.
 const DOCS = process.env.PRERENDER_DOCS_URL || `https://firestore.googleapis.com/v1/projects/${config.projectId}/databases/${config.firestoreDatabaseId}/documents`;
 
+const REQUIRE_LIVE = process.env.REQUIRE_LIVE_CONTENT === '1' && !process.env.PRERENDER_DOCS_URL;
+const problems = [];
+
+/**
+ * An App Check pass for this build. The debug token is registered in the Firebase console
+ * (App Check > Apps > Manage debug tokens) and kept as a GitHub secret, never in the code.
+ * It only gets past the bot check: the database rules still allow public reads only.
+ */
+async function appCheckHeaders() {
+  const debugToken = process.env.APPCHECK_DEBUG_TOKEN;
+  if (!debugToken || process.env.PRERENDER_DOCS_URL) return {};
+  const url = `https://firebaseappcheck.googleapis.com/v1/projects/${config.projectId}/apps/${config.appId}:exchangeDebugToken?key=${config.apiKey}`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ debugToken }),
+    signal: AbortSignal.timeout(15000),
+  });
+  if (!res.ok) throw new Error(`App Check refused the debug token (HTTP ${res.status}); check it is registered in the Firebase console`);
+  const { token } = await res.json();
+  console.log('prerender: App Check pass received');
+  return { 'X-Firebase-AppCheck': token };
+}
+let APPCHECK = {};
+try { APPCHECK = await appCheckHeaders(); } catch (err) { console.warn(`prerender: ${err.message}`); problems.push(err.message); }
+
 /** Firestore's REST format to plain values. */
 function decode(value) {
   const [type, v] = Object.entries(value)[0];
@@ -59,7 +89,7 @@ function decode(value) {
 }
 
 async function getDoc(path) {
-  const res = await fetch(`${DOCS}/${path}`, { signal: AbortSignal.timeout(15000) });
+  const res = await fetch(`${DOCS}/${path}`, { headers: APPCHECK, signal: AbortSignal.timeout(15000) });
   if (res.status === 404) return undefined;
   if (!res.ok) throw new Error(`${path}: HTTP ${res.status}`);
   const body = await res.json();
@@ -82,6 +112,7 @@ try {
   console.log(`prerender: live content for ${Object.keys(raw).join(', ') || 'no sections (defaults used)'}`);
 } catch (err) {
   console.warn(`prerender: could not read live content (${err.message}); using built-in defaults`);
+  problems.push(err.message);
 }
 
 // The next events on sale, for the home page's Upcoming events section.
@@ -89,7 +120,7 @@ let events = [];
 try {
   const res = await fetch(`${DOCS}:runQuery`, {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    headers: { 'content-type': 'application/json', ...APPCHECK },
     signal: AbortSignal.timeout(15000),
     body: JSON.stringify({ structuredQuery: {
       from: [{ collectionId: 'events' }],
@@ -105,6 +136,13 @@ try {
   }));
 } catch (err) {
   console.warn(`prerender: could not read events (${err.message}); the home page will load them in the browser`);
+  problems.push(err.message);
+}
+
+if (REQUIRE_LIVE && problems.length) {
+  console.error('prerender: stopping, so the site is not published with built-in default text. The last good version stays live.');
+  if (!process.env.APPCHECK_DEBUG_TOKEN) console.error('prerender: APPCHECK_DEBUG_TOKEN is not set. Add it under GitHub > Settings > Secrets and variables > Actions (see README, "Publishing").');
+  process.exit(1);
 }
 
 // ---------- 2 & 3. render ----------

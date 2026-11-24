@@ -41,6 +41,12 @@ jobs:
       - run: npm ci
 
       - name: Build (pages are pre-built with the current content from the database)
+        env:
+          # Bot protection is enforced, so the build needs an App Check pass to read the
+          # public content. The token lives only in GitHub's secrets (see README, "Publishing").
+          APPCHECK_DEBUG_TOKEN: ${{ secrets.APPCHECK_DEBUG_TOKEN }}
+          # If the content cannot be read, stop rather than publish default text.
+          REQUIRE_LIVE_CONTENT: '1'
         run: npm run build
 
       - name: Keep the previous release's files for visitors who still have it open
