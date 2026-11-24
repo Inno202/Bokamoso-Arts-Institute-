@@ -100,7 +100,7 @@ test('moving between pages happens in the browser, without a full reload', async
 
 test('an unknown address shows a friendly not-found page', async ({ page }) => {
   await page.goto('this-page-does-not-exist');
-  await expect(page.locator('h1').first()).toHaveText('Page not found');
+  await expect(page.locator('h1').first()).toHaveText('This page missed its cue');
 });
 
 test('signed-out visitors are sent to sign in for their tickets', async ({ page }) => {

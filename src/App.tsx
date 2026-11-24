@@ -30,6 +30,7 @@ const AdminEvents = lazy(() => import('./views/admin/AdminEvents'));
 const AdminContent = lazy(() => import('./views/admin/AdminContent'));
 const AdminUsers = lazy(() => import('./views/admin/AdminUsers'));
 const AdminActivity = lazy(() => import('./views/admin/AdminActivity'));
+const NotFound = lazy(() => import('./views/pages/NotFound'));
 const AdminEventReport = lazy(() => import('./views/admin/AdminEventReport'));
 const Legal = lazy(() => import('./views/pages/Legal'));
 const EventPage = lazy(() => import('./views/pages/EventPage'));
@@ -122,16 +123,6 @@ function Protected({ children, allow }: { children: ReactNode; allow?: (role: Us
     );
   }
   return <>{children}</>;
-}
-
-function NotFound() {
-  return (
-    <div className="min-h-[70vh] flex flex-col items-center justify-center p-6 text-center">
-      <h1 className="display text-4xl md:text-6xl mb-4">Page not found</h1>
-      <p className="text-bai-black/70 max-w-sm mb-8">That page does not exist or has moved.</p>
-      <Link to={ROUTES.HOME} className="btn btn-primary">Back to home</Link>
-    </div>
-  );
 }
 
 function PageLoading() {

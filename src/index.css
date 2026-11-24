@@ -383,3 +383,16 @@
 @media (hover: hover) and (pointer: fine) {
   .group:hover .photo-zoom { transform: scale(1.03); }
 }
+
+/* 404 page: the puzzled whole note wobbles, question marks drift up, the fallen note twitches. */
+@keyframes note-wobble { 0%, 100% { transform: rotate(-5deg); } 50% { transform: rotate(6deg) translateY(-3px); } }
+@keyframes note-float { 0% { transform: translateY(6px); opacity: 0; } 30% { opacity: 1; } 100% { transform: translateY(-14px); opacity: 0; } }
+@keyframes note-twitch { 0%, 88%, 100% { transform: rotate(0); } 92% { transform: rotate(-4deg); } 96% { transform: rotate(3deg); } }
+.note-wobble { transform-box: fill-box; transform-origin: center; animation: note-wobble 3.2s ease-in-out infinite; }
+.note-float { transform-box: fill-box; animation: note-float 2.8s ease-out infinite; }
+.note-float-late { animation-delay: 1.4s; }
+.note-fallen { transform-box: fill-box; transform-origin: 50% 100%; animation: note-twitch 4s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .note-wobble, .note-float, .note-fallen { animation: none; }
+  .note-float { opacity: 1; }
+}
