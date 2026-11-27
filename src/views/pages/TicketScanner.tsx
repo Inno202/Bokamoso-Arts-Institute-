@@ -3,6 +3,7 @@ import { Camera, Check, ChevronDown, Keyboard, Calendar, WifiOff, X } from 'luci
 import { useAuth } from '../components/AuthProvider';
 import { EVENT_PASSED_AFTER_HOURS, normalizeTicketId, ScanRefused, ticketController, type ScanRefusal } from '../../controllers/ticketController';
 import { doorOffline } from '../../services/doorOffline';
+import { InstallPrompt } from '../components/InstallPrompt';
 import { toast } from '../../services/toast';
 import { eventController } from '../../controllers/eventController';
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
@@ -146,6 +147,8 @@ export default function TicketScanner() {
   // so tickets can still be checked if the signal drops.
   const [saved, setSaved] = useState<{ count: number; at: number } | null>(null);
   const [pending, setPending] = useState(() => doorOffline.queue().length);
+  const [startedScanning, setStartedScanning] = useState(false);
+  useEffect(() => { if (result || checking) setStartedScanning(true); }, [result, checking]);
   useEffect(() => {
     doorOffline.clearOld();
     const event = doorEvents?.find(e => e.id === doorEventId);
@@ -321,6 +324,10 @@ export default function TicketScanner() {
           {showManual ? <Camera size={20} aria-hidden="true" /> : <Keyboard size={20} aria-hidden="true" />}
         </button>
       </div>
+
+      {/* Offer to install only before the first scan of the session: after that it stays out of the way,
+          so the camera never changes size between tickets. */}
+      {!startedScanning && <div className="shrink-0 w-full max-w-[480px] mx-auto px-4 pb-3"><InstallPrompt context="scanner" dark /></div>}
 
       <div className="scanner-body flex-grow min-h-0 w-full max-w-[480px] mx-auto px-4 pb-4 flex flex-col items-center gap-4">
         <div className="scanner-stage relative shrink-0 aspect-square rounded-3xl overflow-hidden bg-white/[0.04]" data-tone={tone}>

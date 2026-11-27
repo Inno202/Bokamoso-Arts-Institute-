@@ -13,7 +13,7 @@
     "lint": "tsc --noEmit",
     "test:rules": "npx -y firebase-tools@13 emulators:exec --only firestore --project demo-bai \"node --test tests/firestore.rules.test.mjs\"",
     "test": "npm run lint && npm run test:unit && npm run test:rules",
-    "test:unit": "vitest run tests/content.test.ts",
+    "test:unit": "vitest run tests/content.test.ts tests/queue.test.ts",
     "test:e2e": "npm run build && playwright test",
     "serve:dist": "node scripts/serve-dist.cjs"
   },

@@ -105,6 +105,10 @@ const upload = multer({
 
 async function startServer() {
   const app = express();
+  // Say nothing about the software behind the site: no "X-Powered-By: Express" (helmet
+  // removes it too; this keeps it off even if helmet is ever changed). Express sends no
+  // "Server" header of its own.
+  app.disable("x-powered-by");
   app.set("trust proxy", 1);
 
   app.use(helmet({
@@ -112,7 +116,7 @@ async function startServer() {
     contentSecurityPolicy: isProd ? {
       directives: {
         defaultSrc: ["'self'"],
-        scriptSrc: ["'self'", "https://apis.google.com", "https://www.gstatic.com", "https://www.google.com/recaptcha/"],
+        scriptSrc: ["'self'", "https://apis.google.com", "https://www.gstatic.com/recaptcha/", "https://www.google.com/recaptcha/"],
         styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
         fontSrc: ["'self'", "https://fonts.gstatic.com"],
         imgSrc: ["'self'", "data:", "blob:", "https:"],
@@ -120,6 +124,7 @@ async function startServer() {
         connectSrc: ["'self'", "https://*.googleapis.com", "https://api.cloudinary.com"],
         frameSrc: [...(authDomain ? [`https://${authDomain}`] : []), "https://www.google.com/recaptcha/", "https://recaptcha.google.com/recaptcha/"],
         workerSrc: ["'self'", "blob:"],
+        manifestSrc: ["'self'"],
         objectSrc: ["'none'"],
         baseUri: ["'self'"],
         formAction: ["'self'"],

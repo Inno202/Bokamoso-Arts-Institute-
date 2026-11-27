@@ -1,5 +1,6 @@
 import {
   collection,
+  getDoc,
   getDocs,
   updateDoc,
   doc,
@@ -24,6 +25,7 @@ import { LEGACY_TYPE_ID, hasTicketTypes, typeOf } from '../models/ticketTypes';
 import { cacheService } from '../services/cacheService';
 import { logger } from '../services/loggerService';
 import { REQUIRE_EMAIL_VERIFICATION } from '../config';
+import { waitInLine } from './busyQueue';
 
 const TICKETS = 'tickets';
 const SCANS = 'ticket_scanned';
@@ -82,7 +84,7 @@ export const ticketController = {
    * firestore.rules refuses the write unless all four agree.
    * Prices come from the event record, never from the bag.
    */
-  async purchase(user: User, items: CartItem[]): Promise<PurchaseResult> {
+  async purchase(user: User, items: CartItem[], onWaiting?: (since: number) => void): Promise<PurchaseResult> {
     if (items.length === 0) throw new AppError('Your bag is empty.');
     if (REQUIRE_EMAIL_VERIFICATION && !user.emailVerified) throw new AppError('Confirm your email address before booking: open the link we emailed you.');
 
@@ -98,8 +100,11 @@ export const ticketController = {
 
     const result: PurchaseResult = { ticketIds: [], purchasedEventIds: [], purchasedLines: [] };
     for (const { eventId, typeId, quantity } of wanted.values()) {
+      // How many tickets this account held when the booking was first tried: the order's id
+      // depends on it, which lets a retry check whether an earlier attempt went through.
+      let heldAtStart: number | undefined;
       try {
-        const ids = await runTransaction(db, async (tx) => {
+        const ids = await waitInLine(() => runTransaction(db, async (tx) => {
           const eventRef = doc(db, EVENTS, eventId);
           const holdingRef = doc(db, HOLDINGS, `${user.uid}_${eventId}`);
           const [eventSnap, holdingSnap] = [await tx.get(eventRef), await tx.get(holdingRef)];
@@ -122,6 +127,7 @@ export const ticketController = {
           }
 
           const held = holdingSnap.exists() ? Number(holdingSnap.data().count) || 0 : 0;
+          if (heldAtStart === undefined) heldAtStart = held;
           if (held + quantity > MAX_PER_EVENT) {
             const room = MAX_PER_EVENT - held;
             throw new AppError(room > 0
@@ -171,6 +177,13 @@ export const ticketController = {
           });
           tx.set(holdingRef, { buyerId: user.uid, eventId, count: held + quantity, updatedAt: serverTimestamp() });
           return ticketIds;
+        }), {
+          onWaiting,
+          alreadyBooked: async () => {
+            if (heldAtStart === undefined) return undefined;
+            const earlier = await getDoc(doc(db, ORDERS, `${user.uid}_${eventId}_${heldAtStart + quantity}`));
+            return earlier.exists() ? (earlier.data().ticketIds as string[]) : undefined;
+          },
         });
         result.ticketIds.push(...ids);
         result.purchasedEventIds.push(eventId);

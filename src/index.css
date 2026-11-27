@@ -303,6 +303,12 @@
 #qr-reader a { color: var(--color-bai-blue-soft); }
 
 /* Back to top: fades and rises in once the page is scrolled. */
+.cookie-notice { animation: notice-in 320ms cubic-bezier(0.32, 0.72, 0, 1) both; }
+@keyframes notice-in { from { transform: translateY(100%); opacity: 0; } }
+/* While the cookie notice shows, the page gets room at the bottom so nothing is hidden under it,
+   and the back-to-top button sits above it. */
+body { padding-bottom: var(--notice-space, 0px); }
+.back-to-top { margin-bottom: var(--notice-space, 0px); }
 .back-to-top { opacity: 0; transform: translateY(8px) scale(0.9); pointer-events: none; transition: opacity 200ms ease, transform 200ms ease, background-color 200ms ease; }
 .back-to-top.is-shown { opacity: 1; transform: none; pointer-events: auto; }
 .back-to-top:active { transform: scale(0.94); }
@@ -360,6 +366,7 @@
 
 /* People who ask for less motion still get every state change, without the travel. */
 @media (prefers-reduced-motion: reduce) {
+  .cookie-notice { animation: none; }
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
@@ -388,6 +395,13 @@
 @keyframes note-wobble { 0%, 100% { transform: rotate(-5deg); } 50% { transform: rotate(6deg) translateY(-3px); } }
 @keyframes note-float { 0% { transform: translateY(6px); opacity: 0; } 30% { opacity: 1; } 100% { transform: translateY(-14px); opacity: 0; } }
 @keyframes note-twitch { 0%, 88%, 100% { transform: rotate(0); } 92% { transform: rotate(-4deg); } 96% { transform: rotate(3deg); } }
+/* Ticket queue: the notes hop in turn and the line shuffles towards the box office. */
+.queue-note { transform-box: fill-box; transform-origin: 50% 100%; animation: queue-hop 1.6s cubic-bezier(0.34, 1.56, 0.64, 1) infinite; }
+.queue-line { animation: queue-shuffle 3.2s ease-in-out infinite; }
+.queue-sparkle { transform-box: fill-box; transform-origin: center; animation: queue-sparkle 3.2s ease-out infinite; }
+@keyframes queue-hop { 0%, 55%, 100% { transform: translateY(0) scaleY(1); } 20% { transform: translateY(-14px) scaleY(1.04); } 40% { transform: translateY(0) scaleY(0.94); } }
+@keyframes queue-shuffle { 0%, 40% { transform: translateX(0); } 70%, 100% { transform: translateX(16px); } }
+@keyframes queue-sparkle { 0%, 60% { opacity: 0; transform: scale(0.4); } 75% { opacity: 1; transform: scale(1.1); } 100% { opacity: 0; transform: scale(1); } }
 .note-wobble { transform-box: fill-box; transform-origin: center; animation: note-wobble 3.2s ease-in-out infinite; }
 .note-float { transform-box: fill-box; animation: note-float 2.8s ease-out infinite; }
 .note-float-late { animation-delay: 1.4s; }
@@ -408,6 +422,6 @@
 .note-trail { animation: note-fade 0.6s ease-out 0.8s both; }
 .note-fallen { animation-delay: 2.4s; }
 @media (prefers-reduced-motion: reduce) {
-  .note-wobble, .note-float, .note-fallen, .note-drop, .note-stars, .note-trail { animation: none; }
+  .note-wobble, .note-float, .note-fallen, .note-drop, .note-stars, .note-trail, .queue-note, .queue-line, .queue-sparkle { animation: none; }
   .note-float { opacity: 1; }
 }

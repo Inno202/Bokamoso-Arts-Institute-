@@ -110,7 +110,17 @@ These live in the Firebase, Cloudinary and Google consoles, not in this code:
 5. **Database backups** (needs the Blaze plan): Firebase → Firestore → Disaster recovery → scheduled backups, daily, kept for 7 to 14 days.
 6. **Cloudinary preset `bai_media`**: unsigned, asset folder `bokamoso`; if your plan offers them, also allowed formats `jpg, png, webp` and a 10 MB limit.
 7. **Google Search Console**: add the property `https://inno202.github.io/Bokamoso-Arts-Institute-/`, verify it, and submit `sitemap.xml`. GitHub Pages project sites cannot serve a root `robots.txt`; signed-in and staff pages carry `noindex` instead.
-8. **Dependabot** (`.github/dependabot.yml`) opens a pull request each week when a library needs updating: review and merge those.
+8. **Dependabot** (`.github/dependabot.yml`) opens pull requests on Monday mornings when a library or a GitHub Action needs updating. Nothing is merged automatically. To review one: check that its tests and the Lighthouse check are green, read the change notes for anything marked breaking, then merge. Small updates arrive grouped in one pull request.
+
+## Speed and accessibility checks (Lighthouse)
+
+`.github/workflows/lighthouse.yml` runs Google Lighthouse (phone settings) on `/`, `/about/`, `/events/`, `/programs/` and `/login/` for every pull request and every change to `main`. Minimum scores are in `lighthouserc.cjs`: accessibility 95, good practice 90 and search 95 must pass; speed below 90 is a warning, because shared test machines vary. It is a separate check, so it never stops the site from publishing. The full reports are attached to each run (Actions → Lighthouse → the run → Artifacts). To run it locally: `npm run build`, then `npx @lhci/cli@0.14.0 autorun --config=lighthouserc.cjs`.
+
+## Install as an app, cookie notice and the ticket queue
+
+- **Install:** `public/manifest.webmanifest` makes the site installable ("Add to home screen"). The installed app is the same website and always loads the newest pages first (`public/sw.js`), so it never keeps an old version. The offer appears only on My Tickets (once a ticket exists) and on the door scanner, and "Not now" is remembered (`src/services/installApp.ts`).
+- **Cookie notice:** a one-time notice, not a consent choice, because the site stores only what it needs to work and has no advertising or analytics. **If anything optional is ever added (analytics, advertising, tracking embeds), it must become a real opt-in** and the Cookie policy must be updated in the same change (`src/views/components/CookieNotice.tsx`).
+- **Ticket queue:** when many people book the same event at once, their bookings collide in the database. Instead of failing, a booking waits in line and retries with growing, randomised pauses for up to 3 minutes while the buyer sees the "Hold that note" screen. Before each retry it checks whether an earlier attempt already went through, so nobody is booked twice (`src/controllers/busyQueue.ts`, `src/views/components/TicketQueue.tsx`). Preview the screen in a local test build at `/checkout?queue-demo`.
 
 ## Security
 
@@ -123,8 +133,10 @@ What protects the system, and where each protection lives.
 | Someone using another person's account or data | Every read and write is checked against the signed-in person and their role | `firestore.rules` |
 | Stolen or abandoned staff session | Staff who sign in without "Remember me" (shared devices such as door phones) are signed out after 30 idle minutes; role and account changes need a sign-in from the last 8 hours; a deactivated account loses access at once | `AuthProvider.tsx`, `firestore.rules` |
 | Forged, free-minted or hoarded tickets | A ticket only exists as part of an order that matches the event's price and sold count; 10 tickets per account per event | `firestore.rules` |
-| Malicious script injected into a page (XSS) | Content-Security-Policy limits where scripts can come from; admin input is validated; links must be https | `vite.config.ts`, `src/content` |
-| The site hidden inside a hostile page (clickjacking) | The app refuses to start inside another site's frame | `src/main.tsx` |
+| Malicious script injected into a page (XSS) | Content-Security-Policy, added to every page at build time: scripts only from this site, Google sign-in and the bot check; no plugins (`object-src 'none'`). Admin input is validated; links must be https. An end-to-end test fails if the policy ever blocks something the site needs | `vite.config.ts`, `src/content`, `tests/e2e` |
+| Revealing the software behind the site | GitHub Pages sends no `X-Powered-By` and no version number (its `Server: GitHub.com` header cannot be changed there). The optional Node server (`server.ts`) switches `X-Powered-By` off and sends no `Server` header | `server.ts` |
+| A rush of buyers for one event | Bookings that collide wait in a queue and retry with randomised pauses for up to 3 minutes instead of failing, and never book twice | `src/controllers/busyQueue.ts` |
+| The site hidden inside a hostile page (clickjacking) | The app refuses to start inside another site's frame (`frame-ancestors` is ignored in a `<meta>` policy, so this is done in code) | `src/main.tsx` |
 | Forged requests from another site (CSRF) | Sign-in uses tokens the browser never sends automatically, not cookies | Firebase Auth |
 
 No setup makes a system immune to every attack. These settings are not in the code and must be switched on once in the consoles:

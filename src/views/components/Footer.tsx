@@ -67,7 +67,7 @@ export default function Footer() {
             <div>
               <div className="flex items-center gap-3 mb-6">
                 <span className="w-12 h-12 bg-white rounded-full flex items-center justify-center shrink-0" aria-hidden="true">
-                  <img src={`${import.meta.env.BASE_URL}assets/brand/mark-96.png`} alt="" width={40} height={40} className="w-10 h-10" />
+                  <img src={`${import.meta.env.BASE_URL}assets/brand/mark-96.png`} alt="" width={40} height={40} loading="lazy" decoding="async" className="w-10 h-10" />
                 </span>
                 <span className="flex flex-col">
                   <span className="font-serif font-semibold text-xl leading-none tracking-[0.06em]">BOKAMOSO</span>
