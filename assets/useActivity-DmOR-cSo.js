@@ -1,0 +1,1 @@
+import{r as s}from"./react-9rRqpDUQ.js";import{k as a}from"./index-D9NiU2vs.js";import{a as c}from"./activityController-CYZK-hbk.js";function u(){const{user:o,userData:r,role:t}=a();return s.useCallback((e,i,m="")=>c.record({user:o,name:r==null?void 0:r.displayName,role:t},e,i,m),[o,r==null?void 0:r.displayName,t])}export{u};
