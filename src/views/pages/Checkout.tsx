@@ -5,6 +5,7 @@ import { useCart, TICKETING_FEE } from '../../hooks/useCart';
 import { useAuth } from '../components/AuthProvider';
 import { PageHero } from '../components/PageHero';
 import { VerifyEmailNotice } from '../components/VerifyEmailNotice';
+import { TicketQueue } from '../components/TicketQueue';
 import { ROUTES } from '../../controllers/navigation';
 import { ticketController } from '../../controllers/ticketController';
 import { AppError, formatCurrency, friendlyError } from '../../controllers/lib/utils';
@@ -23,6 +24,9 @@ export default function Checkout() {
   const [submitting, setSubmitting] = useState(false);
   const [issued, setIssued] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  // Set while a booking waits in line during a rush; local test builds can preview it with ?queue-demo.
+  const [queuedSince, setQueuedSince] = useState<number | null>(() =>
+    (import.meta.env.DEV || import.meta.env.MODE === 'emulator') && typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('queue-demo') ? Date.now() - 42_000 : null);
 
   const fee = items.length > 0 && PAYMENTS_LIVE ? TICKETING_FEE : 0;
 
@@ -39,7 +43,7 @@ export default function Checkout() {
     setSubmitting(true);
     setError(null);
     try {
-      const result = await ticketController.purchase(user, items);
+      const result = await ticketController.purchase(user, items, (since) => setQueuedSince(since));
       const failed = 'Your tickets could not be issued. Nothing was charged. Please try again.';
       if (!result.error) {
         setIssued(result.ticketIds.length);
@@ -60,6 +64,7 @@ export default function Checkout() {
       setError(friendlyError(err, 'Your tickets could not be issued. Nothing was charged. Please try again.'));
     } finally {
       setSubmitting(false);
+      setQueuedSince(null);
     }
   };
 
@@ -77,6 +82,8 @@ export default function Checkout() {
       </div>
     );
   }
+
+  if (queuedSince !== null) return <TicketQueue since={queuedSince} />;
 
   if (cartLoading) {
     return (

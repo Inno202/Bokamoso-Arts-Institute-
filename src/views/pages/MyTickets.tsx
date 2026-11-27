@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Ticket as TicketIcon, MapPin, Calendar, ChevronRight, Share2, X, Loader2, WifiOff } from 'lucide-react';
 import { PageHero } from '../components/PageHero';
+import { InstallPrompt } from '../components/InstallPrompt';
 import { useAuth } from '../components/AuthProvider';
 import { ticketController } from '../../controllers/ticketController';
 import { eventController } from '../../controllers/eventController';
@@ -179,6 +180,8 @@ export default function MyTickets() {
             <Link to={ROUTES.EVENTS} className="btn btn-primary">See upcoming events</Link>
           </div>
         ) : (
+          <>
+          <div className="mb-6"><InstallPrompt context="tickets" /></div>
           <ul className="grid grid-cols-1 lg:grid-cols-2 gap-5">
             {tickets.map((ticket) => {
               const status = STATUS[statusOf(ticket)] || STATUS.VALID;
@@ -220,6 +223,7 @@ export default function MyTickets() {
               );
             })}
           </ul>
+          </>
         )}
       </div>
 

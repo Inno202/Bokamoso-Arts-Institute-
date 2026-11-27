@@ -7,6 +7,7 @@ import { seedUpcoming } from './content/upcoming';
 import { seedEvent } from './content/eventSeed';
 import './index.css';
 import { checkBotCheck, errorLog } from './controllers/errorLogController';
+import { captureInstallOffer } from './services/installApp';
 
 const basename = import.meta.env.BASE_URL.replace(/\/$/, '');
 
@@ -74,6 +75,7 @@ if (framed) {
   document.body.textContent = 'For your security, Bokamoso Arts Institute does not open inside another website. Open it in its own tab.';
 } else {
   registerOfflineCopy();
+  captureInstallOffer();
   reportUncaught();
   const root = document.getElementById('root')!;
   // Pages pre-rendered at build time carry the content they were built with;

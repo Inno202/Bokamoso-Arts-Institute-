@@ -14,7 +14,7 @@ import { APP_CHECK_ENABLED } from '../../controllers/lib/firebase';
  * charged, collected, stored or promised, update the matching section here and
  * the LAST_UPDATED date in the same commit.
  */
-const LAST_UPDATED = '24 November 2026';
+const LAST_UPDATED = '27 November 2026';
 
 type Doc = 'terms' | 'privacy' | 'cookies';
 const TITLES: Record<Doc, [string, string]> = {
@@ -131,8 +131,10 @@ export default function Legal({ doc }: { doc: Doc }) {
               <li><strong>Offline copy:</strong> a copy of the pages' content, events and your tickets is cached so the site loads quickly and your tickets open with a weak connection.</li>
               <li><strong>Your bag:</strong> the tickets you have added but not yet booked.</li>
               <li><strong>Footer preference:</strong> whether you have folded the footer away.</li>
+              <li><strong>Notices you have closed:</strong> that you pressed OK on the cookie notice, and, if you chose "Not now", that you do not want the offer to add BAI to your home screen. Each is a single yes, kept only on that browser.</li>
             </UL>
-            <P>These are needed for the site to do what you ask of it, which is why there is no cookie banner. None of them is used to track you across other websites.</P>
+            <P>These are needed for the site to do what you ask of it. None of them is used to track you across other websites, so there is nothing to opt in or out of: the short notice shown on your first visit is there to tell you this, and it does not change what is stored.</P>
+            <P>If you add BAI to your home screen, the app is this same website: it uses the same storage, and on an iPhone it keeps its own separate sign-in.</P>
 
             <H>Other services</H>
             <P>If you choose "Sign in with Google", Google opens its own window and sets its own cookies there, under Google's privacy policy. The site's typefaces are loaded from Google Fonts.</P>

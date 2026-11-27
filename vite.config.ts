@@ -17,16 +17,20 @@ const RELEASE = (() => {
 // wherever the host allows custom headers.)
 const cspFor = (mode: string) => [
   "default-src 'self'",
-  // google.com/recaptcha and gstatic.com/recaptcha are used by App Check.
-  "script-src 'self' https://apis.google.com https://www.gstatic.com https://www.google.com/recaptcha/",
+  // Scripts only from this site, Google sign-in (apis.google.com) and the bot check
+  // (App Check's reCAPTCHA, served from google.com/recaptcha and gstatic.com/recaptcha).
+  "script-src 'self' https://apis.google.com https://www.gstatic.com/recaptcha/ https://www.google.com/recaptcha/",
+  // Inline style attributes come from the pre-rendered HTML; styles cannot run code.
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "font-src 'self' https://fonts.gstatic.com",
+  // Staff may paste a picture link from any secure site, and images cannot run code.
   "img-src 'self' data: blob: https:",
   "media-src 'self' blob:",
   // A local test build (`vite build --mode emulator`) may also reach the local emulators.
   `connect-src 'self' https://*.googleapis.com https://api.cloudinary.com${mode === 'emulator' ? ' http://127.0.0.1:8080 http://127.0.0.1:9099' : ''}`,
   `frame-src https://${firebaseConfig.authDomain} https://www.google.com/recaptcha/ https://recaptcha.google.com/recaptcha/`,
   "worker-src 'self' blob:",
+  "manifest-src 'self'",
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'self'",

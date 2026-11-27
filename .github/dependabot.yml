@@ -1,11 +1,25 @@
-# Weekly check for outdated or vulnerable libraries; GitHub opens a pull request for each.
+# Weekly check for outdated or vulnerable libraries. Dependabot opens a pull request for
+# each update; nothing is merged automatically. See README, "Library updates".
 version: 2
 updates:
   - package-ecosystem: npm
     directory: /
     schedule:
       interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Africa/Johannesburg
     open-pull-requests-limit: 5
     groups:
+      # Small, low-risk updates arrive together in one pull request.
       minor-and-patch:
         update-types: [minor, patch]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Africa/Johannesburg
+    open-pull-requests-limit: 3

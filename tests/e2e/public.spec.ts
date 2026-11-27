@@ -123,3 +123,62 @@ test('the site refuses to run inside another website\'s frame', async ({ page })
   const frame = page.frameLocator('iframe');
   await expect(frame.locator('body')).toContainText('does not open inside another website');
 });
+
+test('the security policy blocks nothing the site itself needs, on any public page', async ({ page }) => {
+  // Every refused script, frame, style, font, image or connection is recorded here.
+  await page.addInitScript(() => {
+    (window as unknown as { __cspViolations: string[] }).__cspViolations = [];
+    document.addEventListener('securitypolicyviolation', (e) => {
+      (window as unknown as { __cspViolations: string[] }).__cspViolations.push(`${e.violatedDirective} ${e.blockedURI}`);
+    });
+  });
+  const policy = await (await page.request.get('')).text();
+  expect(policy).toContain('http-equiv="Content-Security-Policy"');
+  expect(policy).toContain("object-src 'none'");
+  for (const { path } of PAGES) {
+    await page.goto(path);
+    await page.waitForTimeout(800);
+    const violations = await page.evaluate(() => (window as unknown as { __cspViolations: string[] }).__cspViolations);
+    expect(violations, `on /${path}`).toEqual([]);
+  }
+});
+
+test('the site can be installed: the app manifest is linked, valid and opens on the home page', async ({ page, request }) => {
+  await page.goto('');
+  const href = await page.locator('link[rel="manifest"]').getAttribute('href');
+  expect(href).toBeTruthy();
+  const manifest = await (await request.get(new URL(href!, page.url()).href)).json();
+  expect(manifest.short_name).toBe('BAI');
+  expect(manifest.display).toBe('standalone');
+  expect(manifest.start_url).toBe('/Bokamoso-Arts-Institute-/');
+  expect(manifest.icons.some((i: { purpose?: string }) => i.purpose === 'maskable')).toBe(true);
+  for (const icon of manifest.icons) expect((await request.get(new URL(icon.src, page.url()).href)).ok()).toBe(true);
+  expect((await request.get(new URL(manifest.start_url, page.url()).href)).ok()).toBe(true);
+  // The install offer is never made on the home page.
+  await expect(page.getByRole('region', { name: 'Add BAI to your home screen' })).toHaveCount(0);
+});
+
+test('the cookie notice shows once, goes away with OK, and stays away', async ({ page }) => {
+  await page.goto('');
+  const notice = page.getByRole('region', { name: 'Cookies' });
+  await expect(notice).toBeVisible();
+  await expect(notice.getByRole('link', { name: 'Cookie policy' })).toBeVisible();
+  // It is compact, and nothing is ever unreachable under it: at the end of the page, the
+  // footer's last line scrolls clear above it.
+  const box = (await notice.boundingBox())!;
+  expect(box.height).toBeLessThan(140);
+  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+  await page.waitForTimeout(300);
+  const footerEnd = await page.locator('footer').evaluate(el => el.getBoundingClientRect().bottom);
+  expect(footerEnd).toBeLessThanOrEqual(box.y + 1);
+  await notice.getByRole('button', { name: 'OK' }).click();
+  await expect(notice).toHaveCount(0);
+  await page.reload();
+  await page.waitForTimeout(500);
+  await expect(page.getByRole('region', { name: 'Cookies' })).toHaveCount(0);
+});
+
+test('the cookie notice is not part of the pre-built page', async ({ request }) => {
+  const html = await (await request.get('')).text();
+  expect(html).not.toContain('No advertising or tracking');
+});

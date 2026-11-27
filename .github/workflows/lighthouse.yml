@@ -1,0 +1,47 @@
+# Speed, accessibility, good-practice and search checks (Google Lighthouse) on five main
+# pages, on every pull request and every change to main. Minimum scores live in
+# lighthouserc.cjs. This is a separate check: it never stops the site from publishing.
+name: Lighthouse
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: lighthouse-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lighthouse:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # Checks the site as built from the code. The pages use built-in text here, because
+      # this check has no access to the database pass the publish step uses.
+      - name: Build
+        run: npm run build
+
+      - name: Run Lighthouse
+        run: npx -y @lhci/cli@0.14.0 autorun --config=lighthouserc.cjs
+
+      - name: Keep the reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lighthouse-reports
+          path: .lighthouseci
+          retention-days: 14
