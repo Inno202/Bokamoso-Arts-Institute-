@@ -1,14 +1,17 @@
 {
+  "id": "/Bokamoso-Arts-Institute-/",
   "name": "Bokamoso Arts Institute",
-  "short_name": "Bokamoso",
-  "description": "Events, tickets and news from the Bokamoso choir in Mabopane.",
-  "start_url": "/Bokamoso-Arts-Institute-/my-tickets/",
+  "short_name": "BAI",
+  "description": "Concerts, tickets and news from Bokamoso Arts Institute in Mabopane.",
+  "start_url": "/Bokamoso-Arts-Institute-/",
   "scope": "/Bokamoso-Arts-Institute-/",
   "display": "standalone",
+  "orientation": "portrait",
   "background_color": "#FAF9F6",
   "theme_color": "#FAF9F6",
   "icons": [
-    { "src": "/Bokamoso-Arts-Institute-/assets/brand/mark-192.png", "sizes": "192x192", "type": "image/png" },
-    { "src": "/Bokamoso-Arts-Institute-/assets/brand/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+    { "src": "/Bokamoso-Arts-Institute-/assets/brand/app-icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/Bokamoso-Arts-Institute-/assets/brand/app-icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/Bokamoso-Arts-Institute-/assets/brand/app-icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ]
 }
